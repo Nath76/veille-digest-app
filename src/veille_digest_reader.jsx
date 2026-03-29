@@ -2,79 +2,75 @@ import React, { useEffect, useMemo, useState } from "react";
 
 const theme = {
   colors: {
-    page: "#f4f0e8",
-    surface: "rgba(255,255,255,0.92)",
-    surfaceSoft: "#f8f5ef",
-    border: "#ddd4c5",
-    text: "#1f2937",
-    muted: "#6b7280",
-    accent: "#9a3412",
-    accentSoft: "#f7d9c7",
-    dark: "#111827",
-    chip: "#efe7da",
-    chipText: "#4b5563",
-    selected: "#f7f2ea",
-    favoriteBg: "#fef3c7",
-    favoriteText: "#92400e",
+    page: "#f2efe8",
+    panel: "#e7e0d0",
+    panelSoft: "#ede7d8",
+    border: "#cbbfa8",
+    text: "#1e293b",
+    muted: "#7a6f5c",
+    accent: "#8a4b22",
+    darkLine: "#2b2a24",
+    white: "#fffdf8",
+    chip: "#f5f0e6",
+    chipText: "#4f4638",
+    selected: "#f8f3e8",
+    favoriteBg: "#fce7b2",
+    favoriteText: "#8a4b22",
     noteBg: "#dbeafe",
     noteText: "#1d4ed8",
+    green: "#1f7a45",
   },
-  radius: {
-    xl: 22,
-    lg: 18,
-    md: 14,
-    pill: 999,
-  },
-  shadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
-  font: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  fontSans:
+    'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  fontSerif: 'Georgia, "Times New Roman", serif',
 };
 
 const fallbackData = [
   {
     id: "demo-1",
     date: "2026-03-29",
-    title: "Rapport de démonstration sur les mutations de la criminalité organisée",
+    title: "Les modèles de langage s'imposent dans les salles de rédaction françaises",
     url: "#",
-    source: "Google Alert",
+    source: "lemonde.fr",
     composante: "Veille éditoriale",
-    institution: "Europol",
-    documentType: "rapport",
-    actors: ["Europol", "États membres"],
-    keywords: ["criminalité organisée", "trafic", "coopération"],
+    institution: "Le Monde",
+    documentType: "article",
+    actors: ["Le Figaro", "L'Équipe", "AFP"],
+    keywords: ["médias", "IA générative", "rédaction"],
     summary:
-      "Ce rapport de démonstration présente les dynamiques récentes de la criminalité organisée en Europe et insiste sur l'articulation entre adaptation des réseaux, hybridation des trafics et capacité de coopération institutionnelle. Il met en évidence la montée en complexité des chaînes illicites, le rôle croissant de la donnée et l'importance des échanges opérationnels. Le document montre aussi comment certains signaux faibles peuvent annoncer des transformations plus profondes. Pour une activité de veille, l'intérêt principal réside dans la capacité du document à relier tendances, acteurs et implications stratégiques.",
-    innovations: ["analyse de données", "outils numériques d'enquête"],
+      "Plusieurs grands médias annoncent des partenariats et des expérimentations autour de l'IA générative pour accélérer certaines tâches éditoriales, automatiser des formats répétitifs et soutenir la production de contenus. Le document montre toutefois que ces usages restent encadrés par des considérations juridiques, organisationnelles et réputationnelles. Il met aussi en évidence un débat croissant sur les limites de l'automatisation, la vérification des faits et la place du jugement humain dans la chaîne éditoriale.",
+    innovations: ["IA générative", "automatisation éditoriale"],
     weakSignal: "Oui",
-    strategicImpact: 3,
-    relevanceScore: 91,
-    themes: ["criminalité organisée", "sécurité européenne", "coopération policière"],
+    strategicImpact: 2,
+    relevanceScore: 89,
+    themes: ["IA", "médias", "numérique"],
     exploitationAngle:
-      "Peut nourrir une note sur l'évolution des formes de coopération face à la criminalité organisée et sur les capacités analytiques à renforcer.",
-    favorite: false,
+      "Peut alimenter une note sur la diffusion des usages de l'IA générative dans des organisations soumises à de fortes contraintes de fiabilité.",
+    favorite: true,
     noteCandidate: true,
     status: "Nouveau",
   },
   {
     id: "demo-2",
-    date: "2026-03-27",
-    title: "Note de démonstration sur les signaux faibles liés à l'innovation de sûreté",
+    date: "2026-03-28",
+    title: "Le design thinking entre à l'école primaire : bilan d'une expérimentation",
     url: "#",
-    source: "Google Alert",
+    source: "educpros",
     composante: "Veille éditoriale",
-    institution: "OFDT",
-    documentType: "note",
-    actors: ["OFDT"],
-    keywords: ["innovation", "signal faible", "sûreté"],
+    institution: "EducPros",
+    documentType: "bilan",
+    actors: ["enseignants", "ministère"],
+    keywords: ["pédagogie", "expérimentation", "coopération"],
     summary:
-      "La note rassemble plusieurs observations dispersées sur l'émergence d'outils techniques et de modes d'organisation susceptibles de modifier certains équilibres opérationnels. Elle reste prudente, mais suggère que plusieurs transformations discrètes méritent un suivi rapproché. Elle est utile pour préparer des hypothèses de travail et alimenter une veille orientée anticipation.",
-    innovations: ["capteurs", "analyse automatisée"],
-    weakSignal: "Oui",
-    strategicImpact: 2,
-    relevanceScore: 78,
-    themes: ["innovation", "anticipation", "sûreté"],
+      "Une étude menée dans plusieurs classes pilotes met en avant des effets positifs sur l'engagement des élèves, la coopération et l'expression des idées. Elle souligne cependant la charge de préparation pour les enseignants et les conditions nécessaires à un passage à l'échelle. Le document intéresse surtout comme exemple de traduction opérationnelle d'une méthode de conception dans un cadre éducatif.",
+    innovations: ["design thinking"],
+    weakSignal: "Non",
+    strategicImpact: 1,
+    relevanceScore: 73,
+    themes: ["pédagogie", "innovation", "design"],
     exploitationAngle:
-      "Peut être utilisé comme matériau exploratoire pour un encadré de veille ou une note d'anticipation.",
-    favorite: true,
+      "Peut servir d'appui comparatif sur les usages d'approches de conception collaborative dans des organisations publiques.",
+    favorite: false,
     noteCandidate: false,
     status: "Traité",
   },
@@ -89,20 +85,12 @@ function normalizeArray(value) {
     .filter(Boolean);
 }
 
-function scoreLabel(score) {
+function scorePillStyle(score) {
   const n = Number(score || 0);
-  if (n >= 85) return "Très pertinent";
-  if (n >= 70) return "Pertinent";
-  if (n >= 50) return "À regarder";
-  return "Secondaire";
-}
-
-function scoreStyle(score) {
-  const n = Number(score || 0);
-  if (n >= 85) return { background: theme.colors.dark, color: "#fff" };
-  if (n >= 70) return { background: theme.colors.chip, color: theme.colors.text };
-  if (n >= 50) return { background: "#fef3c7", color: "#92400e" };
-  return { background: "#eef2f7", color: "#475569" };
+  if (n >= 85) return { background: "#dcefdc", color: "#1f7a45" };
+  if (n >= 70) return { background: "#f9e7c8", color: "#a16207" };
+  if (n >= 50) return { background: "#f2e2da", color: "#9a3412" };
+  return { background: "#ece7dc", color: "#6b7280" };
 }
 
 function splitParagraphs(text) {
@@ -112,69 +100,20 @@ function splitParagraphs(text) {
     .filter(Boolean);
 }
 
-function PremiumCard({ children, style = {} }) {
-  return (
-    <div
-      style={{
-        background: theme.colors.surface,
-        border: `1px solid ${theme.colors.border}`,
-        borderRadius: theme.radius.xl,
-        boxShadow: theme.shadow,
-        ...style,
-      }}
-    >
-      {children}
-    </div>
-  );
-}
-
-function PillButton({ active, children, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        borderRadius: theme.radius.pill,
-        border: `1px solid ${active ? theme.colors.dark : theme.colors.border}`,
-        background: active ? theme.colors.dark : "#fff",
-        color: active ? "#fff" : theme.colors.text,
-        padding: "9px 14px",
-        fontSize: 13,
-        cursor: "pointer",
-      }}
-    >
-      {children}
-    </button>
-  );
-}
-
-function SoftBadge({ children, style = {} }) {
-  return (
-    <span
-      style={{
-        display: "inline-block",
-        borderRadius: theme.radius.pill,
-        background: theme.colors.chip,
-        color: theme.colors.chipText,
-        padding: "6px 10px",
-        fontSize: 12,
-        marginRight: 6,
-        marginBottom: 6,
-        ...style,
-      }}
-    >
-      {children}
-    </span>
-  );
+function smallCaps(text) {
+  return {
+    fontSize: 12,
+    letterSpacing: ".16em",
+    textTransform: "uppercase",
+    color: theme.colors.muted,
+  };
 }
 
 export default function VeilleDigestReader() {
   const [items, setItems] = useState(fallbackData);
   const [query, setQuery] = useState("");
-  const [selectedTheme, setSelectedTheme] = useState("Tous");
-  const [selectedType, setSelectedType] = useState("Tous");
+  const [selectedTheme, setSelectedTheme] = useState("Toutes les productions éditorialisées");
   const [sortBy, setSortBy] = useState("relevance");
-  const [showFavoritesOnly, setShowFavoritesOnly] = useState(false);
-  const [showNoteOnly, setShowNoteOnly] = useState(false);
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [noteIds, setNoteIds] = useState(new Set());
@@ -207,12 +146,7 @@ export default function VeilleDigestReader() {
   const allThemes = useMemo(() => {
     const values = new Set();
     items.forEach((item) => normalizeArray(item.themes).forEach((theme) => values.add(theme)));
-    return ["Tous", ...Array.from(values).sort((a, b) => a.localeCompare(b))];
-  }, [items]);
-
-  const allTypes = useMemo(() => {
-    const values = new Set(items.map((item) => item.documentType).filter(Boolean));
-    return ["Tous", ...Array.from(values).sort((a, b) => a.localeCompare(b))];
+    return ["Toutes les productions éditorialisées", ...Array.from(values).sort((a, b) => a.localeCompare(b))];
   }, [items]);
 
   const filteredItems = useMemo(() => {
@@ -222,20 +156,17 @@ export default function VeilleDigestReader() {
         item.title,
         item.summary,
         item.institution,
-        item.documentType,
-        ...(item.keywords || []),
         ...(item.themes || []),
+        ...(item.keywords || []),
       ]
         .filter(Boolean)
         .join(" ")
         .toLowerCase();
 
       const matchesQuery = !q || haystack.includes(q);
-      const matchesTheme = selectedTheme === "Tous" || (item.themes || []).includes(selectedTheme);
-      const matchesType = selectedType === "Tous" || item.documentType === selectedType;
-      const matchesFavorites = !showFavoritesOnly || favoriteIds.has(item.id);
-      const matchesNotes = !showNoteOnly || noteIds.has(item.id);
-      return matchesQuery && matchesTheme && matchesType && matchesFavorites && matchesNotes;
+      const matchesTheme =
+        selectedTheme === "Toutes les productions éditorialisées" || (item.themes || []).includes(selectedTheme);
+      return matchesQuery && matchesTheme;
     });
 
     return [...list].sort((a, b) => {
@@ -243,7 +174,7 @@ export default function VeilleDigestReader() {
       if (sortBy === "title") return String(a.title).localeCompare(String(b.title));
       return Number(b.relevanceScore || 0) - Number(a.relevanceScore || 0);
     });
-  }, [items, query, selectedTheme, selectedType, sortBy, showFavoritesOnly, showNoteOnly, favoriteIds, noteIds]);
+  }, [items, query, selectedTheme, sortBy]);
 
   useEffect(() => {
     if (!filteredItems.length) {
@@ -256,6 +187,8 @@ export default function VeilleDigestReader() {
   }, [filteredItems, selectedItemId]);
 
   const selectedItem = filteredItems.find((item) => item.id === selectedItemId) || filteredItems[0] || null;
+  const notePrepItems = filteredItems.filter((item) => noteIds.has(item.id));
+  const rssSources = Array.from(new Set(items.map((i) => i.source).filter(Boolean)));
 
   function toggleFavorite(id) {
     setFavoriteIds((prev) => {
@@ -275,297 +208,303 @@ export default function VeilleDigestReader() {
     });
   }
 
-  const notePrepItems = filteredItems.filter((item) => noteIds.has(item.id));
-
   return (
-    <div style={{ minHeight: "100vh", background: theme.colors.page, color: theme.colors.text, fontFamily: theme.font }}>
-      <div style={{ maxWidth: 1360, margin: "0 auto", padding: "28px 18px 48px" }}>
-        <PremiumCard style={{ marginBottom: 18 }}>
-          <div style={{ padding: 28, display: "flex", justifyContent: "space-between", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
-            <div>
-              <div style={{ color: theme.colors.accent, letterSpacing: ".14em", textTransform: "uppercase", fontSize: 13, marginBottom: 10 }}>
-                Digest éditorial personnel
-              </div>
-              <h1 style={{ fontSize: 46, lineHeight: 1, margin: "0 0 10px", fontWeight: 700, fontFamily: 'Georgia, "Times New Roman", serif' }}>
-                Veille.
-              </h1>
-              <div style={{ color: theme.colors.muted, maxWidth: 760, lineHeight: 1.7, fontSize: 15 }}>
-                Une lecture éditoriale de tes flux : filtres, vue lecture, favoris et présélection pour préparer une note.
-              </div>
-            </div>
-            <div style={{ textAlign: "right", color: theme.colors.muted, fontSize: 14 }}>
-              <div>{filteredItems.length} articles · {Math.max(0, allThemes.length - 1)} thèmes</div>
-              <div style={{ marginTop: 6 }}>{favoriteIds.size} favoris · {noteIds.size} pour note</div>
-            </div>
-          </div>
-        </PremiumCard>
-
-        <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: 18 }}>
-          <PremiumCard>
-            <div style={{ padding: 22 }}>
-              <div style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: ".14em", color: theme.colors.muted, marginBottom: 14 }}>
-                Filtres
-              </div>
-
-              <input
-                value={query}
-                onChange={(e) => setQuery(e.target.value)}
-                placeholder="Recherche par titre, thème, institution..."
-                style={{ width: "100%", padding: "12px 14px", borderRadius: 16, border: `1px solid ${theme.colors.border}`, fontSize: 14, marginBottom: 18, boxSizing: "border-box" }}
-              />
-
-              <div style={{ marginBottom: 18 }}>
-                <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 10 }}>Thèmes</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {allThemes.map((themeName) => (
-                    <PillButton key={themeName} active={selectedTheme === themeName} onClick={() => setSelectedTheme(themeName)}>
-                      {themeName}
-                    </PillButton>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 18 }}>
-                <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 10 }}>Type</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  {allTypes.map((type) => (
-                    <PillButton key={type} active={selectedType === type} onClick={() => setSelectedType(type)}>
-                      {type}
-                    </PillButton>
-                  ))}
-                </div>
-              </div>
-
-              <div style={{ marginBottom: 18 }}>
-                <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 10 }}>Tri</div>
-                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                  <PillButton active={sortBy === "relevance"} onClick={() => setSortBy("relevance")}>Pertinence</PillButton>
-                  <PillButton active={sortBy === "date"} onClick={() => setSortBy("date")}>Date</PillButton>
-                  <PillButton active={sortBy === "title"} onClick={() => setSortBy("title")}>Titre</PillButton>
-                </div>
-              </div>
-
-              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
-                <PillButton active={showFavoritesOnly} onClick={() => setShowFavoritesOnly((v) => !v)}>Favoris</PillButton>
-                <PillButton active={showNoteOnly} onClick={() => setShowNoteOnly((v) => !v)}>Préparer une note</PillButton>
-              </div>
-            </div>
-          </PremiumCard>
-
-          <div style={{ display: "grid", gridTemplateColumns: "0.88fr 1.12fr", gap: 18 }}>
-            <PremiumCard>
-              <div style={{ padding: 20 }}>
-                <div style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: ".14em", color: theme.colors.muted, marginBottom: 14 }}>
-                  Cartes
-                </div>
-                <div style={{ maxHeight: 720, overflowY: "auto", paddingRight: 6 }}>
-                  {filteredItems.map((item) => {
-                    const isSelected = selectedItem?.id === item.id;
-                    const isFavorite = favoriteIds.has(item.id);
-                    const isForNote = noteIds.has(item.id);
-
-                    return (
-                      <button
-                        key={item.id}
-                        onClick={() => setSelectedItemId(item.id)}
-                        style={{
-                          width: "100%",
-                          textAlign: "left",
-                          borderRadius: 22,
-                          border: `1px solid ${isSelected ? theme.colors.dark : theme.colors.border}`,
-                          background: isSelected ? theme.colors.selected : "#fff",
-                          padding: 18,
-                          marginBottom: 12,
-                          cursor: "pointer",
-                        }}
-                      >
-                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", marginBottom: 12 }}>
-                          <SoftBadge style={scoreStyle(item.relevanceScore)}>
-                            Pertinence {item.relevanceScore ?? "—"}/100
-                          </SoftBadge>
-                          <div style={{ display: "flex", gap: 8 }}>
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); toggleFavorite(item.id); }}
-                              style={{ border: "none", borderRadius: 999, padding: "8px 10px", cursor: "pointer", background: isFavorite ? theme.colors.favoriteBg : "#f3f4f6", color: isFavorite ? theme.colors.favoriteText : theme.colors.muted }}
-                            >
-                              ★
-                            </button>
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); toggleNote(item.id); }}
-                              style={{ border: "none", borderRadius: 999, padding: "8px 10px", cursor: "pointer", background: isForNote ? theme.colors.noteBg : "#f3f4f6", color: isForNote ? theme.colors.noteText : theme.colors.muted }}
-                            >
-                              ✎
-                            </button>
-                          </div>
-                        </div>
-
-                        <div style={{ fontSize: 15, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 10 }}>
-                          {item.source || "Source"}
-                        </div>
-                        <div style={{ fontSize: 34, lineHeight: 1.15, fontFamily: 'Georgia, "Times New Roman", serif', marginBottom: 14, fontWeight: 700 }}>
-                          {item.title}
-                        </div>
-
-                        <div style={{ marginBottom: 12 }}>
-                          {item.documentType && <SoftBadge>{item.documentType}</SoftBadge>}
-                          {item.institution && <SoftBadge>{item.institution}</SoftBadge>}
-                          {item.date && <SoftBadge>{item.date}</SoftBadge>}
-                        </div>
-
-                        <div style={{ color: theme.colors.text, lineHeight: 1.75, fontSize: 15 }}>
-                          {String(item.summary || "").slice(0, 320)}{String(item.summary || "").length > 320 ? "…" : ""}
-                        </div>
-
-                        <div style={{ marginTop: 14, color: theme.colors.accent, fontWeight: 600, textAlign: "right" }}>
-                          Lire →
-                        </div>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            </PremiumCard>
-
-            <PremiumCard>
-              <div style={{ padding: 24 }}>
-                <div style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: ".14em", color: theme.colors.muted, marginBottom: 16 }}>
-                  Vue lecture
-                </div>
-                {selectedItem ? (
-                  <div style={{ maxHeight: 720, overflowY: "auto", paddingRight: 6 }}>
-                    <div style={{ marginBottom: 12 }}>
-                      <SoftBadge style={scoreStyle(selectedItem.relevanceScore)}>
-                        {scoreLabel(selectedItem.relevanceScore)}
-                      </SoftBadge>
-                      {selectedItem.documentType && <SoftBadge>{selectedItem.documentType}</SoftBadge>}
-                      {selectedItem.status && <SoftBadge>{selectedItem.status}</SoftBadge>}
-                    </div>
-
-                    <div style={{ fontSize: 46, lineHeight: 1.04, marginBottom: 12, fontWeight: 700, fontFamily: 'Georgia, "Times New Roman", serif' }}>
-                      {selectedItem.title}
-                    </div>
-
-                    <div style={{ color: theme.colors.muted, fontSize: 14, marginBottom: 16, display: "flex", gap: 14, flexWrap: "wrap" }}>
-                      {selectedItem.date && <span>{selectedItem.date}</span>}
-                      {selectedItem.institution && <span>{selectedItem.institution}</span>}
-                      {selectedItem.source && <span>{selectedItem.source}</span>}
-                    </div>
-
-                    {(selectedItem.themes || []).length > 0 && (
-                      <div style={{ marginBottom: 18 }}>
-                        <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 10 }}>Thèmes</div>
-                        {(selectedItem.themes || []).map((themeName) => <SoftBadge key={themeName}>{themeName}</SoftBadge>)}
-                      </div>
-                    )}
-
-                    <div style={{ background: theme.colors.surfaceSoft, borderRadius: 22, padding: 22, marginBottom: 18 }}>
-                      <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 12 }}>Résumé</div>
-                      {splitParagraphs(selectedItem.summary || "Aucun résumé disponible.").map((p, idx) => (
-                        <p key={idx} style={{ margin: idx === 0 ? 0 : "0 0 12px", fontSize: 16, lineHeight: 1.9, color: theme.colors.text }}>
-                          {p}
-                        </p>
-                      ))}
-                    </div>
-
-                    {(selectedItem.keywords || []).length > 0 && (
-                      <div style={{ marginBottom: 18 }}>
-                        <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 10 }}>Concepts clés</div>
-                        {(selectedItem.keywords || []).map((keyword) => <SoftBadge key={keyword}>{keyword}</SoftBadge>)}
-                      </div>
-                    )}
-
-                    {(selectedItem.innovations || []).length > 0 && (
-                      <div style={{ marginBottom: 18 }}>
-                        <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 10 }}>Innovations technologiques</div>
-                        {(selectedItem.innovations || []).map((innovation) => <SoftBadge key={innovation} style={{ background: theme.colors.noteBg, color: theme.colors.noteText }}>{innovation}</SoftBadge>)}
-                      </div>
-                    )}
-
-                    {(selectedItem.actors || []).length > 0 && (
-                      <div style={{ marginBottom: 18 }}>
-                        <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 10 }}>Acteurs mentionnés</div>
-                        {(selectedItem.actors || []).map((actor) => <SoftBadge key={actor}>{actor}</SoftBadge>)}
-                      </div>
-                    )}
-
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }}>
-                      <div style={{ background: theme.colors.surfaceSoft, borderRadius: 18, padding: 18 }}>
-                        <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 8 }}>Signal faible</div>
-                        <div style={{ lineHeight: 1.7 }}>{selectedItem.weakSignal || "Non renseigné"}</div>
-                      </div>
-                      <div style={{ background: theme.colors.surfaceSoft, borderRadius: 18, padding: 18 }}>
-                        <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 8 }}>Impact stratégique</div>
-                        <div style={{ lineHeight: 1.7 }}>{selectedItem.strategicImpact ?? "Non renseigné"}</div>
-                      </div>
-                    </div>
-
-                    <div style={{ background: theme.colors.surfaceSoft, borderRadius: 18, padding: 18, marginBottom: 18 }}>
-                      <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 8 }}>Angle d’exploitation</div>
-                      <div style={{ lineHeight: 1.8 }}>{selectedItem.exploitationAngle || "Aucun angle d’exploitation disponible."}</div>
-                    </div>
-
-                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
-                      <button onClick={() => toggleFavorite(selectedItem.id)} style={{ borderRadius: 999, border: `1px solid ${theme.colors.dark}`, background: theme.colors.dark, color: "#fff", padding: "10px 16px", cursor: "pointer" }}>
-                        {favoriteIds.has(selectedItem.id) ? "Retirer des favoris" : "Ajouter aux favoris"}
-                      </button>
-                      <button onClick={() => toggleNote(selectedItem.id)} style={{ borderRadius: 999, border: `1px solid ${theme.colors.border}`, background: "#fff", color: theme.colors.text, padding: "10px 16px", cursor: "pointer" }}>
-                        {noteIds.has(selectedItem.id) ? "Retirer de la note" : "Préparer une note"}
-                      </button>
-                      <a href={selectedItem.url || "#"} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
-                        <button style={{ borderRadius: 999, border: `1px solid ${theme.colors.border}`, background: "#fff", color: theme.colors.text, padding: "10px 16px", cursor: "pointer" }}>
-                          Ouvrir la source
-                        </button>
-                      </a>
-                    </div>
-                  </div>
-                ) : (
-                  <div style={{ background: theme.colors.surfaceSoft, borderRadius: 18, padding: 18 }}>Aucun item ne correspond aux filtres.</div>
-                )}
-              </div>
-            </PremiumCard>
-          </div>
+    <div style={{ minHeight: "100vh", background: theme.colors.page, color: theme.colors.text, fontFamily: theme.fontSans }}>
+      <div style={{ maxWidth: 1400, margin: "0 auto", padding: 26 }}>
+        <div style={{ marginBottom: 18, color: "#6b7280", fontSize: 14 }}>
+          Envisioned polished editorial design with fonctionnalités enrichies
         </div>
 
-        <PremiumCard style={{ marginTop: 18 }}>
-          <div style={{ padding: 24 }}>
-            <div style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: ".14em", color: theme.colors.muted, marginBottom: 16 }}>
-              Mode “Préparer une note”
+        <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", border: `1px solid ${theme.colors.border}`, background: theme.colors.panel, minHeight: 820 }}>
+          <aside style={{ borderRight: `1px solid ${theme.colors.border}`, background: theme.colors.panelSoft }}>
+            <div style={{ padding: 22, borderBottom: `3px solid ${theme.colors.darkLine}` }}>
+              <div style={{ fontFamily: theme.fontSerif, fontSize: 44, lineHeight: 0.95, fontWeight: 700, color: theme.colors.darkLine }}>Veille.</div>
+              <div style={{ ...smallCaps(), marginTop: 8 }}>Digest éditorial · propulsé par données JSON</div>
             </div>
-            {notePrepItems.length === 0 ? (
-              <div style={{ background: theme.colors.surfaceSoft, borderRadius: 18, padding: 18 }}>Aucun item n’est encore marqué pour une note.</div>
-            ) : (
-              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-                {notePrepItems.map((item) => (
-                  <div key={item.id} style={{ border: `1px solid ${theme.colors.border}`, borderRadius: 22, background: theme.colors.surfaceSoft, padding: 16 }}>
-                    <div style={{ marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
-                      <SoftBadge style={scoreStyle(item.relevanceScore)}>{item.relevanceScore ?? "—"}</SoftBadge>
-                      <span style={{ fontSize: 12, color: theme.colors.muted }}>{item.date}</span>
-                    </div>
-                    <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontSize: 26, lineHeight: 1.15, marginBottom: 10, fontWeight: 700 }}>{item.title}</div>
-                    <div style={{ fontSize: 14, lineHeight: 1.8, color: theme.colors.text, marginBottom: 10 }}>
-                      {String(item.summary || "").slice(0, 260)}{String(item.summary || "").length > 260 ? "…" : ""}
-                    </div>
-                    <div style={{ fontSize: 14, lineHeight: 1.8, color: theme.colors.text }}>
-                      <strong>Angle :</strong> {item.exploitationAngle}
-                    </div>
+
+            <div style={{ padding: 22, borderBottom: `1px solid ${theme.colors.border}` }}>
+              <div style={smallCaps()}>Thèmes</div>
+              <div style={{ marginTop: 18 }}>
+                <button
+                  style={{
+                    width: "100%",
+                    display: "flex",
+                    justifyContent: "space-between",
+                    alignItems: "center",
+                    border: `1px solid ${theme.colors.border}`,
+                    background: theme.colors.white,
+                    borderRadius: 12,
+                    padding: "14px 16px",
+                    cursor: "pointer",
+                    fontSize: 16,
+                  }}
+                >
+                  <span>● {selectedTheme}</span>
+                  <span style={{ color: theme.colors.muted }}>—</span>
+                </button>
+              </div>
+              <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 8 }}>
+                {allThemes.slice(0, 8).map((themeName) => (
+                  <button
+                    key={themeName}
+                    onClick={() => setSelectedTheme(themeName)}
+                    style={{
+                      border: `1px solid ${selectedTheme === themeName ? theme.colors.darkLine : theme.colors.border}`,
+                      background: selectedTheme === themeName ? theme.colors.darkLine : theme.colors.white,
+                      color: selectedTheme === themeName ? theme.colors.white : theme.colors.text,
+                      borderRadius: 999,
+                      padding: "8px 12px",
+                      fontSize: 13,
+                      cursor: "pointer",
+                    }}
+                  >
+                    {themeName}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div style={{ padding: 22, borderBottom: `1px solid ${theme.colors.border}` }}>
+              <div style={smallCaps()}>Sources RSS</div>
+              <div style={{ marginTop: 16 }}>
+                {rssSources.map((source) => (
+                  <div key={source} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, color: theme.colors.accent }}>
+                    <span style={{ color: theme.colors.green, fontSize: 12 }}>●</span>
+                    <span style={{ fontSize: 15 }}>{source}</span>
                   </div>
                 ))}
               </div>
-            )}
+              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
+                <div style={{ flex: 1, background: theme.colors.white, border: `1px solid ${theme.colors.border}`, borderRadius: 10, padding: "10px 12px", color: "#8b95a7", fontSize: 16 }}>
+                  URL du flux RSS.
+                </div>
+                <button style={{ width: 42, borderRadius: 10, border: `1px solid ${theme.colors.border}`, background: theme.colors.panel, cursor: "pointer", fontSize: 20 }}>+</button>
+              </div>
+            </div>
+
+            <div style={{ padding: 22 }}>
+              <div style={smallCaps()}>Actions</div>
+              <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 10 }}>
+                <button onClick={() => setSortBy("relevance")} style={{ borderRadius: 999, border: `1px solid ${sortBy === "relevance" ? theme.colors.darkLine : theme.colors.border}`, background: sortBy === "relevance" ? theme.colors.darkLine : theme.colors.white, color: sortBy === "relevance" ? theme.colors.white : theme.colors.text, padding: "9px 14px", cursor: "pointer" }}>Pertinence</button>
+                <button onClick={() => setSortBy("date")} style={{ borderRadius: 999, border: `1px solid ${sortBy === "date" ? theme.colors.darkLine : theme.colors.border}`, background: sortBy === "date" ? theme.colors.darkLine : theme.colors.white, color: sortBy === "date" ? theme.colors.white : theme.colors.text, padding: "9px 14px", cursor: "pointer" }}>Date</button>
+                <button onClick={() => setSortBy("title")} style={{ borderRadius: 999, border: `1px solid ${sortBy === "title" ? theme.colors.darkLine : theme.colors.border}`, background: sortBy === "title" ? theme.colors.darkLine : theme.colors.white, color: sortBy === "title" ? theme.colors.white : theme.colors.text, padding: "9px 14px", cursor: "pointer" }}>Titre</button>
+              </div>
+            </div>
+          </aside>
+
+          <main style={{ background: theme.colors.panelSoft }}>
+            <div style={{ display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", borderBottom: `1px solid ${theme.colors.border}` }}>
+              <div style={{ padding: "16px 20px" }}>
+                <span style={{ ...smallCaps(), marginRight: 12 }}>Digest</span>
+                <span style={{ fontSize: 17, fontWeight: 600, color: theme.colors.darkLine }}>
+                  {selectedItem?.date ? selectedItem.date.replace(/-/g, " ") : "DIMANCHE 29 MARS 2026"}
+                </span>
+              </div>
+              <div style={{ padding: "16px 20px", color: theme.colors.muted, fontSize: 15 }}>22:51</div>
+            </div>
+
+            <div style={{ padding: "14px 20px", borderBottom: `1px solid ${theme.colors.border}`, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+              <span style={smallCaps()}>Filtrer :</span>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Générez un digest pour voir les thèmes"
+                style={{ flex: 1, minWidth: 220, border: "none", background: "transparent", outline: "none", color: theme.colors.accent, fontSize: 16, fontStyle: "italic" }}
+              />
+            </div>
+
+            <div style={{ padding: 0, display: "grid", gridTemplateRows: "1fr auto", minHeight: 705 }}>
+              <div style={{ display: "grid", gridTemplateColumns: selectedItem ? "1fr 1fr" : "1fr" }}>
+                <div style={{ padding: 24, borderRight: selectedItem ? `1px solid ${theme.colors.border}` : "none", maxHeight: 620, overflowY: "auto" }}>
+                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
+                    {filteredItems.map((item) => {
+                      const selected = selectedItem?.id === item.id;
+                      const isFavorite = favoriteIds.has(item.id);
+                      return (
+                        <button
+                          key={item.id}
+                          onClick={() => setSelectedItemId(item.id)}
+                          style={{
+                            border: "none",
+                            background: "transparent",
+                            textAlign: "left",
+                            padding: 0,
+                            cursor: "pointer",
+                            opacity: selectedItem && !selected ? 0.94 : 1,
+                          }}
+                        >
+                          <div style={{ borderTop: `1px solid ${theme.colors.border}`, paddingTop: 18 }}>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
+                              <div style={{ ...smallCaps(), color: theme.colors.accent }}>{item.source}</div>
+                              <span style={{ display: "inline-block", borderRadius: 4, padding: "4px 8px", fontSize: 12, fontWeight: 600, ...scorePillStyle(item.relevanceScore) }}>
+                                PERTINENCE {Math.round((item.relevanceScore || 0) / 20) || 0}/5
+                              </span>
+                            </div>
+                            <div style={{ fontFamily: theme.fontSerif, fontSize: 24, lineHeight: 1.23, fontWeight: 700, color: theme.colors.darkLine, marginBottom: 12 }}>
+                              {item.title}
+                            </div>
+                            <div style={{ color: theme.colors.accent, fontSize: 15, lineHeight: 1.9, minHeight: 118 }}>
+                              {splitParagraphs(item.summary || "").slice(0, 1).map((p, idx) => (
+                                <p key={idx} style={{ margin: 0 }}>{p}</p>
+                              ))}
+                              {(item.keywords || []).slice(0, 3).map((k) => (
+                                <div key={k}>— {k}</div>
+                              ))}
+                            </div>
+                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
+                              <div>
+                                {(item.themes || []).slice(0, 1).map((t) => (
+                                  <span key={t} style={{ display: "inline-block", background: theme.colors.chip, color: theme.colors.chipText, borderRadius: 4, padding: "4px 8px", fontSize: 12 }}>{t}</span>
+                                ))}
+                              </div>
+                              <div style={{ display: "flex", alignItems: "center", gap: 10, color: theme.colors.accent, fontSize: 14 }}>
+                                <span>LIRE →</span>
+                                <button
+                                  type="button"
+                                  onClick={(e) => { e.stopPropagation(); toggleFavorite(item.id); }}
+                                  style={{ border: "none", background: "transparent", cursor: "pointer", color: isFavorite ? theme.colors.favoriteText : theme.colors.muted, fontSize: 16 }}
+                                >
+                                  {isFavorite ? "★" : "☆"}
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {selectedItem && (
+                  <div style={{ padding: 28, maxHeight: 620, overflowY: "auto" }}>
+                    <div style={{ textAlign: "center", marginBottom: 18 }}>
+                      <div style={{ fontFamily: theme.fontSerif, fontSize: 50, lineHeight: 1.02, color: theme.colors.darkLine, marginBottom: 12 }}>
+                        Votre digest du jour
+                      </div>
+                      <div style={{ color: theme.colors.accent, fontSize: 16, lineHeight: 1.8 }}>
+                        {selectedItem.institution || "Ajoutez des sources RSS, renseignez votre clé API et cliquez sur Générer le digest"}
+                      </div>
+                    </div>
+
+                    <div style={{ borderTop: `1px solid ${theme.colors.border}`, paddingTop: 18 }}>
+                      <div style={{ marginBottom: 10 }}>
+                        <span style={{ display: "inline-block", borderRadius: 4, padding: "4px 8px", fontSize: 12, fontWeight: 600, ...scorePillStyle(selectedItem.relevanceScore) }}>
+                          PERTINENCE {Math.round((selectedItem.relevanceScore || 0) / 20) || 0}/5
+                        </span>
+                      </div>
+                      <div style={{ fontFamily: theme.fontSerif, fontSize: 34, lineHeight: 1.12, color: theme.colors.darkLine, marginBottom: 14, fontWeight: 700 }}>
+                        {selectedItem.title}
+                      </div>
+                      <div style={{ ...smallCaps(), marginBottom: 14 }}>
+                        {selectedItem.documentType} · {selectedItem.date} · {selectedItem.source}
+                      </div>
+
+                      {splitParagraphs(selectedItem.summary || "").map((p, idx) => (
+                        <p key={idx} style={{ color: theme.colors.text, fontSize: 16, lineHeight: 1.9, marginTop: idx === 0 ? 0 : 0, marginBottom: 14 }}>
+                          {p}
+                        </p>
+                      ))}
+
+                      {(selectedItem.keywords || []).length > 0 && (
+                        <div style={{ marginTop: 18 }}>
+                          <div style={smallCaps()}>Concepts clés</div>
+                          <div style={{ marginTop: 10 }}>
+                            {(selectedItem.keywords || []).map((k) => <span key={k} style={{ display: "inline-block", marginRight: 8, marginBottom: 8, borderRadius: 999, background: theme.colors.chip, color: theme.colors.chipText, padding: "6px 10px", fontSize: 13 }}>{k}</span>)}
+                          </div>
+                        </div>
+                      )}
+
+                      {(selectedItem.innovations || []).length > 0 && (
+                        <div style={{ marginTop: 18 }}>
+                          <div style={smallCaps()}>Innovations</div>
+                          <div style={{ marginTop: 10 }}>
+                            {(selectedItem.innovations || []).map((k) => <span key={k} style={{ display: "inline-block", marginRight: 8, marginBottom: 8, borderRadius: 999, background: theme.colors.noteBg, color: theme.colors.noteText, padding: "6px 10px", fontSize: 13 }}>{k}</span>)}
+                          </div>
+                        </div>
+                      )}
+
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 20 }}>
+                        <div style={{ padding: 14, background: theme.colors.white, border: `1px solid ${theme.colors.border}` }}>
+                          <div style={smallCaps()}>Signal faible</div>
+                          <div style={{ marginTop: 8, lineHeight: 1.7 }}>{selectedItem.weakSignal || "Non renseigné"}</div>
+                        </div>
+                        <div style={{ padding: 14, background: theme.colors.white, border: `1px solid ${theme.colors.border}` }}>
+                          <div style={smallCaps()}>Impact stratégique</div>
+                          <div style={{ marginTop: 8, lineHeight: 1.7 }}>{selectedItem.strategicImpact ?? "Non renseigné"}</div>
+                        </div>
+                      </div>
+
+                      <div style={{ marginTop: 18, padding: 14, background: theme.colors.white, border: `1px solid ${theme.colors.border}` }}>
+                        <div style={smallCaps()}>Angle d’exploitation</div>
+                        <div style={{ marginTop: 8, lineHeight: 1.8 }}>{selectedItem.exploitationAngle || "Aucun angle disponible."}</div>
+                      </div>
+
+                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
+                        <button onClick={() => toggleFavorite(selectedItem.id)} style={{ borderRadius: 999, border: `1px solid ${theme.colors.darkLine}`, background: theme.colors.darkLine, color: theme.colors.white, padding: "10px 16px", cursor: "pointer" }}>
+                          {favoriteIds.has(selectedItem.id) ? "Retirer des favoris" : "Ajouter aux favoris"}
+                        </button>
+                        <button onClick={() => toggleNote(selectedItem.id)} style={{ borderRadius: 999, border: `1px solid ${theme.colors.border}`, background: theme.colors.white, color: theme.colors.text, padding: "10px 16px", cursor: "pointer" }}>
+                          {noteIds.has(selectedItem.id) ? "Retirer de la note" : "Préparer une note"}
+                        </button>
+                        <a href={selectedItem.url || "#"} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                          <button style={{ borderRadius: 999, border: `1px solid ${theme.colors.border}`, background: theme.colors.white, color: theme.colors.text, padding: "10px 16px", cursor: "pointer" }}>
+                            Ouvrir la source
+                          </button>
+                        </a>
+                      </div>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div style={{ borderTop: `1px solid ${theme.colors.border}`, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", textAlign: "center", padding: "14px 10px", background: theme.colors.panel }}>
+                <div>
+                  <div style={{ fontSize: 28, fontFamily: theme.fontSerif }}>—</div>
+                  <div style={smallCaps()}>Résumés</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 28, fontFamily: theme.fontSerif }}>{favoriteIds.size}</div>
+                  <div style={smallCaps()}>Favoris</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 28, fontFamily: theme.fontSerif }}>{rssSources.length}</div>
+                  <div style={smallCaps()}>Sources</div>
+                </div>
+                <div>
+                  <div style={{ fontSize: 28, fontFamily: theme.fontSerif }}>—</div>
+                  <div style={smallCaps()}>Score moy</div>
+                </div>
+              </div>
+            </div>
+          </main>
+        </div>
+
+        {notePrepItems.length > 0 && (
+          <div style={{ marginTop: 18, background: theme.colors.panelSoft, border: `1px solid ${theme.colors.border}`, borderRadius: 24, padding: 20 }}>
+            <div style={{ ...smallCaps(), marginBottom: 14 }}>Préparer une note</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
+              {notePrepItems.map((item) => (
+                <div key={item.id} style={{ background: theme.colors.white, border: `1px solid ${theme.colors.border}`, borderRadius: 18, padding: 14 }}>
+                  <div style={{ marginBottom: 8 }}><span style={{ display: "inline-block", borderRadius: 4, padding: "4px 8px", fontSize: 12, fontWeight: 600, ...scorePillStyle(item.relevanceScore) }}>PERTINENCE {Math.round((item.relevanceScore || 0) / 20) || 0}/5</span></div>
+                  <div style={{ fontFamily: theme.fontSerif, fontSize: 24, lineHeight: 1.14, marginBottom: 8 }}>{item.title}</div>
+                  <div style={{ color: theme.colors.text, lineHeight: 1.8, fontSize: 14, marginBottom: 8 }}>{String(item.summary || "").slice(0, 220)}...</div>
+                  <div style={{ color: theme.colors.accent, lineHeight: 1.7, fontSize: 14 }}><strong>Angle :</strong> {item.exploitationAngle}</div>
+                </div>
+              ))}
+            </div>
           </div>
-        </PremiumCard>
+        )}
       </div>
 
       <style>{`
-        @media (max-width: 1120px) {
-          div[style*="grid-template-columns: 320px 1fr"] { grid-template-columns: 1fr !important; }
-          div[style*="grid-template-columns: 0.88fr 1.12fr"] { grid-template-columns: 1fr !important; }
+        @media (max-width: 1160px) {
+          div[style*="grid-template-columns: 340px 1fr"] { grid-template-columns: 1fr !important; }
+          div[style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
           div[style*="repeat(3, 1fr)"] { grid-template-columns: 1fr !important; }
+          div[style*="repeat(4, 1fr)"] { grid-template-columns: repeat(2, 1fr) !important; }
         }
         @media (max-width: 700px) {
-          div[style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
+          div[style*="repeat(4, 1fr)"] { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>
