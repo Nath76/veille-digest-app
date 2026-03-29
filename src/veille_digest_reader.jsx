@@ -1,5 +1,34 @@
 import React, { useEffect, useMemo, useState } from "react";
 
+const theme = {
+  colors: {
+    page: "#f4f0e8",
+    surface: "rgba(255,255,255,0.92)",
+    surfaceSoft: "#f8f5ef",
+    border: "#ddd4c5",
+    text: "#1f2937",
+    muted: "#6b7280",
+    accent: "#9a3412",
+    accentSoft: "#f7d9c7",
+    dark: "#111827",
+    chip: "#efe7da",
+    chipText: "#4b5563",
+    selected: "#f7f2ea",
+    favoriteBg: "#fef3c7",
+    favoriteText: "#92400e",
+    noteBg: "#dbeafe",
+    noteText: "#1d4ed8",
+  },
+  radius: {
+    xl: 22,
+    lg: 18,
+    md: 14,
+    pill: 999,
+  },
+  shadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+  font: 'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+};
+
 const fallbackData = [
   {
     id: "demo-1",
@@ -51,216 +80,6 @@ const fallbackData = [
   },
 ];
 
-const styles = {
-  page: {
-    minHeight: "100vh",
-    background: "#f6f4ef",
-    color: "#0f172a",
-    fontFamily:
-      'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-  },
-  container: {
-    maxWidth: "1320px",
-    margin: "0 auto",
-    padding: "24px 16px 40px",
-  },
-  topGrid: {
-    display: "grid",
-    gridTemplateColumns: "1.4fr 0.6fr",
-    gap: "16px",
-    marginBottom: "24px",
-  },
-  mainGrid: {
-    display: "grid",
-    gridTemplateColumns: "320px 1fr",
-    gap: "16px",
-    marginBottom: "24px",
-  },
-  contentGrid: {
-    display: "grid",
-    gridTemplateColumns: "0.9fr 1.1fr",
-    gap: "16px",
-  },
-  card: {
-    background: "rgba(255,255,255,0.92)",
-    border: "1px solid #e2e8f0",
-    borderRadius: "24px",
-    boxShadow: "0 1px 3px rgba(15,23,42,0.06)",
-  },
-  cardPadding: {
-    padding: "24px",
-  },
-  statGrid: {
-    display: "grid",
-    gridTemplateColumns: "1fr 1fr",
-    gap: "12px",
-    padding: "20px",
-  },
-  statBox: {
-    background: "#f8fafc",
-    borderRadius: "18px",
-    padding: "16px",
-  },
-  title: {
-    fontSize: "42px",
-    lineHeight: 1.05,
-    margin: "0 0 12px",
-    fontWeight: 700,
-    letterSpacing: "-0.03em",
-  },
-  muted: {
-    color: "#64748b",
-  },
-  label: {
-    fontSize: "14px",
-    fontWeight: 600,
-    marginBottom: "8px",
-  },
-  input: {
-    width: "100%",
-    padding: "12px 14px",
-    borderRadius: "16px",
-    border: "1px solid #cbd5e1",
-    fontSize: "14px",
-    outline: "none",
-    boxSizing: "border-box",
-    background: "#fff",
-  },
-  buttonGroup: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "8px",
-  },
-  pill: {
-    borderRadius: "999px",
-    border: "1px solid #cbd5e1",
-    background: "#fff",
-    padding: "9px 14px",
-    fontSize: "13px",
-    cursor: "pointer",
-  },
-  pillActive: {
-    background: "#0f172a",
-    color: "#fff",
-    border: "1px solid #0f172a",
-  },
-  listArea: {
-    maxHeight: "680px",
-    overflowY: "auto",
-    paddingRight: "8px",
-  },
-  readerArea: {
-    maxHeight: "680px",
-    overflowY: "auto",
-    paddingRight: "8px",
-  },
-  itemCard: {
-    width: "100%",
-    border: "1px solid #e2e8f0",
-    borderRadius: "24px",
-    background: "#fff",
-    padding: "16px",
-    textAlign: "left",
-    cursor: "pointer",
-    marginBottom: "12px",
-    boxSizing: "border-box",
-  },
-  itemSelected: {
-    border: "1px solid #0f172a",
-    background: "#f8fafc",
-  },
-  badge: {
-    display: "inline-block",
-    borderRadius: "999px",
-    padding: "6px 10px",
-    fontSize: "12px",
-    fontWeight: 600,
-    marginRight: "6px",
-    marginBottom: "6px",
-  },
-  iconButton: {
-    border: "none",
-    borderRadius: "999px",
-    padding: "8px 10px",
-    cursor: "pointer",
-    fontSize: "14px",
-  },
-  subInfo: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "8px",
-    fontSize: "12px",
-    color: "#64748b",
-    margin: "10px 0 12px",
-  },
-  chip: {
-    display: "inline-block",
-    borderRadius: "999px",
-    background: "#f1f5f9",
-    padding: "6px 10px",
-  },
-  softBlock: {
-    background: "#f8fafc",
-    borderRadius: "24px",
-    padding: "20px",
-  },
-  sectionTitle: {
-    fontSize: "14px",
-    fontWeight: 600,
-    color: "#334155",
-    marginBottom: "10px",
-  },
-  readerTitle: {
-    fontSize: "34px",
-    lineHeight: 1.15,
-    margin: "0 0 10px",
-    fontWeight: 700,
-    letterSpacing: "-0.03em",
-  },
-  summary: {
-    background: "#f8fafc",
-    borderRadius: "24px",
-    padding: "20px",
-    fontSize: "15px",
-    lineHeight: 1.85,
-    color: "#334155",
-    whiteSpace: "pre-wrap",
-  },
-  noteGrid: {
-    display: "grid",
-    gridTemplateColumns: "repeat(3, 1fr)",
-    gap: "12px",
-  },
-  noteBox: {
-    border: "1px solid #e2e8f0",
-    borderRadius: "24px",
-    background: "#f8fafc",
-    padding: "16px",
-  },
-  actionRow: {
-    display: "flex",
-    flexWrap: "wrap",
-    gap: "10px",
-  },
-  actionBtn: {
-    borderRadius: "999px",
-    border: "1px solid #cbd5e1",
-    padding: "10px 16px",
-    background: "#fff",
-    cursor: "pointer",
-    fontSize: "14px",
-  },
-  primaryBtn: {
-    borderRadius: "999px",
-    border: "1px solid #0f172a",
-    padding: "10px 16px",
-    background: "#0f172a",
-    color: "#fff",
-    cursor: "pointer",
-    fontSize: "14px",
-  },
-};
-
 function normalizeArray(value) {
   if (Array.isArray(value)) return value;
   if (!value) return [];
@@ -280,10 +99,72 @@ function scoreLabel(score) {
 
 function scoreStyle(score) {
   const n = Number(score || 0);
-  if (n >= 85) return { background: "#0f172a", color: "#fff" };
-  if (n >= 70) return { background: "#e2e8f0", color: "#0f172a" };
+  if (n >= 85) return { background: theme.colors.dark, color: "#fff" };
+  if (n >= 70) return { background: theme.colors.chip, color: theme.colors.text };
   if (n >= 50) return { background: "#fef3c7", color: "#92400e" };
-  return { background: "#f1f5f9", color: "#475569" };
+  return { background: "#eef2f7", color: "#475569" };
+}
+
+function splitParagraphs(text) {
+  return String(text || "")
+    .split(/\n+/)
+    .map((p) => p.trim())
+    .filter(Boolean);
+}
+
+function PremiumCard({ children, style = {} }) {
+  return (
+    <div
+      style={{
+        background: theme.colors.surface,
+        border: `1px solid ${theme.colors.border}`,
+        borderRadius: theme.radius.xl,
+        boxShadow: theme.shadow,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
+}
+
+function PillButton({ active, children, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      style={{
+        borderRadius: theme.radius.pill,
+        border: `1px solid ${active ? theme.colors.dark : theme.colors.border}`,
+        background: active ? theme.colors.dark : "#fff",
+        color: active ? "#fff" : theme.colors.text,
+        padding: "9px 14px",
+        fontSize: 13,
+        cursor: "pointer",
+      }}
+    >
+      {children}
+    </button>
+  );
+}
+
+function SoftBadge({ children, style = {} }) {
+  return (
+    <span
+      style={{
+        display: "inline-block",
+        borderRadius: theme.radius.pill,
+        background: theme.colors.chip,
+        color: theme.colors.chipText,
+        padding: "6px 10px",
+        fontSize: 12,
+        marginRight: 6,
+        marginBottom: 6,
+        ...style,
+      }}
+    >
+      {children}
+    </span>
+  );
 }
 
 export default function VeilleDigestReader() {
@@ -312,18 +193,13 @@ export default function VeilleDigestReader() {
           noteCandidate: Boolean(item.noteCandidate),
         }));
         setItems(normalized);
-
-        const favs = new Set(normalized.filter((i) => i.favorite).map((i) => i.id));
-        const notes = new Set(normalized.filter((i) => i.noteCandidate).map((i) => i.id));
-        setFavoriteIds(favs);
-        setNoteIds(notes);
+        setFavoriteIds(new Set(normalized.filter((i) => i.favorite).map((i) => i.id)));
+        setNoteIds(new Set(normalized.filter((i) => i.noteCandidate).map((i) => i.id)));
         if (normalized[0]) setSelectedItemId(normalized[0].id);
       })
       .catch(() => {
-        const favs = new Set(fallbackData.filter((i) => i.favorite).map((i) => i.id));
-        const notes = new Set(fallbackData.filter((i) => i.noteCandidate).map((i) => i.id));
-        setFavoriteIds(favs);
-        setNoteIds(notes);
+        setFavoriteIds(new Set(fallbackData.filter((i) => i.favorite).map((i) => i.id)));
+        setNoteIds(new Set(fallbackData.filter((i) => i.noteCandidate).map((i) => i.id)));
         setSelectedItemId(fallbackData[0]?.id ?? null);
       });
   }, []);
@@ -359,7 +235,6 @@ export default function VeilleDigestReader() {
       const matchesType = selectedType === "Tous" || item.documentType === selectedType;
       const matchesFavorites = !showFavoritesOnly || favoriteIds.has(item.id);
       const matchesNotes = !showNoteOnly || noteIds.has(item.id);
-
       return matchesQuery && matchesTheme && matchesType && matchesFavorites && matchesNotes;
     });
 
@@ -368,17 +243,7 @@ export default function VeilleDigestReader() {
       if (sortBy === "title") return String(a.title).localeCompare(String(b.title));
       return Number(b.relevanceScore || 0) - Number(a.relevanceScore || 0);
     });
-  }, [
-    items,
-    query,
-    selectedTheme,
-    selectedType,
-    sortBy,
-    showFavoritesOnly,
-    showNoteOnly,
-    favoriteIds,
-    noteIds,
-  ]);
+  }, [items, query, selectedTheme, selectedType, sortBy, showFavoritesOnly, showNoteOnly, favoriteIds, noteIds]);
 
   useEffect(() => {
     if (!filteredItems.length) {
@@ -390,8 +255,7 @@ export default function VeilleDigestReader() {
     }
   }, [filteredItems, selectedItemId]);
 
-  const selectedItem =
-    filteredItems.find((item) => item.id === selectedItemId) || filteredItems[0] || null;
+  const selectedItem = filteredItems.find((item) => item.id === selectedItemId) || filteredItems[0] || null;
 
   function toggleFavorite(id) {
     setFavoriteIds((prev) => {
@@ -414,163 +278,87 @@ export default function VeilleDigestReader() {
   const notePrepItems = filteredItems.filter((item) => noteIds.has(item.id));
 
   return (
-    <div style={styles.page}>
-      <div style={styles.container}>
-        <div style={styles.topGrid}>
-          <div style={styles.card}>
-            <div style={styles.cardPadding}>
-              <div style={{ ...styles.muted, fontSize: "14px", marginBottom: "12px" }}>
-                ✦ Lecteur éditorial de veille
+    <div style={{ minHeight: "100vh", background: theme.colors.page, color: theme.colors.text, fontFamily: theme.font }}>
+      <div style={{ maxWidth: 1360, margin: "0 auto", padding: "28px 18px 48px" }}>
+        <PremiumCard style={{ marginBottom: 18 }}>
+          <div style={{ padding: 28, display: "flex", justifyContent: "space-between", gap: 20, alignItems: "flex-start", flexWrap: "wrap" }}>
+            <div>
+              <div style={{ color: theme.colors.accent, letterSpacing: ".14em", textTransform: "uppercase", fontSize: 13, marginBottom: 10 }}>
+                Digest éditorial personnel
               </div>
-              <h1 style={styles.title}>Digest de veille</h1>
-              <p style={{ ...styles.muted, fontSize: "15px", lineHeight: 1.7, maxWidth: "760px" }}>
-                Une interface de consultation pensée comme une revue : recherche, filtres,
-                score de pertinence, favoris, vue lecture et présélection pour préparer une note.
-              </p>
-            </div>
-          </div>
-
-          <div style={styles.card}>
-            <div style={styles.statGrid}>
-              <div style={styles.statBox}>
-                <div style={{ fontSize: "12px", textTransform: "uppercase", color: "#64748b" }}>
-                  Items
-                </div>
-                <div style={{ marginTop: "8px", fontSize: "28px", fontWeight: 700 }}>
-                  {filteredItems.length}
-                </div>
-              </div>
-              <div style={styles.statBox}>
-                <div style={{ fontSize: "12px", textTransform: "uppercase", color: "#64748b" }}>
-                  Favoris
-                </div>
-                <div style={{ marginTop: "8px", fontSize: "28px", fontWeight: 700 }}>
-                  {favoriteIds.size}
-                </div>
-              </div>
-              <div style={styles.statBox}>
-                <div style={{ fontSize: "12px", textTransform: "uppercase", color: "#64748b" }}>
-                  Pour note
-                </div>
-                <div style={{ marginTop: "8px", fontSize: "28px", fontWeight: 700 }}>
-                  {noteIds.size}
-                </div>
-              </div>
-              <div style={styles.statBox}>
-                <div style={{ fontSize: "12px", textTransform: "uppercase", color: "#64748b" }}>
-                  Thèmes
-                </div>
-                <div style={{ marginTop: "8px", fontSize: "28px", fontWeight: 700 }}>
-                  {Math.max(0, allThemes.length - 1)}
-                </div>
+              <h1 style={{ fontSize: 46, lineHeight: 1, margin: "0 0 10px", fontWeight: 700, fontFamily: 'Georgia, "Times New Roman", serif' }}>
+                Veille.
+              </h1>
+              <div style={{ color: theme.colors.muted, maxWidth: 760, lineHeight: 1.7, fontSize: 15 }}>
+                Une lecture éditoriale de tes flux : filtres, vue lecture, favoris et présélection pour préparer une note.
               </div>
             </div>
+            <div style={{ textAlign: "right", color: theme.colors.muted, fontSize: 14 }}>
+              <div>{filteredItems.length} articles · {Math.max(0, allThemes.length - 1)} thèmes</div>
+              <div style={{ marginTop: 6 }}>{favoriteIds.size} favoris · {noteIds.size} pour note</div>
+            </div>
           </div>
-        </div>
+        </PremiumCard>
 
-        <div style={styles.mainGrid}>
-          <div style={styles.card}>
-            <div style={styles.cardPadding}>
-              <h2 style={{ marginTop: 0, marginBottom: "18px", fontSize: "22px" }}>Filtres</h2>
-
-              <div style={{ marginBottom: "18px" }}>
-                <div style={styles.label}>Recherche</div>
-                <input
-                  style={styles.input}
-                  value={query}
-                  onChange={(e) => setQuery(e.target.value)}
-                  placeholder="Titre, thème, institution..."
-                />
+        <div style={{ display: "grid", gridTemplateColumns: "320px 1fr", gap: 18 }}>
+          <PremiumCard>
+            <div style={{ padding: 22 }}>
+              <div style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: ".14em", color: theme.colors.muted, marginBottom: 14 }}>
+                Filtres
               </div>
 
-              <div style={{ marginBottom: "18px" }}>
-                <div style={styles.label}>Thème</div>
-                <div style={styles.buttonGroup}>
-                  {allThemes.map((theme) => (
-                    <button
-                      key={theme}
-                      style={{
-                        ...styles.pill,
-                        ...(selectedTheme === theme ? styles.pillActive : {}),
-                      }}
-                      onClick={() => setSelectedTheme(theme)}
-                    >
-                      {theme}
-                    </button>
+              <input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Recherche par titre, thème, institution..."
+                style={{ width: "100%", padding: "12px 14px", borderRadius: 16, border: `1px solid ${theme.colors.border}`, fontSize: 14, marginBottom: 18, boxSizing: "border-box" }}
+              />
+
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 10 }}>Thèmes</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  {allThemes.map((themeName) => (
+                    <PillButton key={themeName} active={selectedTheme === themeName} onClick={() => setSelectedTheme(themeName)}>
+                      {themeName}
+                    </PillButton>
                   ))}
                 </div>
               </div>
 
-              <div style={{ marginBottom: "18px" }}>
-                <div style={styles.label}>Type</div>
-                <div style={styles.buttonGroup}>
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 10 }}>Type</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
                   {allTypes.map((type) => (
-                    <button
-                      key={type}
-                      style={{
-                        ...styles.pill,
-                        ...(selectedType === type ? styles.pillActive : {}),
-                      }}
-                      onClick={() => setSelectedType(type)}
-                    >
+                    <PillButton key={type} active={selectedType === type} onClick={() => setSelectedType(type)}>
                       {type}
-                    </button>
+                    </PillButton>
                   ))}
                 </div>
               </div>
 
-              <div style={{ marginBottom: "18px" }}>
-                <div style={styles.label}>Tri</div>
-                <div style={styles.buttonGroup}>
-                  <button
-                    style={{ ...styles.pill, ...(sortBy === "relevance" ? styles.pillActive : {}) }}
-                    onClick={() => setSortBy("relevance")}
-                  >
-                    Pertinence
-                  </button>
-                  <button
-                    style={{ ...styles.pill, ...(sortBy === "date" ? styles.pillActive : {}) }}
-                    onClick={() => setSortBy("date")}
-                  >
-                    Date
-                  </button>
-                  <button
-                    style={{ ...styles.pill, ...(sortBy === "title" ? styles.pillActive : {}) }}
-                    onClick={() => setSortBy("title")}
-                  >
-                    Titre
-                  </button>
+              <div style={{ marginBottom: 18 }}>
+                <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 10 }}>Tri</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                  <PillButton active={sortBy === "relevance"} onClick={() => setSortBy("relevance")}>Pertinence</PillButton>
+                  <PillButton active={sortBy === "date"} onClick={() => setSortBy("date")}>Date</PillButton>
+                  <PillButton active={sortBy === "title"} onClick={() => setSortBy("title")}>Titre</PillButton>
                 </div>
               </div>
 
-              <div style={styles.buttonGroup}>
-                <button
-                  style={{
-                    ...styles.pill,
-                    ...(showFavoritesOnly ? styles.pillActive : {}),
-                  }}
-                  onClick={() => setShowFavoritesOnly((v) => !v)}
-                >
-                  ★ Favoris
-                </button>
-                <button
-                  style={{
-                    ...styles.pill,
-                    ...(showNoteOnly ? styles.pillActive : {}),
-                  }}
-                  onClick={() => setShowNoteOnly((v) => !v)}
-                >
-                  ✎ Préparer une note
-                </button>
+              <div style={{ display: "flex", flexWrap: "wrap", gap: 8 }}>
+                <PillButton active={showFavoritesOnly} onClick={() => setShowFavoritesOnly((v) => !v)}>Favoris</PillButton>
+                <PillButton active={showNoteOnly} onClick={() => setShowNoteOnly((v) => !v)}>Préparer une note</PillButton>
               </div>
             </div>
-          </div>
+          </PremiumCard>
 
-          <div style={styles.contentGrid}>
-            <div style={styles.card}>
-              <div style={styles.cardPadding}>
-                <h2 style={{ marginTop: 0, marginBottom: "18px", fontSize: "22px" }}>Cartes</h2>
-                <div style={styles.listArea}>
+          <div style={{ display: "grid", gridTemplateColumns: "0.88fr 1.12fr", gap: 18 }}>
+            <PremiumCard>
+              <div style={{ padding: 20 }}>
+                <div style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: ".14em", color: theme.colors.muted, marginBottom: 14 }}>
+                  Cartes
+                </div>
+                <div style={{ maxHeight: 720, overflowY: "auto", paddingRight: 6 }}>
                   {filteredItems.map((item) => {
                     const isSelected = selectedItem?.id === item.id;
                     const isFavorite = favoriteIds.has(item.id);
@@ -581,255 +369,185 @@ export default function VeilleDigestReader() {
                         key={item.id}
                         onClick={() => setSelectedItemId(item.id)}
                         style={{
-                          ...styles.itemCard,
-                          ...(isSelected ? styles.itemSelected : {}),
+                          width: "100%",
+                          textAlign: "left",
+                          borderRadius: 22,
+                          border: `1px solid ${isSelected ? theme.colors.dark : theme.colors.border}`,
+                          background: isSelected ? theme.colors.selected : "#fff",
+                          padding: 18,
+                          marginBottom: 12,
+                          cursor: "pointer",
                         }}
                       >
-                        <div
-                          style={{
-                            display: "flex",
-                            justifyContent: "space-between",
-                            alignItems: "flex-start",
-                            gap: "12px",
-                            marginBottom: "12px",
-                          }}
-                        >
-                          <span
-                            style={{
-                              ...styles.badge,
-                              ...scoreStyle(item.relevanceScore),
-                            }}
-                          >
-                            {item.relevanceScore ?? "—"} · {scoreLabel(item.relevanceScore)}
-                          </span>
-                          <div style={{ display: "flex", gap: "8px" }}>
+                        <div style={{ display: "flex", justifyContent: "space-between", gap: 10, alignItems: "flex-start", marginBottom: 12 }}>
+                          <SoftBadge style={scoreStyle(item.relevanceScore)}>
+                            Pertinence {item.relevanceScore ?? "—"}/100
+                          </SoftBadge>
+                          <div style={{ display: "flex", gap: 8 }}>
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleFavorite(item.id);
-                              }}
-                              style={{
-                                ...styles.iconButton,
-                                background: isFavorite ? "#fef3c7" : "#f1f5f9",
-                                color: isFavorite ? "#92400e" : "#64748b",
-                              }}
+                              onClick={(e) => { e.stopPropagation(); toggleFavorite(item.id); }}
+                              style={{ border: "none", borderRadius: 999, padding: "8px 10px", cursor: "pointer", background: isFavorite ? theme.colors.favoriteBg : "#f3f4f6", color: isFavorite ? theme.colors.favoriteText : theme.colors.muted }}
                             >
                               ★
                             </button>
                             <button
                               type="button"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                toggleNote(item.id);
-                              }}
-                              style={{
-                                ...styles.iconButton,
-                                background: isForNote ? "#dbeafe" : "#f1f5f9",
-                                color: isForNote ? "#1d4ed8" : "#64748b",
-                              }}
+                              onClick={(e) => { e.stopPropagation(); toggleNote(item.id); }}
+                              style={{ border: "none", borderRadius: 999, padding: "8px 10px", cursor: "pointer", background: isForNote ? theme.colors.noteBg : "#f3f4f6", color: isForNote ? theme.colors.noteText : theme.colors.muted }}
                             >
-                              ⌁
+                              ✎
                             </button>
                           </div>
                         </div>
 
-                        <div style={{ fontSize: "22px", fontWeight: 700, lineHeight: 1.35, marginBottom: "10px" }}>
+                        <div style={{ fontSize: 15, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 10 }}>
+                          {item.source || "Source"}
+                        </div>
+                        <div style={{ fontSize: 34, lineHeight: 1.15, fontFamily: 'Georgia, "Times New Roman", serif', marginBottom: 14, fontWeight: 700 }}>
                           {item.title}
                         </div>
 
-                        <div style={styles.subInfo}>
-                          {item.documentType && <span style={styles.chip}>{item.documentType}</span>}
-                          {item.institution && <span style={styles.chip}>{item.institution}</span>}
-                          {item.date && <span style={styles.chip}>{item.date}</span>}
+                        <div style={{ marginBottom: 12 }}>
+                          {item.documentType && <SoftBadge>{item.documentType}</SoftBadge>}
+                          {item.institution && <SoftBadge>{item.institution}</SoftBadge>}
+                          {item.date && <SoftBadge>{item.date}</SoftBadge>}
                         </div>
 
-                        <div style={{ fontSize: "14px", lineHeight: 1.7, color: "#475569" }}>
-                          {item.summary}
+                        <div style={{ color: theme.colors.text, lineHeight: 1.75, fontSize: 15 }}>
+                          {String(item.summary || "").slice(0, 320)}{String(item.summary || "").length > 320 ? "…" : ""}
                         </div>
 
-                        <div
-                          style={{
-                            marginTop: "12px",
-                            display: "flex",
-                            justifyContent: "space-between",
-                            fontSize: "14px",
-                            color: "#64748b",
-                          }}
-                        >
-                          <span>{item.source || "Source non renseignée"}</span>
-                          <span style={{ fontWeight: 600, color: "#0f172a" }}>Lire →</span>
+                        <div style={{ marginTop: 14, color: theme.colors.accent, fontWeight: 600, textAlign: "right" }}>
+                          Lire →
                         </div>
                       </button>
                     );
                   })}
                 </div>
               </div>
-            </div>
+            </PremiumCard>
 
-            <div style={styles.card}>
-              <div style={styles.cardPadding}>
-                <h2 style={{ marginTop: 0, marginBottom: "18px", fontSize: "22px" }}>Vue lecture</h2>
+            <PremiumCard>
+              <div style={{ padding: 24 }}>
+                <div style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: ".14em", color: theme.colors.muted, marginBottom: 16 }}>
+                  Vue lecture
+                </div>
                 {selectedItem ? (
-                  <div style={styles.readerArea}>
-                    <div style={{ marginBottom: "14px" }}>
-                      <span style={{ ...styles.badge, ...scoreStyle(selectedItem.relevanceScore) }}>
-                        {selectedItem.relevanceScore ?? "—"}
-                      </span>
-                      {selectedItem.documentType && (
-                        <span style={{ ...styles.badge, background: "#e2e8f0", color: "#0f172a" }}>
-                          {selectedItem.documentType}
-                        </span>
-                      )}
-                      {selectedItem.status && (
-                        <span style={{ ...styles.badge, background: "#fff", color: "#475569", border: "1px solid #cbd5e1" }}>
-                          {selectedItem.status}
-                        </span>
-                      )}
+                  <div style={{ maxHeight: 720, overflowY: "auto", paddingRight: 6 }}>
+                    <div style={{ marginBottom: 12 }}>
+                      <SoftBadge style={scoreStyle(selectedItem.relevanceScore)}>
+                        {scoreLabel(selectedItem.relevanceScore)}
+                      </SoftBadge>
+                      {selectedItem.documentType && <SoftBadge>{selectedItem.documentType}</SoftBadge>}
+                      {selectedItem.status && <SoftBadge>{selectedItem.status}</SoftBadge>}
                     </div>
 
-                    <h3 style={styles.readerTitle}>{selectedItem.title}</h3>
+                    <div style={{ fontSize: 46, lineHeight: 1.04, marginBottom: 12, fontWeight: 700, fontFamily: 'Georgia, "Times New Roman", serif' }}>
+                      {selectedItem.title}
+                    </div>
 
-                    <div style={{ ...styles.muted, fontSize: "14px", display: "flex", gap: "14px", flexWrap: "wrap", marginBottom: "20px" }}>
-                      {selectedItem.date && <span>🗓 {selectedItem.date}</span>}
-                      {selectedItem.institution && <span>🏛 {selectedItem.institution}</span>}
+                    <div style={{ color: theme.colors.muted, fontSize: 14, marginBottom: 16, display: "flex", gap: 14, flexWrap: "wrap" }}>
+                      {selectedItem.date && <span>{selectedItem.date}</span>}
+                      {selectedItem.institution && <span>{selectedItem.institution}</span>}
                       {selectedItem.source && <span>{selectedItem.source}</span>}
                     </div>
 
                     {(selectedItem.themes || []).length > 0 && (
-                      <div style={{ marginBottom: "18px" }}>
-                        <div style={styles.sectionTitle}>Thèmes</div>
-                        <div style={styles.buttonGroup}>
-                          {selectedItem.themes.map((theme) => (
-                            <span key={theme} style={{ ...styles.badge, background: "#e2e8f0", color: "#0f172a" }}>
-                              {theme}
-                            </span>
-                          ))}
-                        </div>
+                      <div style={{ marginBottom: 18 }}>
+                        <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 10 }}>Thèmes</div>
+                        {(selectedItem.themes || []).map((themeName) => <SoftBadge key={themeName}>{themeName}</SoftBadge>)}
                       </div>
                     )}
 
-                    <div style={{ marginBottom: "18px" }}>
-                      <div style={styles.sectionTitle}>Résumé</div>
-                      <div style={styles.summary}>
-                        {selectedItem.summary || "Aucun résumé disponible."}
-                      </div>
+                    <div style={{ background: theme.colors.surfaceSoft, borderRadius: 22, padding: 22, marginBottom: 18 }}>
+                      <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 12 }}>Résumé</div>
+                      {splitParagraphs(selectedItem.summary || "Aucun résumé disponible.").map((p, idx) => (
+                        <p key={idx} style={{ margin: idx === 0 ? 0 : "0 0 12px", fontSize: 16, lineHeight: 1.9, color: theme.colors.text }}>
+                          {p}
+                        </p>
+                      ))}
                     </div>
 
                     {(selectedItem.keywords || []).length > 0 && (
-                      <div style={{ marginBottom: "18px" }}>
-                        <div style={styles.sectionTitle}>Concepts clés</div>
-                        <div style={styles.buttonGroup}>
-                          {selectedItem.keywords.map((keyword) => (
-                            <span
-                              key={keyword}
-                              style={{ ...styles.badge, background: "#fff", color: "#334155", border: "1px solid #cbd5e1" }}
-                            >
-                              {keyword}
-                            </span>
-                          ))}
-                        </div>
+                      <div style={{ marginBottom: 18 }}>
+                        <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 10 }}>Concepts clés</div>
+                        {(selectedItem.keywords || []).map((keyword) => <SoftBadge key={keyword}>{keyword}</SoftBadge>)}
                       </div>
                     )}
 
                     {(selectedItem.innovations || []).length > 0 && (
-                      <div style={{ marginBottom: "18px" }}>
-                        <div style={styles.sectionTitle}>Innovations technologiques</div>
-                        <div style={styles.buttonGroup}>
-                          {selectedItem.innovations.map((innovation) => (
-                            <span
-                              key={innovation}
-                              style={{ ...styles.badge, background: "#dbeafe", color: "#1e3a8a" }}
-                            >
-                              {innovation}
-                            </span>
-                          ))}
-                        </div>
+                      <div style={{ marginBottom: 18 }}>
+                        <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 10 }}>Innovations technologiques</div>
+                        {(selectedItem.innovations || []).map((innovation) => <SoftBadge key={innovation} style={{ background: theme.colors.noteBg, color: theme.colors.noteText }}>{innovation}</SoftBadge>)}
                       </div>
                     )}
 
                     {(selectedItem.actors || []).length > 0 && (
-                      <div style={{ marginBottom: "18px" }}>
-                        <div style={styles.sectionTitle}>Acteurs mentionnés</div>
-                        <div style={styles.buttonGroup}>
-                          {selectedItem.actors.map((actor) => (
-                            <span
-                              key={actor}
-                              style={{ ...styles.badge, background: "#e2e8f0", color: "#0f172a" }}
-                            >
-                              {actor}
-                            </span>
-                          ))}
-                        </div>
+                      <div style={{ marginBottom: 18 }}>
+                        <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 10 }}>Acteurs mentionnés</div>
+                        {(selectedItem.actors || []).map((actor) => <SoftBadge key={actor}>{actor}</SoftBadge>)}
                       </div>
                     )}
 
-                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "18px" }}>
-                      <div style={styles.softBlock}>
-                        <div style={styles.sectionTitle}>Signal faible</div>
-                        <div style={{ fontSize: "14px", lineHeight: 1.7, color: "#334155" }}>
-                          {selectedItem.weakSignal || "Non renseigné"}
-                        </div>
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 14, marginBottom: 18 }}>
+                      <div style={{ background: theme.colors.surfaceSoft, borderRadius: 18, padding: 18 }}>
+                        <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 8 }}>Signal faible</div>
+                        <div style={{ lineHeight: 1.7 }}>{selectedItem.weakSignal || "Non renseigné"}</div>
                       </div>
-                      <div style={styles.softBlock}>
-                        <div style={styles.sectionTitle}>Impact stratégique</div>
-                        <div style={{ fontSize: "14px", lineHeight: 1.7, color: "#334155" }}>
-                          {selectedItem.strategicImpact ?? "Non renseigné"}
-                        </div>
+                      <div style={{ background: theme.colors.surfaceSoft, borderRadius: 18, padding: 18 }}>
+                        <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 8 }}>Impact stratégique</div>
+                        <div style={{ lineHeight: 1.7 }}>{selectedItem.strategicImpact ?? "Non renseigné"}</div>
                       </div>
                     </div>
 
-                    <div style={{ ...styles.softBlock, marginBottom: "18px" }}>
-                      <div style={styles.sectionTitle}>Angle d’exploitation</div>
-                      <div style={{ fontSize: "14px", lineHeight: 1.7, color: "#334155" }}>
-                        {selectedItem.exploitationAngle || "Aucun angle d’exploitation disponible."}
-                      </div>
+                    <div style={{ background: theme.colors.surfaceSoft, borderRadius: 18, padding: 18, marginBottom: 18 }}>
+                      <div style={{ fontSize: 12, textTransform: "uppercase", letterSpacing: ".12em", color: theme.colors.muted, marginBottom: 8 }}>Angle d’exploitation</div>
+                      <div style={{ lineHeight: 1.8 }}>{selectedItem.exploitationAngle || "Aucun angle d’exploitation disponible."}</div>
                     </div>
 
-                    <div style={styles.actionRow}>
-                      <button style={styles.primaryBtn} onClick={() => toggleFavorite(selectedItem.id)}>
+                    <div style={{ display: "flex", flexWrap: "wrap", gap: 10 }}>
+                      <button onClick={() => toggleFavorite(selectedItem.id)} style={{ borderRadius: 999, border: `1px solid ${theme.colors.dark}`, background: theme.colors.dark, color: "#fff", padding: "10px 16px", cursor: "pointer" }}>
                         {favoriteIds.has(selectedItem.id) ? "Retirer des favoris" : "Ajouter aux favoris"}
                       </button>
-                      <button style={styles.actionBtn} onClick={() => toggleNote(selectedItem.id)}>
+                      <button onClick={() => toggleNote(selectedItem.id)} style={{ borderRadius: 999, border: `1px solid ${theme.colors.border}`, background: "#fff", color: theme.colors.text, padding: "10px 16px", cursor: "pointer" }}>
                         {noteIds.has(selectedItem.id) ? "Retirer de la note" : "Préparer une note"}
                       </button>
                       <a href={selectedItem.url || "#"} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
-                        <button style={styles.actionBtn}>Ouvrir la source</button>
+                        <button style={{ borderRadius: 999, border: `1px solid ${theme.colors.border}`, background: "#fff", color: theme.colors.text, padding: "10px 16px", cursor: "pointer" }}>
+                          Ouvrir la source
+                        </button>
                       </a>
                     </div>
                   </div>
                 ) : (
-                  <div style={styles.softBlock}>Aucun item ne correspond aux filtres.</div>
+                  <div style={{ background: theme.colors.surfaceSoft, borderRadius: 18, padding: 18 }}>Aucun item ne correspond aux filtres.</div>
                 )}
               </div>
-            </div>
+            </PremiumCard>
           </div>
         </div>
 
-        <div style={styles.card}>
-          <div style={styles.cardPadding}>
-            <h2 style={{ marginTop: 0, marginBottom: "18px", fontSize: "22px" }}>
+        <PremiumCard style={{ marginTop: 18 }}>
+          <div style={{ padding: 24 }}>
+            <div style={{ fontSize: 13, textTransform: "uppercase", letterSpacing: ".14em", color: theme.colors.muted, marginBottom: 16 }}>
               Mode “Préparer une note”
-            </h2>
+            </div>
             {notePrepItems.length === 0 ? (
-              <div style={styles.softBlock}>Aucun item n’est encore marqué pour une note.</div>
+              <div style={{ background: theme.colors.surfaceSoft, borderRadius: 18, padding: 18 }}>Aucun item n’est encore marqué pour une note.</div>
             ) : (
-              <div style={styles.noteGrid}>
+              <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
                 {notePrepItems.map((item) => (
-                  <div key={item.id} style={styles.noteBox}>
-                    <div style={{ marginBottom: "10px", display: "flex", justifyContent: "space-between" }}>
-                      <span style={{ ...styles.badge, ...scoreStyle(item.relevanceScore) }}>
-                        {item.relevanceScore ?? "—"}
-                      </span>
-                      <span style={{ fontSize: "12px", color: "#64748b" }}>{item.date}</span>
+                  <div key={item.id} style={{ border: `1px solid ${theme.colors.border}`, borderRadius: 22, background: theme.colors.surfaceSoft, padding: 16 }}>
+                    <div style={{ marginBottom: 10, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+                      <SoftBadge style={scoreStyle(item.relevanceScore)}>{item.relevanceScore ?? "—"}</SoftBadge>
+                      <span style={{ fontSize: 12, color: theme.colors.muted }}>{item.date}</span>
                     </div>
-                    <div style={{ fontSize: "18px", fontWeight: 700, lineHeight: 1.4, marginBottom: "10px" }}>
-                      {item.title}
+                    <div style={{ fontFamily: 'Georgia, "Times New Roman", serif', fontSize: 26, lineHeight: 1.15, marginBottom: 10, fontWeight: 700 }}>{item.title}</div>
+                    <div style={{ fontSize: 14, lineHeight: 1.8, color: theme.colors.text, marginBottom: 10 }}>
+                      {String(item.summary || "").slice(0, 260)}{String(item.summary || "").length > 260 ? "…" : ""}
                     </div>
-                    <div style={{ fontSize: "14px", lineHeight: 1.7, color: "#475569", marginBottom: "10px" }}>
-                      {item.summary}
-                    </div>
-                    <div style={{ fontSize: "14px", lineHeight: 1.7, color: "#334155" }}>
+                    <div style={{ fontSize: 14, lineHeight: 1.8, color: theme.colors.text }}>
                       <strong>Angle :</strong> {item.exploitationAngle}
                     </div>
                   </div>
@@ -837,33 +555,20 @@ export default function VeilleDigestReader() {
               </div>
             )}
           </div>
-        </div>
+        </PremiumCard>
       </div>
 
       <style>{`
-        @media (max-width: 1100px) {
-          .dummy {}
-        }
-        @media (max-width: 1100px) {
-          div[style*="grid-template-columns: 1.4fr 0.6fr"] {
-            grid-template-columns: 1fr !important;
-          }
-          div[style*="grid-template-columns: 320px 1fr"] {
-            grid-template-columns: 1fr !important;
-          }
-          div[style*="grid-template-columns: 0.9fr 1.1fr"] {
-            grid-template-columns: 1fr !important;
-          }
-          div[style*="repeat(3, 1fr)"] {
-            grid-template-columns: 1fr !important;
-          }
+        @media (max-width: 1120px) {
+          div[style*="grid-template-columns: 320px 1fr"] { grid-template-columns: 1fr !important; }
+          div[style*="grid-template-columns: 0.88fr 1.12fr"] { grid-template-columns: 1fr !important; }
+          div[style*="repeat(3, 1fr)"] { grid-template-columns: 1fr !important; }
         }
         @media (max-width: 700px) {
-          div[style*="grid-template-columns: 1fr 1fr"] {
-            grid-template-columns: 1fr !important;
-          }
+          div[style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
         }
       `}</style>
     </div>
   );
 }
+
