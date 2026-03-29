@@ -119,7 +119,7 @@ export default function VeilleDigestReader() {
   const [noteIds, setNoteIds] = useState(new Set());
 
   useEffect(() => {
-    fetch(https://script.google.com/macros/s/AKfycby0EXVm6kKCqWh3Zy1xMiMqDBmUAUqKpVfsmx5QE2iSUvqCpj-Rs-8Bs5izhF-Td88oEA/exec)
+    fetch("https://script.google.com/macros/s/AKfycby0EXVm6kKCqWh3Zy1xMiMqDBmUAUqKpVfsmx5QE2iSUvqCpj-Rs-8Bs5izhF-Td88oEA/exec")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("No JSON found"))))
       .then((data) => {
         const normalized = data.map((item) => ({
