@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState, useCallback } from "react";
 
 const theme = {
   colors: {
@@ -110,6 +110,7 @@ function smallCaps(text) {
 }
 
 export default function VeilleDigestReader() {
+  const DATA_URL = "./digests.json";
   const [items, setItems] = useState(fallbackData);
   const [query, setQuery] = useState("");
   const [selectedTheme, setSelectedTheme] = useState("Toutes les productions éditorialisées");
@@ -117,9 +118,12 @@ export default function VeilleDigestReader() {
   const [selectedItemId, setSelectedItemId] = useState(null);
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [noteIds, setNoteIds] = useState(new Set());
+  const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState("");
 
-  useEffect(() => {
-    fetch("https://script.google.com/macros/s/AKfycby0EXVm6kKCqWh3Zy1xMiMqDBmUAUqKpVfsmx5QE2iSUvqCpj-Rs-8Bs5izhF-Td88oEA/exec")
+  const loadData = useCallback(() => {
+    setIsRefreshing(true);
+    fetch(`${DATA_URL}?t=${Date.now()}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("No JSON found"))))
       .then((data) => {
         const normalized = data.map((item) => ({
@@ -134,14 +138,23 @@ export default function VeilleDigestReader() {
         setItems(normalized);
         setFavoriteIds(new Set(normalized.filter((i) => i.favorite).map((i) => i.id)));
         setNoteIds(new Set(normalized.filter((i) => i.noteCandidate).map((i) => i.id)));
-        if (normalized[0]) setSelectedItemId(normalized[0].id);
+        if (normalized[0]) setSelectedItemId((prev) => prev && normalized.some((i) => i.id === prev) ? prev : normalized[0].id);
+        setLastUpdated(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
       })
       .catch(() => {
         setFavoriteIds(new Set(fallbackData.filter((i) => i.favorite).map((i) => i.id)));
         setNoteIds(new Set(fallbackData.filter((i) => i.noteCandidate).map((i) => i.id)));
         setSelectedItemId(fallbackData[0]?.id ?? null);
+        setLastUpdated(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
+      })
+      .finally(() => {
+        setIsRefreshing(false);
       });
   }, []);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const allThemes = useMemo(() => {
     const values = new Set();
@@ -300,7 +313,24 @@ export default function VeilleDigestReader() {
                   {selectedItem?.date ? selectedItem.date.replace(/-/g, " ") : "DIMANCHE 29 MARS 2026"}
                 </span>
               </div>
-              <div style={{ padding: "16px 20px", color: theme.colors.muted, fontSize: 15 }}>22:51</div>
+              <div style={{ padding: "16px 20px", color: theme.colors.muted, fontSize: 15, display: "flex", alignItems: "center", gap: 10 }}>
+              <button
+                onClick={loadData}
+                disabled={isRefreshing}
+                style={{
+                  borderRadius: 999,
+                  border: `1px solid ${theme.colors.border}`,
+                  background: theme.colors.white,
+                  color: theme.colors.text,
+                  padding: "8px 14px",
+                  cursor: isRefreshing ? "default" : "pointer",
+                  opacity: isRefreshing ? 0.7 : 1,
+                }}
+              >
+                {isRefreshing ? "Actualisation..." : "Actualiser le digest"}
+              </button>
+              <span>{lastUpdated ? `Maj ${lastUpdated}` : ""}</span>
+            </div>
             </div>
 
             <div style={{ padding: "14px 20px", borderBottom: `1px solid ${theme.colors.border}`, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
