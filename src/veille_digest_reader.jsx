@@ -1,14 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { motion } from "framer-motion";
-import { Search, Star, FileText, Filter, ChevronRight, Bookmark, NotebookPen, CalendarDays, Building2, Tag, Sparkles } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
-
-// Dépose ton fichier digests.json dans /public/digests.json
-// Format attendu : un tableau d'objets avec les clés du JSON généré depuis Google Sheets.
 
 const fallbackData = [
   {
@@ -61,30 +51,240 @@ const fallbackData = [
   },
 ];
 
-const normalizeArray = (value) => {
+const styles = {
+  page: {
+    minHeight: "100vh",
+    background: "#f6f4ef",
+    color: "#0f172a",
+    fontFamily:
+      'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
+  },
+  container: {
+    maxWidth: "1320px",
+    margin: "0 auto",
+    padding: "24px 16px 40px",
+  },
+  topGrid: {
+    display: "grid",
+    gridTemplateColumns: "1.4fr 0.6fr",
+    gap: "16px",
+    marginBottom: "24px",
+  },
+  mainGrid: {
+    display: "grid",
+    gridTemplateColumns: "320px 1fr",
+    gap: "16px",
+    marginBottom: "24px",
+  },
+  contentGrid: {
+    display: "grid",
+    gridTemplateColumns: "0.9fr 1.1fr",
+    gap: "16px",
+  },
+  card: {
+    background: "rgba(255,255,255,0.92)",
+    border: "1px solid #e2e8f0",
+    borderRadius: "24px",
+    boxShadow: "0 1px 3px rgba(15,23,42,0.06)",
+  },
+  cardPadding: {
+    padding: "24px",
+  },
+  statGrid: {
+    display: "grid",
+    gridTemplateColumns: "1fr 1fr",
+    gap: "12px",
+    padding: "20px",
+  },
+  statBox: {
+    background: "#f8fafc",
+    borderRadius: "18px",
+    padding: "16px",
+  },
+  title: {
+    fontSize: "42px",
+    lineHeight: 1.05,
+    margin: "0 0 12px",
+    fontWeight: 700,
+    letterSpacing: "-0.03em",
+  },
+  muted: {
+    color: "#64748b",
+  },
+  label: {
+    fontSize: "14px",
+    fontWeight: 600,
+    marginBottom: "8px",
+  },
+  input: {
+    width: "100%",
+    padding: "12px 14px",
+    borderRadius: "16px",
+    border: "1px solid #cbd5e1",
+    fontSize: "14px",
+    outline: "none",
+    boxSizing: "border-box",
+    background: "#fff",
+  },
+  buttonGroup: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+  },
+  pill: {
+    borderRadius: "999px",
+    border: "1px solid #cbd5e1",
+    background: "#fff",
+    padding: "9px 14px",
+    fontSize: "13px",
+    cursor: "pointer",
+  },
+  pillActive: {
+    background: "#0f172a",
+    color: "#fff",
+    border: "1px solid #0f172a",
+  },
+  listArea: {
+    maxHeight: "680px",
+    overflowY: "auto",
+    paddingRight: "8px",
+  },
+  readerArea: {
+    maxHeight: "680px",
+    overflowY: "auto",
+    paddingRight: "8px",
+  },
+  itemCard: {
+    width: "100%",
+    border: "1px solid #e2e8f0",
+    borderRadius: "24px",
+    background: "#fff",
+    padding: "16px",
+    textAlign: "left",
+    cursor: "pointer",
+    marginBottom: "12px",
+    boxSizing: "border-box",
+  },
+  itemSelected: {
+    border: "1px solid #0f172a",
+    background: "#f8fafc",
+  },
+  badge: {
+    display: "inline-block",
+    borderRadius: "999px",
+    padding: "6px 10px",
+    fontSize: "12px",
+    fontWeight: 600,
+    marginRight: "6px",
+    marginBottom: "6px",
+  },
+  iconButton: {
+    border: "none",
+    borderRadius: "999px",
+    padding: "8px 10px",
+    cursor: "pointer",
+    fontSize: "14px",
+  },
+  subInfo: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "8px",
+    fontSize: "12px",
+    color: "#64748b",
+    margin: "10px 0 12px",
+  },
+  chip: {
+    display: "inline-block",
+    borderRadius: "999px",
+    background: "#f1f5f9",
+    padding: "6px 10px",
+  },
+  softBlock: {
+    background: "#f8fafc",
+    borderRadius: "24px",
+    padding: "20px",
+  },
+  sectionTitle: {
+    fontSize: "14px",
+    fontWeight: 600,
+    color: "#334155",
+    marginBottom: "10px",
+  },
+  readerTitle: {
+    fontSize: "34px",
+    lineHeight: 1.15,
+    margin: "0 0 10px",
+    fontWeight: 700,
+    letterSpacing: "-0.03em",
+  },
+  summary: {
+    background: "#f8fafc",
+    borderRadius: "24px",
+    padding: "20px",
+    fontSize: "15px",
+    lineHeight: 1.85,
+    color: "#334155",
+    whiteSpace: "pre-wrap",
+  },
+  noteGrid: {
+    display: "grid",
+    gridTemplateColumns: "repeat(3, 1fr)",
+    gap: "12px",
+  },
+  noteBox: {
+    border: "1px solid #e2e8f0",
+    borderRadius: "24px",
+    background: "#f8fafc",
+    padding: "16px",
+  },
+  actionRow: {
+    display: "flex",
+    flexWrap: "wrap",
+    gap: "10px",
+  },
+  actionBtn: {
+    borderRadius: "999px",
+    border: "1px solid #cbd5e1",
+    padding: "10px 16px",
+    background: "#fff",
+    cursor: "pointer",
+    fontSize: "14px",
+  },
+  primaryBtn: {
+    borderRadius: "999px",
+    border: "1px solid #0f172a",
+    padding: "10px 16px",
+    background: "#0f172a",
+    color: "#fff",
+    cursor: "pointer",
+    fontSize: "14px",
+  },
+};
+
+function normalizeArray(value) {
   if (Array.isArray(value)) return value;
   if (!value) return [];
   return String(value)
     .split(";")
     .map((v) => v.trim())
     .filter(Boolean);
-};
+}
 
-const scoreLabel = (score) => {
+function scoreLabel(score) {
   const n = Number(score || 0);
   if (n >= 85) return "Très pertinent";
   if (n >= 70) return "Pertinent";
   if (n >= 50) return "À regarder";
   return "Secondaire";
-};
+}
 
-const scoreClass = (score) => {
+function scoreStyle(score) {
   const n = Number(score || 0);
-  if (n >= 85) return "bg-slate-900 text-white";
-  if (n >= 70) return "bg-slate-200 text-slate-900";
-  if (n >= 50) return "bg-amber-100 text-amber-900";
-  return "bg-slate-100 text-slate-700";
-};
+  if (n >= 85) return { background: "#0f172a", color: "#fff" };
+  if (n >= 70) return { background: "#e2e8f0", color: "#0f172a" };
+  if (n >= 50) return { background: "#fef3c7", color: "#92400e" };
+  return { background: "#f1f5f9", color: "#475569" };
+}
 
 export default function VeilleDigestReader() {
   const [items, setItems] = useState(fallbackData);
@@ -99,7 +299,7 @@ export default function VeilleDigestReader() {
   const [noteIds, setNoteIds] = useState(new Set());
 
   useEffect(() => {
-    fetch("/digests.json")
+    fetch("./digests.json")
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("No JSON found"))))
       .then((data) => {
         const normalized = data.map((item) => ({
@@ -142,21 +342,19 @@ export default function VeilleDigestReader() {
   const filteredItems = useMemo(() => {
     const q = query.trim().toLowerCase();
     const list = items.filter((item) => {
-      const matchesQuery =
-        !q ||
-        [
-          item.title,
-          item.summary,
-          item.institution,
-          item.documentType,
-          ...(item.keywords || []),
-          ...(item.themes || []),
-        ]
-          .filter(Boolean)
-          .join(" ")
-          .toLowerCase()
-          .includes(q);
+      const haystack = [
+        item.title,
+        item.summary,
+        item.institution,
+        item.documentType,
+        ...(item.keywords || []),
+        ...(item.themes || []),
+      ]
+        .filter(Boolean)
+        .join(" ")
+        .toLowerCase();
 
+      const matchesQuery = !q || haystack.includes(q);
       const matchesTheme = selectedTheme === "Tous" || (item.themes || []).includes(selectedTheme);
       const matchesType = selectedType === "Tous" || item.documentType === selectedType;
       const matchesFavorites = !showFavoritesOnly || favoriteIds.has(item.id);
@@ -165,14 +363,22 @@ export default function VeilleDigestReader() {
       return matchesQuery && matchesTheme && matchesType && matchesFavorites && matchesNotes;
     });
 
-    const sorted = [...list].sort((a, b) => {
+    return [...list].sort((a, b) => {
       if (sortBy === "date") return String(b.date).localeCompare(String(a.date));
       if (sortBy === "title") return String(a.title).localeCompare(String(b.title));
       return Number(b.relevanceScore || 0) - Number(a.relevanceScore || 0);
     });
-
-    return sorted;
-  }, [items, query, selectedTheme, selectedType, sortBy, showFavoritesOnly, showNoteOnly, favoriteIds, noteIds]);
+  }, [
+    items,
+    query,
+    selectedTheme,
+    selectedType,
+    sortBy,
+    showFavoritesOnly,
+    showNoteOnly,
+    favoriteIds,
+    noteIds,
+  ]);
 
   useEffect(() => {
     if (!filteredItems.length) {
@@ -184,376 +390,480 @@ export default function VeilleDigestReader() {
     }
   }, [filteredItems, selectedItemId]);
 
-  const selectedItem = filteredItems.find((item) => item.id === selectedItemId) || filteredItems[0] || null;
+  const selectedItem =
+    filteredItems.find((item) => item.id === selectedItemId) || filteredItems[0] || null;
 
-  const toggleFavorite = (id) => {
+  function toggleFavorite(id) {
     setFavoriteIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  };
+  }
 
-  const toggleNote = (id) => {
+  function toggleNote(id) {
     setNoteIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
       return next;
     });
-  };
+  }
 
   const notePrepItems = filteredItems.filter((item) => noteIds.has(item.id));
 
   return (
-    <div className="min-h-screen bg-[#f6f4ef] text-slate-900">
-      <div className="mx-auto max-w-7xl px-4 py-6 md:px-8">
-        <motion.div
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4 }}
-          className="mb-6 grid gap-4 lg:grid-cols-[1.4fr_0.6fr]"
-        >
-          <Card className="rounded-3xl border-slate-200 bg-white/90 shadow-sm">
-            <CardContent className="p-6 md:p-8">
-              <div className="mb-3 flex items-center gap-2 text-sm text-slate-500">
-                <Sparkles className="h-4 w-4" />
-                Lecteur éditorial de veille
+    <div style={styles.page}>
+      <div style={styles.container}>
+        <div style={styles.topGrid}>
+          <div style={styles.card}>
+            <div style={styles.cardPadding}>
+              <div style={{ ...styles.muted, fontSize: "14px", marginBottom: "12px" }}>
+                ✦ Lecteur éditorial de veille
               </div>
-              <h1 className="mb-3 text-3xl font-semibold tracking-tight md:text-4xl">
-                Digest de veille
-              </h1>
-              <p className="max-w-3xl text-sm leading-6 text-slate-600 md:text-base">
-                Une interface de consultation pensée comme une revue : recherche, filtres, score de pertinence,
-                favoris, vue lecture et présélection pour préparer une note.
+              <h1 style={styles.title}>Digest de veille</h1>
+              <p style={{ ...styles.muted, fontSize: "15px", lineHeight: 1.7, maxWidth: "760px" }}>
+                Une interface de consultation pensée comme une revue : recherche, filtres,
+                score de pertinence, favoris, vue lecture et présélection pour préparer une note.
               </p>
-            </CardContent>
-          </Card>
+            </div>
+          </div>
 
-          <Card className="rounded-3xl border-slate-200 bg-white/90 shadow-sm">
-            <CardContent className="grid h-full grid-cols-2 gap-3 p-5">
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <div className="text-xs uppercase tracking-wide text-slate-500">Items</div>
-                <div className="mt-2 text-2xl font-semibold">{filteredItems.length}</div>
-              </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <div className="text-xs uppercase tracking-wide text-slate-500">Favoris</div>
-                <div className="mt-2 text-2xl font-semibold">{favoriteIds.size}</div>
-              </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <div className="text-xs uppercase tracking-wide text-slate-500">Pour note</div>
-                <div className="mt-2 text-2xl font-semibold">{noteIds.size}</div>
-              </div>
-              <div className="rounded-2xl bg-slate-50 p-4">
-                <div className="text-xs uppercase tracking-wide text-slate-500">Thèmes</div>
-                <div className="mt-2 text-2xl font-semibold">{Math.max(0, allThemes.length - 1)}</div>
-              </div>
-            </CardContent>
-          </Card>
-        </motion.div>
-
-        <div className="mb-6 grid gap-4 lg:grid-cols-[320px_1fr]">
-          <Card className="rounded-3xl border-slate-200 bg-white/90 shadow-sm">
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2 text-lg">
-                <Filter className="h-5 w-5" /> Filtres
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-5">
-              <div>
-                <div className="mb-2 text-sm font-medium">Recherche</div>
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                  <Input
-                    value={query}
-                    onChange={(e) => setQuery(e.target.value)}
-                    placeholder="Titre, thème, institution..."
-                    className="rounded-2xl border-slate-200 pl-9"
-                  />
+          <div style={styles.card}>
+            <div style={styles.statGrid}>
+              <div style={styles.statBox}>
+                <div style={{ fontSize: "12px", textTransform: "uppercase", color: "#64748b" }}>
+                  Items
+                </div>
+                <div style={{ marginTop: "8px", fontSize: "28px", fontWeight: 700 }}>
+                  {filteredItems.length}
                 </div>
               </div>
-
-              <div>
-                <div className="mb-2 text-sm font-medium">Thème</div>
-                <div className="flex flex-wrap gap-2">
-                  {allThemes.map((theme) => (
-                    <Button
-                      key={theme}
-                      variant={selectedTheme === theme ? "default" : "outline"}
-                      className="rounded-full"
-                      onClick={() => setSelectedTheme(theme)}
-                    >
-                      {theme}
-                    </Button>
-                  ))}
+              <div style={styles.statBox}>
+                <div style={{ fontSize: "12px", textTransform: "uppercase", color: "#64748b" }}>
+                  Favoris
+                </div>
+                <div style={{ marginTop: "8px", fontSize: "28px", fontWeight: 700 }}>
+                  {favoriteIds.size}
                 </div>
               </div>
-
-              <div>
-                <div className="mb-2 text-sm font-medium">Type</div>
-                <div className="flex flex-wrap gap-2">
-                  {allTypes.map((type) => (
-                    <Button
-                      key={type}
-                      variant={selectedType === type ? "default" : "outline"}
-                      className="rounded-full"
-                      onClick={() => setSelectedType(type)}
-                    >
-                      {type}
-                    </Button>
-                  ))}
+              <div style={styles.statBox}>
+                <div style={{ fontSize: "12px", textTransform: "uppercase", color: "#64748b" }}>
+                  Pour note
+                </div>
+                <div style={{ marginTop: "8px", fontSize: "28px", fontWeight: 700 }}>
+                  {noteIds.size}
                 </div>
               </div>
-
-              <div>
-                <div className="mb-2 text-sm font-medium">Tri</div>
-                <div className="flex flex-wrap gap-2">
-                  <Button variant={sortBy === "relevance" ? "default" : "outline"} className="rounded-full" onClick={() => setSortBy("relevance")}>Pertinence</Button>
-                  <Button variant={sortBy === "date" ? "default" : "outline"} className="rounded-full" onClick={() => setSortBy("date")}>Date</Button>
-                  <Button variant={sortBy === "title" ? "default" : "outline"} className="rounded-full" onClick={() => setSortBy("title")}>Titre</Button>
+              <div style={styles.statBox}>
+                <div style={{ fontSize: "12px", textTransform: "uppercase", color: "#64748b" }}>
+                  Thèmes
+                </div>
+                <div style={{ marginTop: "8px", fontSize: "28px", fontWeight: 700 }}>
+                  {Math.max(0, allThemes.length - 1)}
                 </div>
               </div>
-
-              <div className="flex flex-wrap gap-2">
-                <Button
-                  variant={showFavoritesOnly ? "default" : "outline"}
-                  className="rounded-full"
-                  onClick={() => setShowFavoritesOnly((v) => !v)}
-                >
-                  <Star className="mr-2 h-4 w-4" /> Favoris
-                </Button>
-                <Button
-                  variant={showNoteOnly ? "default" : "outline"}
-                  className="rounded-full"
-                  onClick={() => setShowNoteOnly((v) => !v)}
-                >
-                  <NotebookPen className="mr-2 h-4 w-4" /> Préparer une note
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
-
-          <div className="grid gap-4 xl:grid-cols-[0.9fr_1.1fr]">
-            <Card className="rounded-3xl border-slate-200 bg-white/90 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-lg">Cartes</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <ScrollArea className="h-[680px] pr-3">
-                  <div className="space-y-3">
-                    {filteredItems.map((item) => {
-                      const isSelected = selectedItem?.id === item.id;
-                      const isFavorite = favoriteIds.has(item.id);
-                      const isForNote = noteIds.has(item.id);
-
-                      return (
-                        <motion.button
-                          key={item.id}
-                          whileHover={{ y: -2 }}
-                          onClick={() => setSelectedItemId(item.id)}
-                          className={`w-full rounded-3xl border p-4 text-left transition ${
-                            isSelected ? "border-slate-900 bg-slate-50" : "border-slate-200 bg-white"
-                          }`}
-                        >
-                          <div className="mb-3 flex items-start justify-between gap-3">
-                            <Badge className={`rounded-full ${scoreClass(item.relevanceScore)}`}>
-                              {item.relevanceScore ?? "—"} · {scoreLabel(item.relevanceScore)}
-                            </Badge>
-                            <div className="flex gap-2">
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleFavorite(item.id);
-                                }}
-                                className={`rounded-full p-2 ${isFavorite ? "bg-amber-100 text-amber-700" : "bg-slate-100 text-slate-500"}`}
-                              >
-                                <Star className="h-4 w-4" />
-                              </button>
-                              <button
-                                type="button"
-                                onClick={(e) => {
-                                  e.stopPropagation();
-                                  toggleNote(item.id);
-                                }}
-                                className={`rounded-full p-2 ${isForNote ? "bg-sky-100 text-sky-700" : "bg-slate-100 text-slate-500"}`}
-                              >
-                                <Bookmark className="h-4 w-4" />
-                              </button>
-                            </div>
-                          </div>
-
-                          <h3 className="mb-2 text-lg font-semibold leading-6">{item.title}</h3>
-
-                          <div className="mb-3 flex flex-wrap gap-2 text-xs text-slate-500">
-                            {item.documentType && <span className="rounded-full bg-slate-100 px-2 py-1">{item.documentType}</span>}
-                            {item.institution && <span className="rounded-full bg-slate-100 px-2 py-1">{item.institution}</span>}
-                            {item.date && <span className="rounded-full bg-slate-100 px-2 py-1">{item.date}</span>}
-                          </div>
-
-                          <p className="line-clamp-4 text-sm leading-6 text-slate-600">{item.summary}</p>
-
-                          <div className="mt-3 flex items-center justify-between text-sm text-slate-500">
-                            <span>{item.source || "Source non renseignée"}</span>
-                            <span className="inline-flex items-center gap-1 font-medium text-slate-900">
-                              Lire <ChevronRight className="h-4 w-4" />
-                            </span>
-                          </div>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
-                </ScrollArea>
-              </CardContent>
-            </Card>
-
-            <Card className="rounded-3xl border-slate-200 bg-white/95 shadow-sm">
-              <CardHeader>
-                <CardTitle className="text-lg">Vue lecture</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {selectedItem ? (
-                  <ScrollArea className="h-[680px] pr-4">
-                    <div className="space-y-5">
-                      <div className="flex flex-wrap items-center gap-2">
-                        <Badge className={`rounded-full ${scoreClass(selectedItem.relevanceScore)}`}>
-                          {selectedItem.relevanceScore ?? "—"}
-                        </Badge>
-                        {selectedItem.documentType && <Badge variant="secondary" className="rounded-full">{selectedItem.documentType}</Badge>}
-                        {selectedItem.status && <Badge variant="outline" className="rounded-full">{selectedItem.status}</Badge>}
-                      </div>
-
-                      <div>
-                        <h2 className="text-2xl font-semibold leading-tight md:text-3xl">{selectedItem.title}</h2>
-                        <div className="mt-3 flex flex-wrap gap-4 text-sm text-slate-500">
-                          {selectedItem.date && (
-                            <span className="inline-flex items-center gap-2"><CalendarDays className="h-4 w-4" />{selectedItem.date}</span>
-                          )}
-                          {selectedItem.institution && (
-                            <span className="inline-flex items-center gap-2"><Building2 className="h-4 w-4" />{selectedItem.institution}</span>
-                          )}
-                          {selectedItem.source && <span>{selectedItem.source}</span>}
-                        </div>
-                      </div>
-
-                      {(selectedItem.themes || []).length > 0 && (
-                        <div>
-                          <div className="mb-2 inline-flex items-center gap-2 text-sm font-medium text-slate-700"><Tag className="h-4 w-4" /> Thèmes</div>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedItem.themes.map((theme) => (
-                              <Badge key={theme} variant="secondary" className="rounded-full">{theme}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div>
-                        <div className="mb-2 text-sm font-medium text-slate-700">Résumé</div>
-                        <div className="rounded-3xl bg-slate-50 p-5 text-[15px] leading-7 text-slate-700 whitespace-pre-wrap">
-                          {selectedItem.summary || "Aucun résumé disponible."}
-                        </div>
-                      </div>
-
-                      {(selectedItem.keywords || []).length > 0 && (
-                        <div>
-                          <div className="mb-2 text-sm font-medium text-slate-700">Concepts clés</div>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedItem.keywords.map((keyword) => (
-                              <Badge key={keyword} variant="outline" className="rounded-full">{keyword}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {(selectedItem.innovations || []).length > 0 && (
-                        <div>
-                          <div className="mb-2 text-sm font-medium text-slate-700">Innovations technologiques</div>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedItem.innovations.map((innovation) => (
-                              <Badge key={innovation} className="rounded-full bg-sky-100 text-sky-800 hover:bg-sky-100">{innovation}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      {(selectedItem.actors || []).length > 0 && (
-                        <div>
-                          <div className="mb-2 text-sm font-medium text-slate-700">Acteurs mentionnés</div>
-                          <div className="flex flex-wrap gap-2">
-                            {selectedItem.actors.map((actor) => (
-                              <Badge key={actor} variant="secondary" className="rounded-full">{actor}</Badge>
-                            ))}
-                          </div>
-                        </div>
-                      )}
-
-                      <div className="grid gap-4 md:grid-cols-2">
-                        <div className="rounded-3xl bg-slate-50 p-4">
-                          <div className="mb-2 text-sm font-medium text-slate-700">Signal faible</div>
-                          <div className="text-sm leading-6 text-slate-700">{selectedItem.weakSignal || "Non renseigné"}</div>
-                        </div>
-                        <div className="rounded-3xl bg-slate-50 p-4">
-                          <div className="mb-2 text-sm font-medium text-slate-700">Impact stratégique</div>
-                          <div className="text-sm leading-6 text-slate-700">{selectedItem.strategicImpact ?? "Non renseigné"}</div>
-                        </div>
-                      </div>
-
-                      <div className="rounded-3xl bg-slate-50 p-5">
-                        <div className="mb-2 inline-flex items-center gap-2 text-sm font-medium text-slate-700"><FileText className="h-4 w-4" /> Angle d’exploitation</div>
-                        <p className="text-sm leading-6 text-slate-700">{selectedItem.exploitationAngle || "Aucun angle d’exploitation disponible."}</p>
-                      </div>
-
-                      <div className="flex flex-wrap gap-3">
-                        <Button className="rounded-full" onClick={() => toggleFavorite(selectedItem.id)}>
-                          <Star className="mr-2 h-4 w-4" /> {favoriteIds.has(selectedItem.id) ? "Retirer des favoris" : "Ajouter aux favoris"}
-                        </Button>
-                        <Button variant="outline" className="rounded-full" onClick={() => toggleNote(selectedItem.id)}>
-                          <NotebookPen className="mr-2 h-4 w-4" /> {noteIds.has(selectedItem.id) ? "Retirer de la note" : "Préparer une note"}
-                        </Button>
-                        <a href={selectedItem.url || "#"} target="_blank" rel="noreferrer">
-                          <Button variant="outline" className="rounded-full">Ouvrir la source</Button>
-                        </a>
-                      </div>
-                    </div>
-                  </ScrollArea>
-                ) : (
-                  <div className="rounded-3xl bg-slate-50 p-8 text-sm text-slate-500">
-                    Aucun item ne correspond aux filtres.
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            </div>
           </div>
         </div>
 
-        <Card className="rounded-3xl border-slate-200 bg-white/90 shadow-sm">
-          <CardHeader>
-            <CardTitle className="text-lg">Mode “Préparer une note”</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {notePrepItems.length === 0 ? (
-              <div className="rounded-3xl bg-slate-50 p-6 text-sm text-slate-500">
-                Aucun item n’est encore marqué pour une note.
+        <div style={styles.mainGrid}>
+          <div style={styles.card}>
+            <div style={styles.cardPadding}>
+              <h2 style={{ marginTop: 0, marginBottom: "18px", fontSize: "22px" }}>Filtres</h2>
+
+              <div style={{ marginBottom: "18px" }}>
+                <div style={styles.label}>Recherche</div>
+                <input
+                  style={styles.input}
+                  value={query}
+                  onChange={(e) => setQuery(e.target.value)}
+                  placeholder="Titre, thème, institution..."
+                />
               </div>
-            ) : (
-              <div className="grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                {notePrepItems.map((item) => (
-                  <div key={item.id} className="rounded-3xl border border-slate-200 bg-slate-50 p-4">
-                    <div className="mb-2 flex items-center justify-between">
-                      <Badge className={`rounded-full ${scoreClass(item.relevanceScore)}`}>{item.relevanceScore ?? "—"}</Badge>
-                      <span className="text-xs text-slate-500">{item.date}</span>
+
+              <div style={{ marginBottom: "18px" }}>
+                <div style={styles.label}>Thème</div>
+                <div style={styles.buttonGroup}>
+                  {allThemes.map((theme) => (
+                    <button
+                      key={theme}
+                      style={{
+                        ...styles.pill,
+                        ...(selectedTheme === theme ? styles.pillActive : {}),
+                      }}
+                      onClick={() => setSelectedTheme(theme)}
+                    >
+                      {theme}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: "18px" }}>
+                <div style={styles.label}>Type</div>
+                <div style={styles.buttonGroup}>
+                  {allTypes.map((type) => (
+                    <button
+                      key={type}
+                      style={{
+                        ...styles.pill,
+                        ...(selectedType === type ? styles.pillActive : {}),
+                      }}
+                      onClick={() => setSelectedType(type)}
+                    >
+                      {type}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              <div style={{ marginBottom: "18px" }}>
+                <div style={styles.label}>Tri</div>
+                <div style={styles.buttonGroup}>
+                  <button
+                    style={{ ...styles.pill, ...(sortBy === "relevance" ? styles.pillActive : {}) }}
+                    onClick={() => setSortBy("relevance")}
+                  >
+                    Pertinence
+                  </button>
+                  <button
+                    style={{ ...styles.pill, ...(sortBy === "date" ? styles.pillActive : {}) }}
+                    onClick={() => setSortBy("date")}
+                  >
+                    Date
+                  </button>
+                  <button
+                    style={{ ...styles.pill, ...(sortBy === "title" ? styles.pillActive : {}) }}
+                    onClick={() => setSortBy("title")}
+                  >
+                    Titre
+                  </button>
+                </div>
+              </div>
+
+              <div style={styles.buttonGroup}>
+                <button
+                  style={{
+                    ...styles.pill,
+                    ...(showFavoritesOnly ? styles.pillActive : {}),
+                  }}
+                  onClick={() => setShowFavoritesOnly((v) => !v)}
+                >
+                  ★ Favoris
+                </button>
+                <button
+                  style={{
+                    ...styles.pill,
+                    ...(showNoteOnly ? styles.pillActive : {}),
+                  }}
+                  onClick={() => setShowNoteOnly((v) => !v)}
+                >
+                  ✎ Préparer une note
+                </button>
+              </div>
+            </div>
+          </div>
+
+          <div style={styles.contentGrid}>
+            <div style={styles.card}>
+              <div style={styles.cardPadding}>
+                <h2 style={{ marginTop: 0, marginBottom: "18px", fontSize: "22px" }}>Cartes</h2>
+                <div style={styles.listArea}>
+                  {filteredItems.map((item) => {
+                    const isSelected = selectedItem?.id === item.id;
+                    const isFavorite = favoriteIds.has(item.id);
+                    const isForNote = noteIds.has(item.id);
+
+                    return (
+                      <button
+                        key={item.id}
+                        onClick={() => setSelectedItemId(item.id)}
+                        style={{
+                          ...styles.itemCard,
+                          ...(isSelected ? styles.itemSelected : {}),
+                        }}
+                      >
+                        <div
+                          style={{
+                            display: "flex",
+                            justifyContent: "space-between",
+                            alignItems: "flex-start",
+                            gap: "12px",
+                            marginBottom: "12px",
+                          }}
+                        >
+                          <span
+                            style={{
+                              ...styles.badge,
+                              ...scoreStyle(item.relevanceScore),
+                            }}
+                          >
+                            {item.relevanceScore ?? "—"} · {scoreLabel(item.relevanceScore)}
+                          </span>
+                          <div style={{ display: "flex", gap: "8px" }}>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleFavorite(item.id);
+                              }}
+                              style={{
+                                ...styles.iconButton,
+                                background: isFavorite ? "#fef3c7" : "#f1f5f9",
+                                color: isFavorite ? "#92400e" : "#64748b",
+                              }}
+                            >
+                              ★
+                            </button>
+                            <button
+                              type="button"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                toggleNote(item.id);
+                              }}
+                              style={{
+                                ...styles.iconButton,
+                                background: isForNote ? "#dbeafe" : "#f1f5f9",
+                                color: isForNote ? "#1d4ed8" : "#64748b",
+                              }}
+                            >
+                              ⌁
+                            </button>
+                          </div>
+                        </div>
+
+                        <div style={{ fontSize: "22px", fontWeight: 700, lineHeight: 1.35, marginBottom: "10px" }}>
+                          {item.title}
+                        </div>
+
+                        <div style={styles.subInfo}>
+                          {item.documentType && <span style={styles.chip}>{item.documentType}</span>}
+                          {item.institution && <span style={styles.chip}>{item.institution}</span>}
+                          {item.date && <span style={styles.chip}>{item.date}</span>}
+                        </div>
+
+                        <div style={{ fontSize: "14px", lineHeight: 1.7, color: "#475569" }}>
+                          {item.summary}
+                        </div>
+
+                        <div
+                          style={{
+                            marginTop: "12px",
+                            display: "flex",
+                            justifyContent: "space-between",
+                            fontSize: "14px",
+                            color: "#64748b",
+                          }}
+                        >
+                          <span>{item.source || "Source non renseignée"}</span>
+                          <span style={{ fontWeight: 600, color: "#0f172a" }}>Lire →</span>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+
+            <div style={styles.card}>
+              <div style={styles.cardPadding}>
+                <h2 style={{ marginTop: 0, marginBottom: "18px", fontSize: "22px" }}>Vue lecture</h2>
+                {selectedItem ? (
+                  <div style={styles.readerArea}>
+                    <div style={{ marginBottom: "14px" }}>
+                      <span style={{ ...styles.badge, ...scoreStyle(selectedItem.relevanceScore) }}>
+                        {selectedItem.relevanceScore ?? "—"}
+                      </span>
+                      {selectedItem.documentType && (
+                        <span style={{ ...styles.badge, background: "#e2e8f0", color: "#0f172a" }}>
+                          {selectedItem.documentType}
+                        </span>
+                      )}
+                      {selectedItem.status && (
+                        <span style={{ ...styles.badge, background: "#fff", color: "#475569", border: "1px solid #cbd5e1" }}>
+                          {selectedItem.status}
+                        </span>
+                      )}
                     </div>
-                    <h3 className="mb-2 text-base font-semibold leading-6">{item.title}</h3>
-                    <p className="mb-3 line-clamp-4 text-sm leading-6 text-slate-600">{item.summary}</p>
-                    <p className="text-sm leading-6 text-slate-700"><span className="font-medium">Angle :</span> {item.exploitationAngle}</p>
+
+                    <h3 style={styles.readerTitle}>{selectedItem.title}</h3>
+
+                    <div style={{ ...styles.muted, fontSize: "14px", display: "flex", gap: "14px", flexWrap: "wrap", marginBottom: "20px" }}>
+                      {selectedItem.date && <span>🗓 {selectedItem.date}</span>}
+                      {selectedItem.institution && <span>🏛 {selectedItem.institution}</span>}
+                      {selectedItem.source && <span>{selectedItem.source}</span>}
+                    </div>
+
+                    {(selectedItem.themes || []).length > 0 && (
+                      <div style={{ marginBottom: "18px" }}>
+                        <div style={styles.sectionTitle}>Thèmes</div>
+                        <div style={styles.buttonGroup}>
+                          {selectedItem.themes.map((theme) => (
+                            <span key={theme} style={{ ...styles.badge, background: "#e2e8f0", color: "#0f172a" }}>
+                              {theme}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ marginBottom: "18px" }}>
+                      <div style={styles.sectionTitle}>Résumé</div>
+                      <div style={styles.summary}>
+                        {selectedItem.summary || "Aucun résumé disponible."}
+                      </div>
+                    </div>
+
+                    {(selectedItem.keywords || []).length > 0 && (
+                      <div style={{ marginBottom: "18px" }}>
+                        <div style={styles.sectionTitle}>Concepts clés</div>
+                        <div style={styles.buttonGroup}>
+                          {selectedItem.keywords.map((keyword) => (
+                            <span
+                              key={keyword}
+                              style={{ ...styles.badge, background: "#fff", color: "#334155", border: "1px solid #cbd5e1" }}
+                            >
+                              {keyword}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {(selectedItem.innovations || []).length > 0 && (
+                      <div style={{ marginBottom: "18px" }}>
+                        <div style={styles.sectionTitle}>Innovations technologiques</div>
+                        <div style={styles.buttonGroup}>
+                          {selectedItem.innovations.map((innovation) => (
+                            <span
+                              key={innovation}
+                              style={{ ...styles.badge, background: "#dbeafe", color: "#1e3a8a" }}
+                            >
+                              {innovation}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {(selectedItem.actors || []).length > 0 && (
+                      <div style={{ marginBottom: "18px" }}>
+                        <div style={styles.sectionTitle}>Acteurs mentionnés</div>
+                        <div style={styles.buttonGroup}>
+                          {selectedItem.actors.map((actor) => (
+                            <span
+                              key={actor}
+                              style={{ ...styles.badge, background: "#e2e8f0", color: "#0f172a" }}
+                            >
+                              {actor}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: "16px", marginBottom: "18px" }}>
+                      <div style={styles.softBlock}>
+                        <div style={styles.sectionTitle}>Signal faible</div>
+                        <div style={{ fontSize: "14px", lineHeight: 1.7, color: "#334155" }}>
+                          {selectedItem.weakSignal || "Non renseigné"}
+                        </div>
+                      </div>
+                      <div style={styles.softBlock}>
+                        <div style={styles.sectionTitle}>Impact stratégique</div>
+                        <div style={{ fontSize: "14px", lineHeight: 1.7, color: "#334155" }}>
+                          {selectedItem.strategicImpact ?? "Non renseigné"}
+                        </div>
+                      </div>
+                    </div>
+
+                    <div style={{ ...styles.softBlock, marginBottom: "18px" }}>
+                      <div style={styles.sectionTitle}>Angle d’exploitation</div>
+                      <div style={{ fontSize: "14px", lineHeight: 1.7, color: "#334155" }}>
+                        {selectedItem.exploitationAngle || "Aucun angle d’exploitation disponible."}
+                      </div>
+                    </div>
+
+                    <div style={styles.actionRow}>
+                      <button style={styles.primaryBtn} onClick={() => toggleFavorite(selectedItem.id)}>
+                        {favoriteIds.has(selectedItem.id) ? "Retirer des favoris" : "Ajouter aux favoris"}
+                      </button>
+                      <button style={styles.actionBtn} onClick={() => toggleNote(selectedItem.id)}>
+                        {noteIds.has(selectedItem.id) ? "Retirer de la note" : "Préparer une note"}
+                      </button>
+                      <a href={selectedItem.url || "#"} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                        <button style={styles.actionBtn}>Ouvrir la source</button>
+                      </a>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={styles.softBlock}>Aucun item ne correspond aux filtres.</div>
+                )}
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div style={styles.card}>
+          <div style={styles.cardPadding}>
+            <h2 style={{ marginTop: 0, marginBottom: "18px", fontSize: "22px" }}>
+              Mode “Préparer une note”
+            </h2>
+            {notePrepItems.length === 0 ? (
+              <div style={styles.softBlock}>Aucun item n’est encore marqué pour une note.</div>
+            ) : (
+              <div style={styles.noteGrid}>
+                {notePrepItems.map((item) => (
+                  <div key={item.id} style={styles.noteBox}>
+                    <div style={{ marginBottom: "10px", display: "flex", justifyContent: "space-between" }}>
+                      <span style={{ ...styles.badge, ...scoreStyle(item.relevanceScore) }}>
+                        {item.relevanceScore ?? "—"}
+                      </span>
+                      <span style={{ fontSize: "12px", color: "#64748b" }}>{item.date}</span>
+                    </div>
+                    <div style={{ fontSize: "18px", fontWeight: 700, lineHeight: 1.4, marginBottom: "10px" }}>
+                      {item.title}
+                    </div>
+                    <div style={{ fontSize: "14px", lineHeight: 1.7, color: "#475569", marginBottom: "10px" }}>
+                      {item.summary}
+                    </div>
+                    <div style={{ fontSize: "14px", lineHeight: 1.7, color: "#334155" }}>
+                      <strong>Angle :</strong> {item.exploitationAngle}
+                    </div>
                   </div>
                 ))}
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
+
+      <style>{`
+        @media (max-width: 1100px) {
+          .dummy {}
+        }
+        @media (max-width: 1100px) {
+          div[style*="grid-template-columns: 1.4fr 0.6fr"] {
+            grid-template-columns: 1fr !important;
+          }
+          div[style*="grid-template-columns: 320px 1fr"] {
+            grid-template-columns: 1fr !important;
+          }
+          div[style*="grid-template-columns: 0.9fr 1.1fr"] {
+            grid-template-columns: 1fr !important;
+          }
+          div[style*="repeat(3, 1fr)"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+        @media (max-width: 700px) {
+          div[style*="grid-template-columns: 1fr 1fr"] {
+            grid-template-columns: 1fr !important;
+          }
+        }
+      `}</style>
     </div>
   );
 }
