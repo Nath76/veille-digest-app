@@ -25,56 +25,7 @@ const theme = {
   fontSerif: 'Georgia, "Times New Roman", serif',
 };
 
-const fallbackData = [
-  {
-    id: "demo-1",
-    date: "2026-03-29",
-    title: "Les modèles de langage s'imposent dans les salles de rédaction françaises",
-    url: "#",
-    source: "lemonde.fr",
-    composante: "Veille éditoriale",
-    institution: "Le Monde",
-    documentType: "article",
-    actors: ["Le Figaro", "L'Équipe", "AFP"],
-    keywords: ["médias", "IA générative", "rédaction"],
-    summary:
-      "Plusieurs grands médias annoncent des partenariats et des expérimentations autour de l'IA générative pour accélérer certaines tâches éditoriales, automatiser des formats répétitifs et soutenir la production de contenus. Le document montre toutefois que ces usages restent encadrés par des considérations juridiques, organisationnelles et réputationnelles. Il met aussi en évidence un débat croissant sur les limites de l'automatisation, la vérification des faits et la place du jugement humain dans la chaîne éditoriale.",
-    innovations: ["IA générative", "automatisation éditoriale"],
-    weakSignal: "Oui",
-    strategicImpact: 2,
-    relevanceScore: 89,
-    themes: ["IA", "médias", "numérique"],
-    exploitationAngle:
-      "Peut alimenter une note sur la diffusion des usages de l'IA générative dans des organisations soumises à de fortes contraintes de fiabilité.",
-    favorite: true,
-    noteCandidate: true,
-    status: "Nouveau",
-  },
-  {
-    id: "demo-2",
-    date: "2026-03-28",
-    title: "Le design thinking entre à l'école primaire : bilan d'une expérimentation",
-    url: "#",
-    source: "educpros",
-    composante: "Veille éditoriale",
-    institution: "EducPros",
-    documentType: "bilan",
-    actors: ["enseignants", "ministère"],
-    keywords: ["pédagogie", "expérimentation", "coopération"],
-    summary:
-      "Une étude menée dans plusieurs classes pilotes met en avant des effets positifs sur l'engagement des élèves, la coopération et l'expression des idées. Elle souligne cependant la charge de préparation pour les enseignants et les conditions nécessaires à un passage à l'échelle. Le document intéresse surtout comme exemple de traduction opérationnelle d'une méthode de conception dans un cadre éducatif.",
-    innovations: ["design thinking"],
-    weakSignal: "Non",
-    strategicImpact: 1,
-    relevanceScore: 73,
-    themes: ["pédagogie", "innovation", "design"],
-    exploitationAngle:
-      "Peut servir d'appui comparatif sur les usages d'approches de conception collaborative dans des organisations publiques.",
-    favorite: false,
-    noteCandidate: false,
-    status: "Traité",
-  },
-];
+const fallbackData = [];
 
 function normalizeArray(value) {
   if (Array.isArray(value)) return value;
@@ -109,8 +60,18 @@ function smallCaps(text) {
   };
 }
 
+function cleanHtml(s) {
+  return (s || "")
+    .replace(/<[^>]+>/g, "")
+    .replace(/&quot;/g, '"')
+    .replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&")
+    .replace(/&nbsp;/g, " ")
+    .trim();
+}
+
 export default function VeilleDigestReader() {
-  const DATA_URL = "./digests.json";
+  const DATA_URL = "https://script.google.com/macros/s/AKfycby0EXVm6kKCqWh3Zy1xMiMqDBmUAUqKpVfsmx5QE2iSUvqCpj-Rs-8Bs5izhF-Td88oEA/exec";
   const [items, setItems] = useState(fallbackData);
   const [query, setQuery] = useState("");
   const [selectedTheme, setSelectedTheme] = useState("Toutes les productions éditorialisées");
@@ -126,15 +87,28 @@ export default function VeilleDigestReader() {
     fetch(`${DATA_URL}?t=${Date.now()}`)
       .then((r) => (r.ok ? r.json() : Promise.reject(new Error("No JSON found"))))
       .then((data) => {
-        const normalized = data.map((item) => ({
-          ...item,
-          actors: normalizeArray(item.actors),
-          keywords: normalizeArray(item.keywords),
-          innovations: normalizeArray(item.innovations),
-          themes: normalizeArray(item.themes),
-          favorite: Boolean(item.favorite),
-          noteCandidate: Boolean(item.noteCandidate),
-        }));
+        // Dédoublonnage par URL
+        const seen = new Set();
+        const deduped = data.filter((i) => {
+          const k = i.url || i.title;
+          if (!k || seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+        const normalized = deduped
+          .filter((item) => item.title && cleanHtml(item.title).trim() !== "")
+          .map((item, index) => ({
+            ...item,
+            // Fix: "NONE" n'est pas un vrai id
+            id: String(item.id && item.id !== "NONE" && item.id !== "none" ? item.id : item.url || item.title || index),
+            title: cleanHtml(item.title),
+            actors: normalizeArray(item.actors),
+            keywords: normalizeArray(item.keywords),
+            innovations: normalizeArray(item.innovations),
+            themes: normalizeArray(item.themes),
+            favorite: Boolean(item.favorite),
+            noteCandidate: Boolean(item.noteCandidate),
+          }));
         setItems(normalized);
         setFavoriteIds(new Set(normalized.filter((i) => i.favorite).map((i) => i.id)));
         setNoteIds(new Set(normalized.filter((i) => i.noteCandidate).map((i) => i.id)));
@@ -142,9 +116,6 @@ export default function VeilleDigestReader() {
         setLastUpdated(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
       })
       .catch(() => {
-        setFavoriteIds(new Set(fallbackData.filter((i) => i.favorite).map((i) => i.id)));
-        setNoteIds(new Set(fallbackData.filter((i) => i.noteCandidate).map((i) => i.id)));
-        setSelectedItemId(fallbackData[0]?.id ?? null);
         setLastUpdated(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
       })
       .finally(() => {
@@ -224,9 +195,6 @@ export default function VeilleDigestReader() {
   return (
     <div style={{ minHeight: "100vh", background: theme.colors.page, color: theme.colors.text, fontFamily: theme.fontSans }}>
       <div style={{ maxWidth: 1400, margin: "0 auto", padding: 26 }}>
-        <div style={{ marginBottom: 18, color: "#6b7280", fontSize: 14 }}>
-          Envisioned polished editorial design with fonctionnalités enrichies
-        </div>
 
         <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", border: `1px solid ${theme.colors.border}`, background: theme.colors.panel, minHeight: 820 }}>
           <aside style={{ borderRight: `1px solid ${theme.colors.border}`, background: theme.colors.panelSoft }}>
@@ -287,12 +255,6 @@ export default function VeilleDigestReader() {
                   </div>
                 ))}
               </div>
-              <div style={{ display: "flex", gap: 8, marginTop: 10 }}>
-                <div style={{ flex: 1, background: theme.colors.white, border: `1px solid ${theme.colors.border}`, borderRadius: 10, padding: "10px 12px", color: "#8b95a7", fontSize: 16 }}>
-                  URL du flux RSS.
-                </div>
-                <button style={{ width: 42, borderRadius: 10, border: `1px solid ${theme.colors.border}`, background: theme.colors.panel, cursor: "pointer", fontSize: 20 }}>+</button>
-              </div>
             </div>
 
             <div style={{ padding: 22 }}>
@@ -310,27 +272,27 @@ export default function VeilleDigestReader() {
               <div style={{ padding: "16px 20px" }}>
                 <span style={{ ...smallCaps(), marginRight: 12 }}>Digest</span>
                 <span style={{ fontSize: 17, fontWeight: 600, color: theme.colors.darkLine }}>
-                  {selectedItem?.date ? selectedItem.date.replace(/-/g, " ") : "DIMANCHE 29 MARS 2026"}
+                  {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).toUpperCase()}
                 </span>
               </div>
               <div style={{ padding: "16px 20px", color: theme.colors.muted, fontSize: 15, display: "flex", alignItems: "center", gap: 10 }}>
-              <button
-                onClick={loadData}
-                disabled={isRefreshing}
-                style={{
-                  borderRadius: 999,
-                  border: `1px solid ${theme.colors.border}`,
-                  background: theme.colors.white,
-                  color: theme.colors.text,
-                  padding: "8px 14px",
-                  cursor: isRefreshing ? "default" : "pointer",
-                  opacity: isRefreshing ? 0.7 : 1,
-                }}
-              >
-                {isRefreshing ? "Actualisation..." : "Actualiser le digest"}
-              </button>
-              <span>{lastUpdated ? `Maj ${lastUpdated}` : ""}</span>
-            </div>
+                <button
+                  onClick={loadData}
+                  disabled={isRefreshing}
+                  style={{
+                    borderRadius: 999,
+                    border: `1px solid ${theme.colors.border}`,
+                    background: theme.colors.white,
+                    color: theme.colors.text,
+                    padding: "8px 14px",
+                    cursor: isRefreshing ? "default" : "pointer",
+                    opacity: isRefreshing ? 0.7 : 1,
+                  }}
+                >
+                  {isRefreshing ? "Actualisation..." : "Actualiser le digest"}
+                </button>
+                <span>{lastUpdated ? `Maj ${lastUpdated}` : ""}</span>
+              </div>
             </div>
 
             <div style={{ padding: "14px 20px", borderBottom: `1px solid ${theme.colors.border}`, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
@@ -338,14 +300,17 @@ export default function VeilleDigestReader() {
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Générez un digest pour voir les thèmes"
-                style={{ flex: 1, minWidth: 220, border: "none", background: "transparent", outline: "none", color: theme.colors.accent, fontSize: 16, fontStyle: "italic" }}
+                placeholder="Rechercher..."
+                style={{ flex: 1, minWidth: 220, border: "none", background: "transparent", outline: "none", color: theme.colors.accent, fontSize: 16 }}
               />
             </div>
 
             <div style={{ padding: 0, display: "grid", gridTemplateRows: "1fr auto", minHeight: 705 }}>
               <div style={{ display: "grid", gridTemplateColumns: selectedItem ? "1fr 1fr" : "1fr" }}>
                 <div style={{ padding: 24, borderRight: selectedItem ? `1px solid ${theme.colors.border}` : "none", maxHeight: 620, overflowY: "auto" }}>
+                  {items.length === 0 && (
+                    <div style={{ textAlign: "center", padding: 40, ...smallCaps() }}>Chargement en cours...</div>
+                  )}
                   <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
                     {filteredItems.map((item) => {
                       const selected = selectedItem?.id === item.id;
@@ -370,6 +335,7 @@ export default function VeilleDigestReader() {
                                 PERTINENCE {Math.round((item.relevanceScore || 0) / 20) || 0}/5
                               </span>
                             </div>
+                            <div style={{ ...smallCaps(), marginBottom: 6, color: theme.colors.muted }}>{item.date} · {item.documentType}</div>
                             <div style={{ fontFamily: theme.fontSerif, fontSize: 24, lineHeight: 1.23, fontWeight: 700, color: theme.colors.darkLine, marginBottom: 12 }}>
                               {item.title}
                             </div>
@@ -412,7 +378,7 @@ export default function VeilleDigestReader() {
                         Votre digest du jour
                       </div>
                       <div style={{ color: theme.colors.accent, fontSize: 16, lineHeight: 1.8 }}>
-                        {selectedItem.institution || "Ajoutez des sources RSS, renseignez votre clé API et cliquez sur Générer le digest"}
+                        {selectedItem.institution || ""}
                       </div>
                     </div>
 
@@ -429,20 +395,20 @@ export default function VeilleDigestReader() {
                         {selectedItem.documentType} · {selectedItem.date} · {selectedItem.source}
                       </div>
 
-                      {splitParagraphs(selectedItem.summary || "").map((p, idx) => (
-                        <p key={idx} style={{ color: theme.colors.text, fontSize: 16, lineHeight: 1.9, marginTop: idx === 0 ? 0 : 0, marginBottom: 14 }}>
-                          {p}
-                        </p>
-                      ))}
-
                       {(selectedItem.keywords || []).length > 0 && (
-                        <div style={{ marginTop: 18 }}>
+                        <div style={{ marginBottom: 16 }}>
                           <div style={smallCaps()}>Concepts clés</div>
                           <div style={{ marginTop: 10 }}>
                             {(selectedItem.keywords || []).map((k) => <span key={k} style={{ display: "inline-block", marginRight: 8, marginBottom: 8, borderRadius: 999, background: theme.colors.chip, color: theme.colors.chipText, padding: "6px 10px", fontSize: 13 }}>{k}</span>)}
                           </div>
                         </div>
                       )}
+
+                      {splitParagraphs(selectedItem.summary || "").map((p, idx) => (
+                        <p key={idx} style={{ color: theme.colors.text, fontSize: 16, lineHeight: 1.9, marginBottom: 14 }}>
+                          {p}
+                        </p>
+                      ))}
 
                       {(selectedItem.innovations || []).length > 0 && (
                         <div style={{ marginTop: 18 }}>
@@ -489,8 +455,8 @@ export default function VeilleDigestReader() {
 
               <div style={{ borderTop: `1px solid ${theme.colors.border}`, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", textAlign: "center", padding: "14px 10px", background: theme.colors.panel }}>
                 <div>
-                  <div style={{ fontSize: 28, fontFamily: theme.fontSerif }}>—</div>
-                  <div style={smallCaps()}>Résumés</div>
+                  <div style={{ fontSize: 28, fontFamily: theme.fontSerif }}>{items.length}</div>
+                  <div style={smallCaps()}>Publications</div>
                 </div>
                 <div>
                   <div style={{ fontSize: 28, fontFamily: theme.fontSerif }}>{favoriteIds.size}</div>
@@ -501,8 +467,8 @@ export default function VeilleDigestReader() {
                   <div style={smallCaps()}>Sources</div>
                 </div>
                 <div>
-                  <div style={{ fontSize: 28, fontFamily: theme.fontSerif }}>—</div>
-                  <div style={smallCaps()}>Score moy</div>
+                  <div style={{ fontSize: 28, fontFamily: theme.fontSerif }}>{noteIds.size}</div>
+                  <div style={smallCaps()}>En note</div>
                 </div>
               </div>
             </div>
