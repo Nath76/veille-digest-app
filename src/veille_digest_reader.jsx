@@ -110,7 +110,7 @@ function smallCaps(text) {
 }
 
 export default function VeilleDigestReader() {
-  const DATA_URL = "./digests.json";
+  const DATA_URL = "https://script.google.com/macros/s/AKfycby0EXVm6kKCqWh3Zy1xMiMqDBmUAUqKpVfsmx5QE2iSUvqCpj-Rs-8Bs5izhF-Td88oEA/exec";
   const [items, setItems] = useState(fallbackData);
   const [query, setQuery] = useState("");
   const [selectedTheme, setSelectedTheme] = useState("Toutes les productions éditorialisées");
