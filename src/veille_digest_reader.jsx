@@ -103,10 +103,18 @@ export default function VeilleDigestReader() {
     fetch(`${DATA_URL}?t=${Date.now()}`)
       .then(r => r.ok ? r.json() : Promise.reject())
       .then(data => {
+        // Dédoublonnage par URL
         const seen = new Set();
-        const deduped = data.filter(i => { const k = i.url || i.title; if (seen.has(k)) return false; seen.add(k); return true; });
-        const norm = deduped.map(i => ({
+        const deduped = data.filter(i => {
+          const k = i.url || i.title;
+          if (seen.has(k)) return false;
+          seen.add(k);
+          return true;
+        });
+        // Normalisation + id garanti unique
+        const norm = deduped.map((i, index) => ({
           ...i,
+          id: String(i.id || i.url || i.title || index),
           title: cleanHtml(i.title),
           actors: normalizeArray(i.actors),
           keywords: normalizeArray(i.keywords),
@@ -118,7 +126,7 @@ export default function VeilleDigestReader() {
         setItems(norm);
         setFavs(new Set(norm.filter(i => i.favorite).map(i => i.id)));
         setNotes(new Set(norm.filter(i => i.noteCandidate).map(i => i.id)));
-        setSelectedId(norm[0]?.id ?? null);
+        if (norm.length > 0) setSelectedId(norm[0].id);
         setLastUpd(timeNow());
       })
       .catch(() => { setLastUpd(timeNow()); })
@@ -318,5 +326,6 @@ export default function VeilleDigestReader() {
     </div>
   );
 }
+
 
 
