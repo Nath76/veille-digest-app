@@ -1,42 +1,20 @@
-import React, { useEffect, useMemo, useState, useCallback } from "react";
+import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
 
-const theme = {
-  colors: {
-    page: "#f2efe8",
-    panel: "#e7e0d0",
-    panelSoft: "#ede7d8",
-    border: "#cbbfa8",
-    text: "#1e293b",
-    muted: "#7a6f5c",
-    accent: "#8a4b22",
-    darkLine: "#2b2a24",
-    white: "#fffdf8",
-    chip: "#f5f0e6",
-    chipText: "#4f4638",
-    selected: "#f8f3e8",
-    favoriteBg: "#fce7b2",
-    favoriteText: "#8a4b22",
-    noteBg: "#dbeafe",
-    noteText: "#1d4ed8",
-    green: "#1f7a45",
-  },
-  fontSans:
-    'Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif',
-  fontSerif: 'Georgia, "Times New Roman", serif',
+const C = {
+  page: "#f2efe8", panel: "#e7e0d0", panelSoft: "#ede7d8",
+  border: "#cbbfa8", text: "#1e293b", muted: "#7a6f5c",
+  accent: "#8a4b22", dark: "#2b2a24", white: "#fffdf8",
+  chip: "#f5f0e6", chipText: "#4f4638",
+  green: "#1f7a45", noteBg: "#dbeafe", noteText: "#1d4ed8",
 };
+const serif = 'Georgia, "Times New Roman", serif';
+const sans = 'Inter, ui-sans-serif, system-ui, sans-serif';
 
-const fallbackData = [];
-
-function normalizeArray(value) {
-  if (Array.isArray(value)) return value;
-  if (!value) return [];
-  return String(value)
-    .split(";")
-    .map((v) => v.trim())
-    .filter(Boolean);
+function sc(extra = {}) {
+  return { fontSize: 11, letterSpacing: ".16em", textTransform: "uppercase", color: C.muted, ...extra };
 }
 
-function scorePillStyle(score) {
+function scorePill(score) {
   const n = Number(score || 0);
   if (n >= 85) return { background: "#dcefdc", color: "#1f7a45" };
   if (n >= 70) return { background: "#f9e7c8", color: "#a16207" };
@@ -44,50 +22,57 @@ function scorePillStyle(score) {
   return { background: "#ece7dc", color: "#6b7280" };
 }
 
-function splitParagraphs(text) {
-  return String(text || "")
-    .split(/\n+/)
-    .map((p) => p.trim())
-    .filter(Boolean);
-}
-
-function smallCaps(text) {
-  return {
-    fontSize: 12,
-    letterSpacing: ".16em",
-    textTransform: "uppercase",
-    color: theme.colors.muted,
-  };
+function normalizeArray(v) {
+  if (Array.isArray(v)) return v;
+  if (!v) return [];
+  return String(v).split(";").map((s) => s.trim()).filter(Boolean);
 }
 
 function cleanHtml(s) {
   return (s || "")
     .replace(/<[^>]+>/g, "")
-    .replace(/&quot;/g, '"')
-    .replace(/&#39;/g, "'")
-    .replace(/&amp;/g, "&")
-    .replace(/&nbsp;/g, " ")
+    .replace(/&quot;/g, '"').replace(/&#39;/g, "'")
+    .replace(/&amp;/g, "&").replace(/&nbsp;/g, " ")
     .trim();
 }
 
+// Un item est un événement si son documentType le mentionne
+function isEvent(item) {
+  return /[ée]v[ée]nement|event/i.test(item.documentType || "");
+}
+
 export default function VeilleDigestReader() {
-  const DATA_URL = "https://script.google.com/macros/s/AKfycby0EXVm6kKCqWh3Zy1xMiMqDBmUAUqKpVfsmx5QE2iSUvqCpj-Rs-8Bs5izhF-Td88oEA/exec";
-  const [items, setItems] = useState(fallbackData);
+  const DATA_URL =
+    "https://script.google.com/macros/s/AKfycby0EXVm6kKCqWh3Zy1xMiMqDBmUAUqKpVfsmx5QE2iSUvqCpj-Rs-8Bs5izhF-Td88oEA/exec";
+
+  const [items, setItems] = useState([]);
+  const [dismissed, setDismissed] = useState(new Set());
   const [query, setQuery] = useState("");
-  const [selectedTheme, setSelectedTheme] = useState("Toutes les productions éditorialisées");
+  const [selectedTheme, setSelectedTheme] = useState("Toutes");
   const [sortBy, setSortBy] = useState("relevance");
-  const [selectedItemId, setSelectedItemId] = useState(null);
+  const [tab, setTab] = useState("publications"); // "publications" | "evenements"
+  const [selectedId, setSelectedId] = useState(null);
   const [favoriteIds, setFavoriteIds] = useState(new Set());
   const [noteIds, setNoteIds] = useState(new Set());
   const [isRefreshing, setIsRefreshing] = useState(false);
   const [lastUpdated, setLastUpdated] = useState("");
+  const [toast, setToast] = useState(null);
+
+  const prevIdsRef = useRef(new Set());
+  const toastTimer = useRef(null);
+
+  function showToast(msg) {
+    setToast(msg);
+    if (toastTimer.current) clearTimeout(toastTimer.current);
+    toastTimer.current = setTimeout(() => setToast(null), 4000);
+  }
 
   const loadData = useCallback(() => {
     setIsRefreshing(true);
     fetch(`${DATA_URL}?t=${Date.now()}`)
-      .then((r) => (r.ok ? r.json() : Promise.reject(new Error("No JSON found"))))
+      .then((r) => (r.ok ? r.json() : Promise.reject()))
       .then((data) => {
-        // Dédoublonnage par URL
+        // Dédoublonnage strict par URL ou titre
         const seen = new Set();
         const deduped = data.filter((i) => {
           const k = i.url || i.title;
@@ -95,396 +80,421 @@ export default function VeilleDigestReader() {
           seen.add(k);
           return true;
         });
+
         const normalized = deduped
-          .filter((item) => item.title && cleanHtml(item.title).trim() !== "")
-          .map((item, index) => ({
+          .filter((i) => i.title && cleanHtml(i.title).trim())
+          .map((item, idx) => ({
             ...item,
-            // Fix: "NONE" n'est pas un vrai id
-            id: String(item.id && item.id !== "NONE" && item.id !== "none" ? item.id : item.url || item.title || index),
+            id: String(
+              item.id && item.id !== "NONE" && item.id !== "none"
+                ? item.id
+                : item.url || item.title || idx
+            ),
             title: cleanHtml(item.title),
             actors: normalizeArray(item.actors),
             keywords: normalizeArray(item.keywords),
             innovations: normalizeArray(item.innovations),
             themes: normalizeArray(item.themes),
-            favorite: Boolean(item.favorite),
-            noteCandidate: Boolean(item.noteCandidate),
           }));
+
+        // Calcul des ajouts depuis la dernière actualisation
+        const newIds = new Set(normalized.map((i) => i.id));
+        const addedCount = [...newIds].filter((id) => !prevIdsRef.current.has(id)).length;
+        prevIdsRef.current = newIds;
+
         setItems(normalized);
         setFavoriteIds(new Set(normalized.filter((i) => i.favorite).map((i) => i.id)));
         setNoteIds(new Set(normalized.filter((i) => i.noteCandidate).map((i) => i.id)));
-        if (normalized[0]) setSelectedItemId((prev) => prev && normalized.some((i) => i.id === prev) ? prev : normalized[0].id);
-        setLastUpdated(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
+
+        const t = new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+        setLastUpdated(t);
+
+        if (addedCount > 0) {
+          showToast(`+${addedCount} nouvelle${addedCount > 1 ? "s" : ""} production${addedCount > 1 ? "s" : ""} ajoutée${addedCount > 1 ? "s" : ""}`);
+        } else if (prevIdsRef.current.size > 0) {
+          showToast("Digest à jour");
+        }
       })
-      .catch(() => {
-        setLastUpdated(new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" }));
-      })
-      .finally(() => {
-        setIsRefreshing(false);
-      });
+      .catch(() => showToast("Erreur de chargement"))
+      .finally(() => setIsRefreshing(false));
   }, []);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
+  // Thèmes disponibles (productions seulement, hors dismissed)
   const allThemes = useMemo(() => {
-    const values = new Set();
-    items.forEach((item) => normalizeArray(item.themes).forEach((theme) => values.add(theme)));
-    return ["Toutes les productions éditorialisées", ...Array.from(values).sort((a, b) => a.localeCompare(b))];
-  }, [items]);
+    const s = new Set();
+    items
+      .filter((i) => !dismissed.has(i.id) && !isEvent(i))
+      .forEach((i) => normalizeArray(i.themes).forEach((t) => s.add(t)));
+    return ["Toutes", ...Array.from(s).sort((a, b) => a.localeCompare(b))];
+  }, [items, dismissed]);
 
-  const filteredItems = useMemo(() => {
+  const visibleItems = useMemo(() => {
     const q = query.trim().toLowerCase();
-    const list = items.filter((item) => {
-      const haystack = [
-        item.title,
-        item.summary,
-        item.institution,
-        ...(item.themes || []),
-        ...(item.keywords || []),
-      ]
-        .filter(Boolean)
-        .join(" ")
-        .toLowerCase();
+    return items
+      .filter((i) => !dismissed.has(i.id))
+      .filter((i) => (tab === "evenements" ? isEvent(i) : !isEvent(i)))
+      .filter((i) => {
+        const hay = [i.title, i.summary, i.institution, ...(i.themes || []), ...(i.keywords || [])]
+          .filter(Boolean).join(" ").toLowerCase();
+        const matchQ = !q || hay.includes(q);
+        const matchT = selectedTheme === "Toutes" || (i.themes || []).includes(selectedTheme);
+        return matchQ && matchT;
+      })
+      .sort((a, b) => {
+        if (sortBy === "date") return String(b.date).localeCompare(String(a.date));
+        if (sortBy === "title") return String(a.title).localeCompare(String(b.title));
+        return Number(b.relevanceScore || 0) - Number(a.relevanceScore || 0);
+      });
+  }, [items, dismissed, tab, query, selectedTheme, sortBy]);
 
-      const matchesQuery = !q || haystack.includes(q);
-      const matchesTheme =
-        selectedTheme === "Toutes les productions éditorialisées" || (item.themes || []).includes(selectedTheme);
-      return matchesQuery && matchesTheme;
-    });
+  const selectedItem = selectedId ? items.find((i) => i.id === selectedId) : null;
+  const pubCount = useMemo(() => items.filter((i) => !dismissed.has(i.id) && !isEvent(i)).length, [items, dismissed]);
+  const evtCount = useMemo(() => items.filter((i) => !dismissed.has(i.id) && isEvent(i)).length, [items, dismissed]);
+  const rssSources = useMemo(() => Array.from(new Set(items.map((i) => i.source).filter(Boolean))), [items]);
 
-    return [...list].sort((a, b) => {
-      if (sortBy === "date") return String(b.date).localeCompare(String(a.date));
-      if (sortBy === "title") return String(a.title).localeCompare(String(b.title));
-      return Number(b.relevanceScore || 0) - Number(a.relevanceScore || 0);
-    });
-  }, [items, query, selectedTheme, sortBy]);
-
-  useEffect(() => {
-    if (!filteredItems.length) {
-      setSelectedItemId(null);
-      return;
-    }
-    if (!selectedItemId || !filteredItems.some((item) => item.id === selectedItemId)) {
-      setSelectedItemId(filteredItems[0].id);
-    }
-  }, [filteredItems, selectedItemId]);
-
-  const selectedItem = filteredItems.find((item) => item.id === selectedItemId) || filteredItems[0] || null;
-  const notePrepItems = filteredItems.filter((item) => noteIds.has(item.id));
-  const rssSources = Array.from(new Set(items.map((i) => i.source).filter(Boolean)));
-
-  function toggleFavorite(id) {
-    setFavoriteIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  function dismiss(id, e) {
+    e.stopPropagation();
+    setDismissed((prev) => new Set([...prev, id]));
+    if (selectedId === id) setSelectedId(null);
   }
 
-  function toggleNote(id) {
-    setNoteIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(id)) next.delete(id);
-      else next.add(id);
-      return next;
-    });
+  function toggleFav(id, e) {
+    if (e) e.stopPropagation();
+    setFavoriteIds((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
   }
 
+  function toggleNote(id, e) {
+    if (e) e.stopPropagation();
+    setNoteIds((p) => { const n = new Set(p); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  }
+
+  // ── CARD ──────────────────────────────────────────────────
+  function Card({ item }) {
+    const isFav = favoriteIds.has(item.id);
+    const isNote = noteIds.has(item.id);
+    const scoreN = Math.round((item.relevanceScore || 0) / 20) || 0;
+
+    return (
+      <div
+        onClick={() => setSelectedId(item.id)}
+        style={{
+          background: C.white, border: `1px solid ${C.border}`,
+          padding: "16px 16px 13px", cursor: "pointer", position: "relative",
+          display: "flex", flexDirection: "column", gap: 9,
+          transition: "box-shadow .15s",
+        }}
+        onMouseEnter={(e) => (e.currentTarget.style.boxShadow = "0 4px 18px rgba(0,0,0,.09)")}
+        onMouseLeave={(e) => (e.currentTarget.style.boxShadow = "none")}
+      >
+        {/* Supprimer */}
+        <button
+          onClick={(e) => dismiss(item.id, e)}
+          title="Masquer cette publication"
+          style={{ position: "absolute", top: 9, right: 9, background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: 17, lineHeight: 1, opacity: .4, padding: 2 }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = 1)}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = .4)}
+        >×</button>
+
+        {/* Date en haut */}
+        {item.date && (
+          <div style={{ ...sc(), fontSize: 10 }}>{item.date}</div>
+        )}
+
+        {/* Source + score */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
+          <div style={{ ...sc(), color: C.accent, fontSize: 10 }}>{item.source}</div>
+          <span style={{ borderRadius: 4, padding: "2px 7px", fontSize: 11, fontWeight: 600, ...scorePill(item.relevanceScore) }}>
+            {scoreN}/5
+          </span>
+        </div>
+
+        {/* Mots-clés au-dessus du résumé */}
+        {(item.keywords || []).length > 0 && (
+          <div style={{ display: "flex", flexWrap: "wrap", gap: 5 }}>
+            {(item.keywords || []).slice(0, 4).map((k) => (
+              <span key={k} style={{ background: C.chip, color: C.chipText, borderRadius: 999, padding: "3px 8px", fontSize: 11 }}>{k}</span>
+            ))}
+          </div>
+        )}
+
+        {/* Titre */}
+        <div style={{ fontFamily: serif, fontSize: 17, lineHeight: 1.25, fontWeight: 700, color: C.dark }}>
+          {item.title}
+        </div>
+
+        {/* Résumé */}
+        <div style={{ fontSize: 13, color: C.muted, lineHeight: 1.65, flex: 1 }}>
+          {String(item.summary || "").slice(0, 155)}{(item.summary || "").length > 155 ? "…" : ""}
+        </div>
+
+        {/* Footer carte */}
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 2 }}>
+          <div>
+            {(item.themes || []).slice(0, 1).map((t) => (
+              <span key={t} style={{ background: C.chip, color: C.chipText, borderRadius: 4, padding: "2px 7px", fontSize: 11 }}>{t}</span>
+            ))}
+          </div>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <button onClick={(e) => toggleNote(item.id, e)} title="Préparer une note" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 13, color: isNote ? C.noteText : C.muted }}>✎</button>
+            <button onClick={(e) => toggleFav(item.id, e)} title="Ajouter aux favoris" style={{ background: "none", border: "none", cursor: "pointer", fontSize: 14, color: isFav ? C.accent : C.muted }}>
+              {isFav ? "★" : "☆"}
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  // ── RENDER ────────────────────────────────────────────────
   return (
-    <div style={{ minHeight: "100vh", background: theme.colors.page, color: theme.colors.text, fontFamily: theme.fontSans }}>
-      <div style={{ maxWidth: 1400, margin: "0 auto", padding: 26 }}>
+    <div style={{ minHeight: "100vh", background: C.page, fontFamily: sans, color: C.text }}>
 
-        <div style={{ display: "grid", gridTemplateColumns: "340px 1fr", border: `1px solid ${theme.colors.border}`, background: theme.colors.panel, minHeight: 820 }}>
-          <aside style={{ borderRight: `1px solid ${theme.colors.border}`, background: theme.colors.panelSoft }}>
-            <div style={{ padding: 22, borderBottom: `3px solid ${theme.colors.darkLine}` }}>
-              <div style={{ fontFamily: theme.fontSerif, fontSize: 44, lineHeight: 0.95, fontWeight: 700, color: theme.colors.darkLine }}>Veille.</div>
-              <div style={{ ...smallCaps(), marginTop: 8 }}>Digest éditorial · propulsé par données JSON</div>
+      {/* Toast */}
+      {toast && (
+        <div style={{ position: "fixed", top: 20, right: 20, background: C.dark, color: C.white, padding: "10px 20px", borderRadius: 999, fontSize: 13, fontWeight: 500, zIndex: 9999, boxShadow: "0 4px 20px rgba(0,0,0,.2)", letterSpacing: ".04em" }}>
+          {toast}
+        </div>
+      )}
+
+      {/* Modal détail */}
+      {selectedItem && (
+        <div
+          onClick={() => setSelectedId(null)}
+          style={{ position: "fixed", inset: 0, background: "rgba(30,20,10,.45)", zIndex: 1000, display: "flex", alignItems: "center", justifyContent: "center", padding: 24 }}
+        >
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{ background: C.white, border: `1px solid ${C.border}`, maxWidth: 700, width: "100%", maxHeight: "90vh", overflowY: "auto", padding: 32, position: "relative" }}
+          >
+            <button onClick={() => setSelectedId(null)} style={{ position: "absolute", top: 16, right: 16, background: "none", border: "none", cursor: "pointer", color: C.muted, fontSize: 24, lineHeight: 1 }}>×</button>
+
+            {/* Date en haut */}
+            {selectedItem.date && (
+              <div style={{ ...sc(), fontSize: 11, marginBottom: 8 }}>{selectedItem.date} · {selectedItem.documentType}</div>
+            )}
+
+            {/* Score */}
+            <span style={{ display: "inline-block", borderRadius: 4, padding: "4px 9px", fontSize: 12, fontWeight: 600, marginBottom: 14, ...scorePill(selectedItem.relevanceScore) }}>
+              PERTINENCE {Math.round((selectedItem.relevanceScore || 0) / 20) || 0}/5
+            </span>
+
+            {/* Titre */}
+            <div style={{ fontFamily: serif, fontSize: 30, lineHeight: 1.15, fontWeight: 700, color: C.dark, marginBottom: 10 }}>
+              {selectedItem.title}
             </div>
 
-            <div style={{ padding: 22, borderBottom: `1px solid ${theme.colors.border}` }}>
-              <div style={smallCaps()}>Thèmes</div>
-              <div style={{ marginTop: 18 }}>
-                <button
-                  style={{
-                    width: "100%",
-                    display: "flex",
-                    justifyContent: "space-between",
-                    alignItems: "center",
-                    border: `1px solid ${theme.colors.border}`,
-                    background: theme.colors.white,
-                    borderRadius: 12,
-                    padding: "14px 16px",
-                    cursor: "pointer",
-                    fontSize: 16,
-                  }}
-                >
-                  <span>● {selectedTheme}</span>
-                  <span style={{ color: theme.colors.muted }}>—</span>
-                </button>
+            <div style={{ ...sc(), marginBottom: 18 }}>{selectedItem.source}{selectedItem.institution ? ` · ${selectedItem.institution}` : ""}</div>
+
+            {/* Mots-clés au-dessus du résumé */}
+            {(selectedItem.keywords || []).length > 0 && (
+              <div style={{ marginBottom: 16 }}>
+                <div style={{ ...sc(), marginBottom: 8 }}>Concepts clés</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {(selectedItem.keywords || []).map((k) => (
+                    <span key={k} style={{ background: C.chip, color: C.chipText, borderRadius: 999, padding: "5px 10px", fontSize: 12 }}>{k}</span>
+                  ))}
+                </div>
               </div>
-              <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 8 }}>
-                {allThemes.slice(0, 8).map((themeName) => (
-                  <button
-                    key={themeName}
-                    onClick={() => setSelectedTheme(themeName)}
-                    style={{
-                      border: `1px solid ${selectedTheme === themeName ? theme.colors.darkLine : theme.colors.border}`,
-                      background: selectedTheme === themeName ? theme.colors.darkLine : theme.colors.white,
-                      color: selectedTheme === themeName ? theme.colors.white : theme.colors.text,
-                      borderRadius: 999,
-                      padding: "8px 12px",
-                      fontSize: 13,
-                      cursor: "pointer",
-                    }}
-                  >
-                    {themeName}
+            )}
+
+            {/* Résumé */}
+            {String(selectedItem.summary || "").split(/\n+/).filter(Boolean).map((p, i) => (
+              <p key={i} style={{ fontSize: 15, lineHeight: 1.85, color: C.text, marginBottom: 12 }}>{p}</p>
+            ))}
+
+            {/* Innovations */}
+            {(selectedItem.innovations || []).length > 0 && (
+              <div style={{ marginTop: 14, marginBottom: 14 }}>
+                <div style={{ ...sc(), marginBottom: 8 }}>Innovations</div>
+                <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+                  {(selectedItem.innovations || []).map((k) => (
+                    <span key={k} style={{ background: C.noteBg, color: C.noteText, borderRadius: 999, padding: "5px 10px", fontSize: 12 }}>{k}</span>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Signal + Impact */}
+            <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 18 }}>
+              <div style={{ padding: 14, background: C.panelSoft, border: `1px solid ${C.border}` }}>
+                <div style={sc()}>Signal faible</div>
+                <div style={{ marginTop: 8, lineHeight: 1.7, fontSize: 14 }}>{selectedItem.weakSignal || "Non renseigné"}</div>
+              </div>
+              <div style={{ padding: 14, background: C.panelSoft, border: `1px solid ${C.border}` }}>
+                <div style={sc()}>Impact stratégique</div>
+                <div style={{ marginTop: 8, lineHeight: 1.7, fontSize: 14 }}>{selectedItem.strategicImpact || "Non renseigné"}</div>
+              </div>
+            </div>
+
+            <div style={{ marginTop: 12, padding: 14, background: C.panelSoft, border: `1px solid ${C.border}` }}>
+              <div style={sc()}>Angle d'exploitation</div>
+              <div style={{ marginTop: 8, lineHeight: 1.8, fontSize: 14 }}>{selectedItem.exploitationAngle || "Aucun angle disponible."}</div>
+            </div>
+
+            {/* Actions */}
+            <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 20 }}>
+              <button onClick={() => toggleFav(selectedItem.id)} style={{ borderRadius: 999, border: `1px solid ${C.dark}`, background: C.dark, color: C.white, padding: "9px 16px", cursor: "pointer", fontSize: 13, fontFamily: sans }}>
+                {favoriteIds.has(selectedItem.id) ? "Retirer des favoris" : "Ajouter aux favoris"}
+              </button>
+              <button onClick={() => toggleNote(selectedItem.id)} style={{ borderRadius: 999, border: `1px solid ${C.border}`, background: C.white, color: C.text, padding: "9px 16px", cursor: "pointer", fontSize: 13, fontFamily: sans }}>
+                {noteIds.has(selectedItem.id) ? "Retirer de la note" : "Préparer une note"}
+              </button>
+              {selectedItem.url && (
+                <a href={selectedItem.url} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
+                  <button style={{ borderRadius: 999, border: `1px solid ${C.border}`, background: C.white, color: C.text, padding: "9px 16px", cursor: "pointer", fontSize: 13, fontFamily: sans }}>
+                    Ouvrir la source
                   </button>
+                </a>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      <div style={{ maxWidth: 1400, margin: "0 auto", padding: 26 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "280px 1fr", border: `1px solid ${C.border}`, background: C.panel, minHeight: 820 }}>
+
+          {/* ── SIDEBAR ── */}
+          <aside style={{ borderRight: `1px solid ${C.border}`, background: C.panelSoft }}>
+
+            {/* Logo sans point */}
+            <div style={{ padding: "20px 22px 16px", borderBottom: `3px solid ${C.dark}` }}>
+              <div style={{ fontFamily: serif, fontSize: 42, lineHeight: .95, fontWeight: 700, color: C.dark }}>Veille</div>
+              <div style={{ ...sc(), marginTop: 8 }}>Digest éditorial · Propulsé par données</div>
+            </div>
+
+            {/* Thèmes */}
+            <div style={{ padding: "18px 22px", borderBottom: `1px solid ${C.border}` }}>
+              <div style={sc()}>Thèmes</div>
+              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 3 }}>
+                {allThemes.map((t) => (
+                  <button
+                    key={t}
+                    onClick={() => setSelectedTheme(t)}
+                    style={{ textAlign: "left", padding: "7px 10px", border: "none", borderRadius: 4, background: selectedTheme === t ? C.dark : "transparent", color: selectedTheme === t ? C.white : C.text, cursor: "pointer", fontSize: 13, fontFamily: sans }}
+                  >{t}</button>
                 ))}
               </div>
             </div>
 
-            <div style={{ padding: 22, borderBottom: `1px solid ${theme.colors.border}` }}>
-              <div style={smallCaps()}>Sources RSS</div>
-              <div style={{ marginTop: 16 }}>
-                {rssSources.map((source) => (
-                  <div key={source} style={{ display: "flex", alignItems: "center", gap: 10, marginBottom: 18, color: theme.colors.accent }}>
-                    <span style={{ color: theme.colors.green, fontSize: 12 }}>●</span>
-                    <span style={{ fontSize: 15 }}>{source}</span>
+            {/* Sources */}
+            <div style={{ padding: "18px 22px", borderBottom: `1px solid ${C.border}` }}>
+              <div style={sc()}>Sources</div>
+              <div style={{ marginTop: 12 }}>
+                {rssSources.map((s) => (
+                  <div key={s} style={{ display: "flex", alignItems: "center", gap: 8, marginBottom: 10 }}>
+                    <span style={{ color: C.green, fontSize: 10 }}>●</span>
+                    <span style={{ fontSize: 13, color: C.text }}>{s}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div style={{ padding: 22 }}>
-              <div style={smallCaps()}>Actions</div>
-              <div style={{ marginTop: 14, display: "flex", flexWrap: "wrap", gap: 10 }}>
-                <button onClick={() => setSortBy("relevance")} style={{ borderRadius: 999, border: `1px solid ${sortBy === "relevance" ? theme.colors.darkLine : theme.colors.border}`, background: sortBy === "relevance" ? theme.colors.darkLine : theme.colors.white, color: sortBy === "relevance" ? theme.colors.white : theme.colors.text, padding: "9px 14px", cursor: "pointer" }}>Pertinence</button>
-                <button onClick={() => setSortBy("date")} style={{ borderRadius: 999, border: `1px solid ${sortBy === "date" ? theme.colors.darkLine : theme.colors.border}`, background: sortBy === "date" ? theme.colors.darkLine : theme.colors.white, color: sortBy === "date" ? theme.colors.white : theme.colors.text, padding: "9px 14px", cursor: "pointer" }}>Date</button>
-                <button onClick={() => setSortBy("title")} style={{ borderRadius: 999, border: `1px solid ${sortBy === "title" ? theme.colors.darkLine : theme.colors.border}`, background: sortBy === "title" ? theme.colors.darkLine : theme.colors.white, color: sortBy === "title" ? theme.colors.white : theme.colors.text, padding: "9px 14px", cursor: "pointer" }}>Titre</button>
+            {/* Tri */}
+            <div style={{ padding: "18px 22px" }}>
+              <div style={sc()}>Trier par</div>
+              <div style={{ marginTop: 12, display: "flex", flexDirection: "column", gap: 3 }}>
+                {[["relevance", "Pertinence"], ["date", "Date"], ["title", "Titre"]].map(([v, l]) => (
+                  <button
+                    key={v}
+                    onClick={() => setSortBy(v)}
+                    style={{ textAlign: "left", padding: "7px 10px", border: "none", borderRadius: 4, background: sortBy === v ? C.dark : "transparent", color: sortBy === v ? C.white : C.text, cursor: "pointer", fontSize: 13, fontFamily: sans }}
+                  >{l}</button>
+                ))}
               </div>
             </div>
           </aside>
 
-          <main style={{ background: theme.colors.panelSoft }}>
-            <div style={{ display: "grid", gridTemplateColumns: "1fr auto", alignItems: "center", borderBottom: `1px solid ${theme.colors.border}` }}>
-              <div style={{ padding: "16px 20px" }}>
-                <span style={{ ...smallCaps(), marginRight: 12 }}>Digest</span>
-                <span style={{ fontSize: 17, fontWeight: 600, color: theme.colors.darkLine }}>
-                  {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).toUpperCase()}
-                </span>
-              </div>
-              <div style={{ padding: "16px 20px", color: theme.colors.muted, fontSize: 15, display: "flex", alignItems: "center", gap: 10 }}>
+          {/* ── MAIN ── */}
+          <main style={{ background: C.panelSoft, display: "flex", flexDirection: "column" }}>
+
+            {/* Header */}
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", borderBottom: `1px solid ${C.border}`, padding: "12px 24px" }}>
+              <span style={{ ...sc(), color: C.dark }}>
+                {new Date().toLocaleDateString("fr-FR", { weekday: "long", day: "numeric", month: "long", year: "numeric" }).toUpperCase()}
+              </span>
+              <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                {lastUpdated && <span style={{ ...sc(), fontSize: 10 }}>Maj {lastUpdated}</span>}
                 <button
                   onClick={loadData}
                   disabled={isRefreshing}
-                  style={{
-                    borderRadius: 999,
-                    border: `1px solid ${theme.colors.border}`,
-                    background: theme.colors.white,
-                    color: theme.colors.text,
-                    padding: "8px 14px",
-                    cursor: isRefreshing ? "default" : "pointer",
-                    opacity: isRefreshing ? 0.7 : 1,
-                  }}
-                >
-                  {isRefreshing ? "Actualisation..." : "Actualiser le digest"}
-                </button>
-                <span>{lastUpdated ? `Maj ${lastUpdated}` : ""}</span>
+                  style={{ borderRadius: 999, border: `1px solid ${C.border}`, background: C.white, color: C.text, padding: "7px 16px", cursor: isRefreshing ? "default" : "pointer", fontSize: 12, opacity: isRefreshing ? .7 : 1, fontFamily: sans }}
+                >{isRefreshing ? "Actualisation…" : "Actualiser"}</button>
               </div>
             </div>
 
-            <div style={{ padding: "14px 20px", borderBottom: `1px solid ${theme.colors.border}`, display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
-              <span style={smallCaps()}>Filtrer :</span>
+            {/* Onglets Productions / Événements + recherche */}
+            <div style={{ display: "flex", alignItems: "center", borderBottom: `1px solid ${C.border}`, padding: "0 24px" }}>
+              {[
+                ["publications", `Productions`, pubCount],
+                ["evenements", `Événements`, evtCount],
+              ].map(([key, label, count]) => (
+                <button
+                  key={key}
+                  onClick={() => setTab(key)}
+                  style={{ padding: "12px 16px", background: "none", border: "none", borderBottom: tab === key ? `2px solid ${C.dark}` : "2px solid transparent", color: tab === key ? C.dark : C.muted, cursor: "pointer", fontSize: 13, fontFamily: sans, fontWeight: tab === key ? 600 : 400, display: "flex", alignItems: "center", gap: 7 }}
+                >
+                  {label}
+                  <span style={{ background: C.chip, color: C.chipText, borderRadius: 999, padding: "2px 7px", fontSize: 11, fontWeight: 500 }}>{count}</span>
+                </button>
+              ))}
               <input
                 value={query}
                 onChange={(e) => setQuery(e.target.value)}
-                placeholder="Rechercher..."
-                style={{ flex: 1, minWidth: 220, border: "none", background: "transparent", outline: "none", color: theme.colors.accent, fontSize: 16 }}
+                placeholder="Rechercher…"
+                style={{ marginLeft: "auto", border: "none", background: "transparent", outline: "none", color: C.accent, fontSize: 14, padding: "12px 0", width: 200, fontFamily: sans }}
               />
             </div>
 
-            <div style={{ padding: 0, display: "grid", gridTemplateRows: "1fr auto", minHeight: 705 }}>
-              <div style={{ display: "grid", gridTemplateColumns: selectedItem ? "1fr 1fr" : "1fr" }}>
-                <div style={{ padding: 24, borderRight: selectedItem ? `1px solid ${theme.colors.border}` : "none", maxHeight: 620, overflowY: "auto" }}>
-                  {items.length === 0 && (
-                    <div style={{ textAlign: "center", padding: 40, ...smallCaps() }}>Chargement en cours...</div>
-                  )}
-                  <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 18 }}>
-                    {filteredItems.map((item) => {
-                      const selected = selectedItem?.id === item.id;
-                      const isFavorite = favoriteIds.has(item.id);
-                      return (
-                        <button
-                          key={item.id}
-                          onClick={() => setSelectedItemId(item.id)}
-                          style={{
-                            border: "none",
-                            background: "transparent",
-                            textAlign: "left",
-                            padding: 0,
-                            cursor: "pointer",
-                            opacity: selectedItem && !selected ? 0.94 : 1,
-                          }}
-                        >
-                          <div style={{ borderTop: `1px solid ${theme.colors.border}`, paddingTop: 18 }}>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 10 }}>
-                              <div style={{ ...smallCaps(), color: theme.colors.accent }}>{item.source}</div>
-                              <span style={{ display: "inline-block", borderRadius: 4, padding: "4px 8px", fontSize: 12, fontWeight: 600, ...scorePillStyle(item.relevanceScore) }}>
-                                PERTINENCE {Math.round((item.relevanceScore || 0) / 20) || 0}/5
-                              </span>
-                            </div>
-                            <div style={{ ...smallCaps(), marginBottom: 6, color: theme.colors.muted }}>{item.date} · {item.documentType}</div>
-                            <div style={{ fontFamily: theme.fontSerif, fontSize: 24, lineHeight: 1.23, fontWeight: 700, color: theme.colors.darkLine, marginBottom: 12 }}>
-                              {item.title}
-                            </div>
-                            <div style={{ color: theme.colors.accent, fontSize: 15, lineHeight: 1.9, minHeight: 118 }}>
-                              {splitParagraphs(item.summary || "").slice(0, 1).map((p, idx) => (
-                                <p key={idx} style={{ margin: 0 }}>{p}</p>
-                              ))}
-                              {(item.keywords || []).slice(0, 3).map((k) => (
-                                <div key={k}>— {k}</div>
-                              ))}
-                            </div>
-                            <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginTop: 12 }}>
-                              <div>
-                                {(item.themes || []).slice(0, 1).map((t) => (
-                                  <span key={t} style={{ display: "inline-block", background: theme.colors.chip, color: theme.colors.chipText, borderRadius: 4, padding: "4px 8px", fontSize: 12 }}>{t}</span>
-                                ))}
-                              </div>
-                              <div style={{ display: "flex", alignItems: "center", gap: 10, color: theme.colors.accent, fontSize: 14 }}>
-                                <span>LIRE →</span>
-                                <button
-                                  type="button"
-                                  onClick={(e) => { e.stopPropagation(); toggleFavorite(item.id); }}
-                                  style={{ border: "none", background: "transparent", cursor: "pointer", color: isFavorite ? theme.colors.favoriteText : theme.colors.muted, fontSize: 16 }}
-                                >
-                                  {isFavorite ? "★" : "☆"}
-                                </button>
-                              </div>
-                            </div>
-                          </div>
-                        </button>
-                      );
-                    })}
-                  </div>
+            {/* Galerie de cartes */}
+            <div style={{ flex: 1, padding: 22, overflowY: "auto" }}>
+              {items.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 60, ...sc() }}>Chargement en cours…</div>
+              ) : visibleItems.length === 0 ? (
+                <div style={{ textAlign: "center", padding: 60, ...sc() }}>Aucune publication correspondante</div>
+              ) : (
+                <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: 14 }}>
+                  {visibleItems.map((item) => <Card key={item.id} item={item} />)}
                 </div>
+              )}
+            </div>
 
-                {selectedItem && (
-                  <div style={{ padding: 28, maxHeight: 620, overflowY: "auto" }}>
-                    <div style={{ textAlign: "center", marginBottom: 18 }}>
-                      <div style={{ fontFamily: theme.fontSerif, fontSize: 50, lineHeight: 1.02, color: theme.colors.darkLine, marginBottom: 12 }}>
-                        Votre digest du jour
-                      </div>
-                      <div style={{ color: theme.colors.accent, fontSize: 16, lineHeight: 1.8 }}>
-                        {selectedItem.institution || ""}
-                      </div>
-                    </div>
-
-                    <div style={{ borderTop: `1px solid ${theme.colors.border}`, paddingTop: 18 }}>
-                      <div style={{ marginBottom: 10 }}>
-                        <span style={{ display: "inline-block", borderRadius: 4, padding: "4px 8px", fontSize: 12, fontWeight: 600, ...scorePillStyle(selectedItem.relevanceScore) }}>
-                          PERTINENCE {Math.round((selectedItem.relevanceScore || 0) / 20) || 0}/5
-                        </span>
-                      </div>
-                      <div style={{ fontFamily: theme.fontSerif, fontSize: 34, lineHeight: 1.12, color: theme.colors.darkLine, marginBottom: 14, fontWeight: 700 }}>
-                        {selectedItem.title}
-                      </div>
-                      <div style={{ ...smallCaps(), marginBottom: 14 }}>
-                        {selectedItem.documentType} · {selectedItem.date} · {selectedItem.source}
-                      </div>
-
-                      {(selectedItem.keywords || []).length > 0 && (
-                        <div style={{ marginBottom: 16 }}>
-                          <div style={smallCaps()}>Concepts clés</div>
-                          <div style={{ marginTop: 10 }}>
-                            {(selectedItem.keywords || []).map((k) => <span key={k} style={{ display: "inline-block", marginRight: 8, marginBottom: 8, borderRadius: 999, background: theme.colors.chip, color: theme.colors.chipText, padding: "6px 10px", fontSize: 13 }}>{k}</span>)}
-                          </div>
-                        </div>
-                      )}
-
-                      {splitParagraphs(selectedItem.summary || "").map((p, idx) => (
-                        <p key={idx} style={{ color: theme.colors.text, fontSize: 16, lineHeight: 1.9, marginBottom: 14 }}>
-                          {p}
-                        </p>
-                      ))}
-
-                      {(selectedItem.innovations || []).length > 0 && (
-                        <div style={{ marginTop: 18 }}>
-                          <div style={smallCaps()}>Innovations</div>
-                          <div style={{ marginTop: 10 }}>
-                            {(selectedItem.innovations || []).map((k) => <span key={k} style={{ display: "inline-block", marginRight: 8, marginBottom: 8, borderRadius: 999, background: theme.colors.noteBg, color: theme.colors.noteText, padding: "6px 10px", fontSize: 13 }}>{k}</span>)}
-                          </div>
-                        </div>
-                      )}
-
-                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 12, marginTop: 20 }}>
-                        <div style={{ padding: 14, background: theme.colors.white, border: `1px solid ${theme.colors.border}` }}>
-                          <div style={smallCaps()}>Signal faible</div>
-                          <div style={{ marginTop: 8, lineHeight: 1.7 }}>{selectedItem.weakSignal || "Non renseigné"}</div>
-                        </div>
-                        <div style={{ padding: 14, background: theme.colors.white, border: `1px solid ${theme.colors.border}` }}>
-                          <div style={smallCaps()}>Impact stratégique</div>
-                          <div style={{ marginTop: 8, lineHeight: 1.7 }}>{selectedItem.strategicImpact ?? "Non renseigné"}</div>
-                        </div>
-                      </div>
-
-                      <div style={{ marginTop: 18, padding: 14, background: theme.colors.white, border: `1px solid ${theme.colors.border}` }}>
-                        <div style={smallCaps()}>Angle d'exploitation</div>
-                        <div style={{ marginTop: 8, lineHeight: 1.8 }}>{selectedItem.exploitationAngle || "Aucun angle disponible."}</div>
-                      </div>
-
-                      <div style={{ display: "flex", gap: 10, flexWrap: "wrap", marginTop: 18 }}>
-                        <button onClick={() => toggleFavorite(selectedItem.id)} style={{ borderRadius: 999, border: `1px solid ${theme.colors.darkLine}`, background: theme.colors.darkLine, color: theme.colors.white, padding: "10px 16px", cursor: "pointer" }}>
-                          {favoriteIds.has(selectedItem.id) ? "Retirer des favoris" : "Ajouter aux favoris"}
-                        </button>
-                        <button onClick={() => toggleNote(selectedItem.id)} style={{ borderRadius: 999, border: `1px solid ${theme.colors.border}`, background: theme.colors.white, color: theme.colors.text, padding: "10px 16px", cursor: "pointer" }}>
-                          {noteIds.has(selectedItem.id) ? "Retirer de la note" : "Préparer une note"}
-                        </button>
-                        <a href={selectedItem.url || "#"} target="_blank" rel="noreferrer" style={{ textDecoration: "none" }}>
-                          <button style={{ borderRadius: 999, border: `1px solid ${theme.colors.border}`, background: theme.colors.white, color: theme.colors.text, padding: "10px 16px", cursor: "pointer" }}>
-                            Ouvrir la source
-                          </button>
-                        </a>
-                      </div>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              <div style={{ borderTop: `1px solid ${theme.colors.border}`, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", textAlign: "center", padding: "14px 10px", background: theme.colors.panel }}>
-                <div>
-                  <div style={{ fontSize: 28, fontFamily: theme.fontSerif }}>{items.length}</div>
-                  <div style={smallCaps()}>Publications</div>
+            {/* Barre de stats */}
+            <div style={{ borderTop: `1px solid ${C.border}`, display: "grid", gridTemplateColumns: "repeat(4, 1fr)", textAlign: "center", padding: "12px 10px", background: C.panel }}>
+              {[
+                [items.filter((i) => !dismissed.has(i.id)).length, "Publications"],
+                [favoriteIds.size, "Favoris"],
+                [rssSources.length, "Sources"],
+                [noteIds.size, "En note"],
+              ].map(([n, l]) => (
+                <div key={l}>
+                  <div style={{ fontSize: 26, fontFamily: serif }}>{n}</div>
+                  <div style={{ ...sc(), fontSize: 10 }}>{l}</div>
                 </div>
-                <div>
-                  <div style={{ fontSize: 28, fontFamily: theme.fontSerif }}>{favoriteIds.size}</div>
-                  <div style={smallCaps()}>Favoris</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 28, fontFamily: theme.fontSerif }}>{rssSources.length}</div>
-                  <div style={smallCaps()}>Sources</div>
-                </div>
-                <div>
-                  <div style={{ fontSize: 28, fontFamily: theme.fontSerif }}>{noteIds.size}</div>
-                  <div style={smallCaps()}>En note</div>
-                </div>
-              </div>
+              ))}
             </div>
           </main>
         </div>
 
-        {notePrepItems.length > 0 && (
-          <div style={{ marginTop: 18, background: theme.colors.panelSoft, border: `1px solid ${theme.colors.border}`, borderRadius: 24, padding: 20 }}>
-            <div style={{ ...smallCaps(), marginBottom: 14 }}>Préparer une note</div>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-              {notePrepItems.map((item) => (
-                <div key={item.id} style={{ background: theme.colors.white, border: `1px solid ${theme.colors.border}`, borderRadius: 18, padding: 14 }}>
-                  <div style={{ marginBottom: 8 }}><span style={{ display: "inline-block", borderRadius: 4, padding: "4px 8px", fontSize: 12, fontWeight: 600, ...scorePillStyle(item.relevanceScore) }}>PERTINENCE {Math.round((item.relevanceScore || 0) / 20) || 0}/5</span></div>
-                  <div style={{ fontFamily: theme.fontSerif, fontSize: 24, lineHeight: 1.14, marginBottom: 8 }}>{item.title}</div>
-                  <div style={{ color: theme.colors.text, lineHeight: 1.8, fontSize: 14, marginBottom: 8 }}>{String(item.summary || "").slice(0, 220)}...</div>
-                  <div style={{ color: theme.colors.accent, lineHeight: 1.7, fontSize: 14 }}><strong>Angle :</strong> {item.exploitationAngle}</div>
+        {/* Zone "Préparer une note" */}
+        {noteIds.size > 0 && (
+          <div style={{ marginTop: 18, background: C.panelSoft, border: `1px solid ${C.border}`, padding: 22 }}>
+            <div style={{ ...sc(), marginBottom: 14 }}>Préparer une note — {noteIds.size} article{noteIds.size > 1 ? "s" : ""}</div>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fill, minmax(270px, 1fr))", gap: 12 }}>
+              {items.filter((i) => noteIds.has(i.id)).map((item) => (
+                <div key={item.id} style={{ background: C.white, border: `1px solid ${C.border}`, padding: 16 }}>
+                  <span style={{ display: "inline-block", borderRadius: 4, padding: "3px 7px", fontSize: 11, fontWeight: 600, marginBottom: 8, ...scorePill(item.relevanceScore) }}>
+                    PERTINENCE {Math.round((item.relevanceScore || 0) / 20) || 0}/5
+                  </span>
+                  <div style={{ fontFamily: serif, fontSize: 17, lineHeight: 1.2, marginBottom: 8 }}>{item.title}</div>
+                  <div style={{ fontSize: 13, lineHeight: 1.7, color: C.muted, marginBottom: 8 }}>{String(item.summary || "").slice(0, 200)}…</div>
+                  {item.exploitationAngle && (
+                    <div style={{ fontSize: 13, color: C.accent, lineHeight: 1.7 }}>
+                      <strong>Angle :</strong> {item.exploitationAngle}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -493,15 +503,17 @@ export default function VeilleDigestReader() {
       </div>
 
       <style>{`
-        @media (max-width: 1160px) {
-          div[style*="grid-template-columns: 340px 1fr"] { grid-template-columns: 1fr !important; }
-          div[style*="grid-template-columns: 1fr 1fr"] { grid-template-columns: 1fr !important; }
-          div[style*="repeat(3, 1fr)"] { grid-template-columns: 1fr !important; }
-          div[style*="repeat(4, 1fr)"] { grid-template-columns: repeat(2, 1fr) !important; }
+        * { box-sizing: border-box; }
+        @media (max-width: 1100px) {
+          div[style*="grid-template-columns: 280px 1fr"] { grid-template-columns: 1fr !important; }
         }
         @media (max-width: 700px) {
-          div[style*="repeat(4, 1fr)"] { grid-template-columns: 1fr !important; }
+          div[style*="repeat(4, 1fr)"] { grid-template-columns: repeat(2, 1fr) !important; }
         }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #cbbfa8; border-radius: 3px; }
+        button:focus { outline: none; }
       `}</style>
     </div>
   );
