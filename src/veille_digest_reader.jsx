@@ -107,6 +107,18 @@ export default function VeilleDigestReader() {
 
   const [userDataLoading, setUserDataLoading] = useState(true);
 
+  // — état produire —
+  const CLAUDE_API = "https://api.anthropic.com/v1/messages";
+  const [prodApiKey,    setProdApiKey]    = useState(() => { try{return localStorage.getItem("veille_apikey")||"";}catch{return "";} });
+  const [prodSelItems,  setProdSelItems]  = useState(new Set());
+  const [prodTheme,     setProdTheme]     = useState("tous");
+  const [prodFormat,    setProdFormat]    = useState("synthèse");
+  const [prodNarCount,  setProdNarCount]  = useState("top 10");
+  const [prodLoading,   setProdLoading]   = useState(false);
+  const [prodResult,    setProdResult]    = useState(null);
+  const [prodError,     setProdError]     = useState("");
+  const [prodCommItem,  setProdCommItem]  = useState(null);
+
   const prevIds  = useRef(new Set());
   const toastTmr = useRef(null);
 
@@ -156,7 +168,61 @@ export default function VeilleDigestReader() {
     setUserDataLoading(false);
   },[]);
 
-  useEffect(()=>{ loadDigest(); loadUserData(); },[loadDigest,loadUserData]);
+  useEffect(()=>{ try{localStorage.setItem("veille_apikey",prodApiKey);}catch{} },[prodApiKey]);
+
+  // — fonctions produire —
+  async function callClaude(prompt) {
+    const r = await fetch(CLAUDE_API, {
+      method:"POST",
+      headers:{"Content-Type":"application/json","x-api-key":prodApiKey,"anthropic-version":"2023-06-01"},
+      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,messages:[{role:"user",content:prompt}]})
+    });
+    if(!r.ok){const e=await r.json();throw new Error(e.error?.message||"erreur API");}
+    const d=await r.json();
+    return d.content.map(b=>b.type==="text"?b.text:"").join("\n");
+  }
+
+  const prodItems = useMemo(()=>
+    items.filter(i=>!dismissed.has(i.id)&&!isEv(i)&&i.title&&i.summary)
+      .filter(i=>prodTheme==="tous"||(i.themes||[]).join(";").toLowerCase().includes(prodTheme.toLowerCase()))
+  ,[items,dismissed,prodTheme]);
+
+  const prodSelected = useMemo(()=>
+    prodSelItems.size>0 ? prodItems.filter(i=>prodSelItems.has(i.id)) : prodItems
+  ,[prodItems,prodSelItems]);
+
+  function toggleProdItem(id){
+    setProdSelItems(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});
+  }
+  function selectAllProd(){ setProdSelItems(new Set(prodItems.map(i=>i.id))); }
+  function clearProdSel(){ setProdSelItems(new Set()); }
+
+  async function generateProd(format){
+    if(!prodApiKey.trim()){setProdError("clé API Anthropic requise");return;}
+    const sel = prodSelected.slice(0, format==="comm"?1:20);
+    if(sel.length===0){setProdError("aucun article sélectionné");return;}
+    setProdLoading(true);setProdResult(null);setProdError("");
+    try {
+      let prompt = "";
+      if(format==="synthèse"){
+        const list=sel.map((a,i)=>`${i+1}. ${a.title}\nRésumé: ${String(a.summary||"").slice(0,300)}\nThèmes: ${norm(a.themes).join(", ")}`).join("\n\n");
+        prompt=`Tu es un analyste de veille pour le département de l'influence du ministère de l'Intérieur français.\n\nProduis une synthèse thématique hebdomadaire structurée à partir de ces ${sel.length} articles de veille. Organise par thèmes, identifie les tendances, les signaux importants et les enjeux pour le ministère. Rédige en français, avec un style éditorial professionnel.\n\nArticles :\n${list}`;
+      } else if(format==="narrative"){
+        const n = prodNarCount==="top 5"?5:prodNarCount==="top 15"?15:10;
+        const top=sel.slice(0,n);
+        const list=top.map(a=>`- ${a.title} : ${String(a.summary||"").slice(0,200)}`).join("\n");
+        prompt=`Tu es un éditorialiste senior spécialisé dans les affaires intérieures françaises.\n\nRédige une revue de presse narrative de la semaine à partir de ces articles. Raconte l'actualité comme un éditorialiste : un fil conducteur, une mise en perspective, une voix. Pas de liste, pas de titres — du texte continu, vivant, avec du sens.\n\nArticles :\n${list}`;
+      } else if(format==="comm"){
+        const a=sel[0];
+        prompt=`Tu es expert en communication institutionnelle pour le ministère de l'Intérieur français, département de l'influence.\n\nPour cet article de veille, propose 4 formats de production concrets pour faire passer l'information efficacement :\n\nArticle : ${a.title}\nRésumé : ${String(a.summary||"").slice(0,400)}\nAngle d'exploitation : ${a.exploitationAngle||""}\n\nPour chaque format, donne : un titre court (3-4 mots), et une description de 2-3 phrases expliquant le format et son intérêt. Formate ta réponse ainsi :\n\nFORMAT 1 : [titre]\n[description]\n\nFORMAT 2 : [titre]\n[description]\n\netc.`;
+      }
+      const result = await callClaude(prompt);
+      setProdResult({text:result, format, timestamp:new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})});
+    } catch(e){
+      setProdError(e.message);
+    }
+    setProdLoading(false);
+  }
 
   // — computed digest —
   const allThemes = useMemo(()=>{
@@ -523,6 +589,174 @@ export default function VeilleDigestReader() {
     );
   }
 
+  // ── VUE PRODUIRE ─────────────────────────────────────────
+  function ProduireView() {
+    const allThemesList = useMemo(()=>{
+      const s=new Set(["tous"]);
+      items.filter(i=>!dismissed.has(i.id)&&!isEv(i)).forEach(i=>norm(i.themes).forEach(t=>{if(t)s.add(t);}));
+      return Array.from(s);
+    },[]);
+
+    const fmtResult = (text) => {
+      return text.split("\n").filter(Boolean).map((line,i)=>{
+        if(/^FORMAT\s+\d+\s*:/i.test(line)||/^#{1,3}\s/.test(line)){
+          return <div key={i} style={{fontFamily:serif,fontSize:15,fontWeight:700,color:C.ink,marginTop:16,marginBottom:4}}>{line.replace(/^#+\s*/,"").replace(/^FORMAT\s+\d+\s*:\s*/i,"")}</div>;
+        }
+        return <p key={i} style={{fontSize:13,lineHeight:1.8,color:"#3a3020",fontFamily:serif,fontStyle:"italic",marginBottom:8}}>{line}</p>;
+      });
+    };
+
+    return (
+      <div style={{flex:1,padding:"24px 28px",overflowY:"auto",display:"flex",flexDirection:"column",gap:22}}>
+
+        {/* Clé API */}
+        <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"14px 18px",display:"flex",gap:12,alignItems:"center"}}>
+          <div style={{...sc(),flexShrink:0}}>clé API Anthropic</div>
+          <input type="password" value={prodApiKey} onChange={e=>setProdApiKey(e.target.value)} placeholder="sk-ant-…" style={{flex:1,fontFamily:sans,fontSize:12,padding:"6px 10px",border:`1px solid ${C.border}`,background:prodApiKey?"#f0faf4":C.panelSoft,color:C.ink,outline:"none"}}/>
+          {prodApiKey&&<span style={{fontSize:10,color:C.green,fontFamily:sans,letterSpacing:".06em",textTransform:"uppercase"}}>✓ configurée</span>}
+        </div>
+
+        {/* Sélection articles */}
+        <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"18px 20px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
+            <div style={{...sc()}}>sélection des articles</div>
+            <div style={{display:"flex",gap:8,alignItems:"center"}}>
+              <span style={{fontSize:11,color:C.muted,fontFamily:sans}}>{prodSelItems.size>0?`${prodSelItems.size} sélectionné${prodSelItems.size>1?"s":""}`:`tous (${prodItems.length})`}</span>
+              <button onClick={selectAllProd} style={{...pill(false),fontSize:10,padding:"2px 8px"}}>tout sélectionner</button>
+              {prodSelItems.size>0&&<button onClick={clearProdSel} style={{...pill(false),fontSize:10,padding:"2px 8px"}}>effacer</button>}
+            </div>
+          </div>
+
+          {/* Filtre thème */}
+          <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
+            {allThemesList.slice(0,8).map(t=>(
+              <button key={t} onClick={()=>{setProdTheme(t);clearProdSel();}} style={pill(prodTheme===t)}>{t}</button>
+            ))}
+          </div>
+
+          {/* Liste articles cochables */}
+          <div style={{maxHeight:220,overflowY:"auto",display:"flex",flexDirection:"column",gap:4}}>
+            {prodItems.length===0
+              ?<div style={{...sc(),padding:"20px 0",textAlign:"center"}}>aucun article disponible</div>
+              :prodItems.map(item=>{
+                const sel=prodSelItems.has(item.id);
+                return(
+                  <div key={item.id} onClick={()=>toggleProdItem(item.id)}
+                    style={{display:"flex",gap:10,alignItems:"flex-start",padding:"8px 10px",cursor:"pointer",borderRadius:2,background:sel?"#f0faf4":C.panelSoft,border:`1px solid ${sel?"#9FE1CB":C.border}`,transition:"all .15s"}}>
+                    <div style={{width:16,height:16,borderRadius:2,border:`1.5px solid ${sel?C.green:C.border}`,background:sel?C.green:"transparent",flexShrink:0,marginTop:2,display:"flex",alignItems:"center",justifyContent:"center"}}>
+                      {sel&&<span style={{color:C.white,fontSize:10,lineHeight:1}}>✓</span>}
+                    </div>
+                    <div style={{flex:1,minWidth:0}}>
+                      <div style={{fontFamily:serif,fontSize:13,color:C.ink,lineHeight:1.3,marginBottom:2}}>{item.title}</div>
+                      <div style={{fontSize:10,color:C.muted,fontFamily:sans}}>{item.source||""}{item.date?` · ${item.date}`:""}</div>
+                    </div>
+                    <span style={{...sc(),fontSize:9,flexShrink:0}}>{(norm(item.themes)[0]||"").slice(0,15)}</span>
+                  </div>
+                );
+              })
+            }
+          </div>
+        </div>
+
+        {/* Format 1 : Synthèse thématique */}
+        <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"18px 20px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+            <div>
+              <div style={{fontFamily:serif,fontSize:17,fontWeight:700,color:C.ink,marginBottom:4}}>synthèse thématique hebdomadaire</div>
+              <div style={{fontSize:12,color:C.muted,fontFamily:sans,lineHeight:1.6}}>Claude analyse les articles sélectionnés et produit une synthèse structurée par thème avec les tendances et signaux importants.</div>
+            </div>
+            <span style={{fontSize:10,padding:"2px 9px",borderRadius:2,background:"#e1f5ee",color:"#0f6e56",fontFamily:sans,flexShrink:0,marginLeft:12}}>{prodSelected.length} article{prodSelected.length!==1?"s":""}</span>
+          </div>
+          <button onClick={()=>generateProd("synthèse")} disabled={prodLoading} style={{fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"9px 20px",background:prodLoading?C.muted:C.ink,color:C.white,border:"none",cursor:prodLoading?"default":"pointer",display:"flex",alignItems:"center",gap:8}}
+            onMouseEnter={e=>{if(!prodLoading)e.currentTarget.style.background=C.accent;}} onMouseLeave={e=>{if(!prodLoading)e.currentTarget.style.background=prodLoading?C.muted:C.ink;}}>
+            <span style={{fontSize:15}}>✦</span>{prodLoading&&prodFormat==="synthèse"?"génération en cours…":"générer la synthèse"}
+          </button>
+          {prodResult?.format==="synthèse"&&<div style={{marginTop:16,paddingTop:16,borderTop:`2px solid ${C.ink}`}}>
+            <div style={{...sc(),marginBottom:10,display:"flex",alignItems:"center",gap:8}}><span style={{width:6,height:6,borderRadius:"50%",background:C.accent,display:"inline-block"}}/>synthèse générée à {prodResult.timestamp}</div>
+            <div>{fmtResult(prodResult.text)}</div>
+          </div>}
+        </div>
+
+        {/* Format 2 : Revue narrative */}
+        <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"18px 20px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+            <div>
+              <div style={{fontFamily:serif,fontSize:17,fontWeight:700,color:C.ink,marginBottom:4}}>revue de presse narrative</div>
+              <div style={{fontSize:12,color:C.muted,fontFamily:sans,lineHeight:1.6}}>Claude raconte la semaine comme un éditorialiste — les faits marquants mis en perspective, avec un fil conducteur.</div>
+            </div>
+            <span style={{fontSize:10,padding:"2px 9px",borderRadius:2,background:"#eeedfe",color:"#534ab7",fontFamily:sans,flexShrink:0,marginLeft:12}}>ton éditorial</span>
+          </div>
+          <div style={{display:"flex",gap:6,marginBottom:14}}>
+            {["top 5","top 10","top 15"].map(v=><button key={v} onClick={()=>setProdNarCount(v)} style={pill(prodNarCount===v)}>{v}</button>)}
+          </div>
+          <button onClick={()=>{setProdFormat("narrative");generateProd("narrative");}} disabled={prodLoading} style={{fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"9px 20px",background:prodLoading?C.muted:C.ink,color:C.white,border:"none",cursor:prodLoading?"default":"pointer",display:"flex",alignItems:"center",gap:8}}
+            onMouseEnter={e=>{if(!prodLoading)e.currentTarget.style.background=C.accent;}} onMouseLeave={e=>{if(!prodLoading)e.currentTarget.style.background=prodLoading?C.muted:C.ink;}}>
+            <span style={{fontSize:15}}>✦</span>{prodLoading&&prodFormat==="narrative"?"génération en cours…":"générer la revue"}
+          </button>
+          {prodResult?.format==="narrative"&&<div style={{marginTop:16,paddingTop:16,borderTop:`2px solid ${C.ink}`}}>
+            <div style={{...sc(),marginBottom:10,display:"flex",alignItems:"center",gap:8}}><span style={{width:6,height:6,borderRadius:"50%",background:C.accent,display:"inline-block"}}/>revue générée à {prodResult.timestamp}</div>
+            <div>{fmtResult(prodResult.text)}</div>
+          </div>}
+        </div>
+
+        {/* Format 3 : Fiche angle de communication */}
+        <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"18px 20px"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
+            <div>
+              <div style={{fontFamily:serif,fontSize:17,fontWeight:700,color:C.ink,marginBottom:4}}>fiche angle de communication</div>
+              <div style={{fontSize:12,color:C.muted,fontFamily:sans,lineHeight:1.6}}>Pour un article donné, Claude propose des formats de production concrets pour bien faire passer l'information.</div>
+            </div>
+            <span style={{fontSize:10,padding:"2px 9px",borderRadius:2,background:"#faeeda",color:"#854f0b",fontFamily:sans,flexShrink:0,marginLeft:12}}>par article</span>
+          </div>
+
+          {/* Sélection article unique */}
+          <div style={{...sc(),marginBottom:8}}>sélectionner un article</div>
+          <div style={{maxHeight:160,overflowY:"auto",display:"flex",flexDirection:"column",gap:3,marginBottom:14}}>
+            {prodItems.slice(0,15).map(item=>{
+              const sel=prodCommItem?.id===item.id;
+              return(
+                <div key={item.id} onClick={()=>setProdCommItem(item)}
+                  style={{display:"flex",gap:8,alignItems:"flex-start",padding:"7px 10px",cursor:"pointer",borderRadius:2,background:sel?"#fdf3e7":C.panelSoft,border:`1px solid ${sel?"#c8401a":C.border}`,transition:"all .15s"}}>
+                  <div style={{width:14,height:14,borderRadius:"50%",border:`1.5px solid ${sel?C.accent:C.border}`,background:sel?C.accent:"transparent",flexShrink:0,marginTop:2}}/>
+                  <div style={{fontFamily:serif,fontSize:12,color:C.ink,lineHeight:1.3,flex:1}}>{item.title}</div>
+                </div>
+              );
+            })}
+          </div>
+
+          {prodCommItem&&<div style={{background:C.panelSoft,border:`1px solid ${C.border}`,borderLeft:`3px solid ${C.accent}`,padding:"10px 14px",marginBottom:14}}>
+            <div style={{fontFamily:serif,fontSize:13,color:C.ink,marginBottom:3}}>{prodCommItem.title}</div>
+            <div style={{...sc(),fontSize:9,color:C.accent}}>{prodCommItem.source||""}</div>
+          </div>}
+
+          <button onClick={()=>{if(!prodCommItem){setProdError("sélectionnez un article");return;}setProdFormat("comm");generateProd("comm");}} disabled={prodLoading||!prodCommItem}
+            style={{fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"9px 20px",background:(!prodCommItem||prodLoading)?C.muted:C.ink,color:C.white,border:"none",cursor:(!prodCommItem||prodLoading)?"default":"pointer",display:"flex",alignItems:"center",gap:8}}
+            onMouseEnter={e=>{if(!prodLoading&&prodCommItem)e.currentTarget.style.background=C.accent;}} onMouseLeave={e=>{if(!prodLoading&&prodCommItem)e.currentTarget.style.background=C.ink;}}>
+            <span style={{fontSize:15}}>✦</span>{prodLoading&&prodFormat==="comm"?"génération en cours…":"générer la fiche"}
+          </button>
+          {prodResult?.format==="comm"&&<div style={{marginTop:16,paddingTop:16,borderTop:`2px solid ${C.ink}`}}>
+            <div style={{...sc(),marginBottom:10,display:"flex",alignItems:"center",gap:8}}><span style={{width:6,height:6,borderRadius:"50%",background:C.accent,display:"inline-block"}}/>fiche générée à {prodResult.timestamp}</div>
+            <div style={{display:"grid",gridTemplateColumns:"1fr 1fr",gap:10}}>
+              {prodResult.text.split(/\n\n+/).filter(Boolean).filter(b=>b.trim()).map((block,i)=>{
+                const lines=block.split("\n").filter(Boolean);
+                const title=lines[0].replace(/^FORMAT\s+\d+\s*:\s*/i,"").replace(/^#+\s*/,"");
+                const body=lines.slice(1).join(" ");
+                return(
+                  <div key={i} style={{background:C.panelSoft,border:`1px solid ${C.border}`,padding:"12px 14px"}}>
+                    <div style={{...sc(),fontSize:9,color:C.accent,marginBottom:6}}>{title}</div>
+                    <div style={{fontFamily:serif,fontStyle:"italic",fontSize:13,color:C.ink,lineHeight:1.55}}>{body}</div>
+                  </div>
+                );
+              })}
+            </div>
+          </div>}
+        </div>
+
+        {prodError&&<div style={{background:"#fce4de",border:"1px solid #e8b0a0",padding:"10px 16px",fontSize:12,color:"#8a2010",fontFamily:sans}}>{prodError}</div>}
+      </div>
+    );
+  }
+
   // ── RENDER ────────────────────────────────────────────────
   return(
     <div style={{minHeight:"100vh",background:C.page,fontFamily:sans,color:C.text}}>
@@ -627,18 +861,19 @@ export default function VeilleDigestReader() {
             </div>
 
             <div style={{display:"flex",alignItems:"center",borderBottom:`1px solid ${C.border}`,padding:"0 22px"}}>
-              {[["productions",pubCount],["événements",evtCount],["agenda",events.length],["signaux faibles",signals.filter(s=>s.status!=="confirmé").length],["experts",experts.length]].map(([key,count])=>(
+              {[["productions",pubCount],["événements",evtCount],["agenda",events.length],["signaux faibles",signals.filter(s=>s.status!=="confirmé").length],["experts",experts.length],["produire",""]].map(([key,count])=>(
                 <button key={key} onClick={()=>setTab(key)} style={{padding:"10px 11px",background:"none",border:"none",borderBottom:tab===key?`2px solid ${C.ink}`:"2px solid transparent",marginBottom:-1,color:tab===key?C.ink:C.muted,cursor:"pointer",fontSize:10,letterSpacing:".11em",textTransform:"uppercase",fontFamily:sans,fontWeight:tab===key?500:400,display:"flex",alignItems:"center",gap:6}}>
-                  {key}<span style={{background:C.chip,color:C.chipText,borderRadius:2,padding:"1px 6px",fontSize:10,textTransform:"none",letterSpacing:0,fontWeight:400}}>{count}</span>
+                  {key}{count!==""&&<span style={{background:C.chip,color:C.chipText,borderRadius:2,padding:"1px 6px",fontSize:10,textTransform:"none",letterSpacing:0,fontWeight:400}}>{count}</span>}
                 </button>
               ))}
-              {tab!=="agenda"&&tab!=="signaux faibles"&&tab!=="experts"&&<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="rechercher dans le digest…" style={{marginLeft:"auto",border:"none",background:"transparent",outline:"none",color:C.accent,fontSize:12,fontFamily:serif,fontStyle:"italic",padding:"10px 0",width:190}}/>}
+              {tab!=="agenda"&&tab!=="signaux faibles"&&tab!=="experts"&&tab!=="produire"&&<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="rechercher dans le digest…" style={{marginLeft:"auto",border:"none",background:"transparent",outline:"none",color:C.accent,fontSize:12,fontFamily:serif,fontStyle:"italic",padding:"10px 0",width:190}}/>}
             </div>
 
-            {tab==="agenda"?"":tab==="signaux faibles"?"":tab==="experts"?"":null}
+            {tab==="agenda"?"":tab==="signaux faibles"?"":tab==="experts"?"":tab==="produire"?"":null}
             {tab==="agenda" ? <AgendaView/>
             :tab==="signaux faibles" ? <SignauxView/>
             :tab==="experts" ? <ExpertsView/>
+            :tab==="produire" ? <ProduireView/>
             :(
               <>
                 <div style={{flex:1,padding:"20px 22px",overflowY:"auto"}}>
@@ -654,7 +889,7 @@ export default function VeilleDigestReader() {
           </main>
         </div>
 
-        {noteIds.size>0&&!["agenda","signaux faibles","experts"].includes(tab)&&(
+        {noteIds.size>0&&!["agenda","signaux faibles","experts","produire"].includes(tab)&&(
           <div style={{marginTop:18,background:C.panelSoft,border:`1px solid ${C.border}`,padding:22}}>
             <div style={{...sc(),marginBottom:14}}>préparer une note — {noteIds.size} article{noteIds.size>1?"s":""}</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))",gap:12}}>
