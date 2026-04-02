@@ -32,7 +32,7 @@ const SIGNAL_ST   = {
 const EXPERT_DOMAINS = ["sécurité publique","renseignement","numérique","communication","juridique","autre"];
 
 // ── HELPERS ───────────────────────────────────────────────
-const sc  = (x={}) => ({fontSize:10,letterSpacing:".16em",textTransform:"uppercase",color:C.muted,fontFamily:sans,...x});
+const sc  = (x={}) => ({fontSize:11,letterSpacing:".14em",textTransform:"uppercase",color:C.muted,fontFamily:sans,...x});
 const sp  = s => { const n=Number(s||0); if(n>=85)return{background:"#dcefdc",color:"#1f7a45"}; if(n>=70)return{background:"#f9e7c8",color:"#a16207"}; if(n>=50)return{background:"#f2e2da",color:"#9a3412"}; return{background:"#ece7dc",color:"#6b7280"}; };
 const pArr = v => { if(Array.isArray(v))return v; if(!v)return []; return String(v).split(";").map(s=>s.trim()).filter(Boolean); };
 const sArr = a => Array.isArray(a)?a.join(";"):(a||"");
@@ -389,9 +389,9 @@ export default function VeilleDigestReader() {
         {item.date&&<div style={{...sc(),fontSize:9}}>{item.date}</div>}
         <div style={{display:"flex",justifyContent:"flex-end"}}><span style={{borderRadius:2,padding:"2px 8px",fontSize:9,fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",...sp(item.relevanceScore)}}>pertinence {scoreN}/5</span></div>
         {(item.keywords||[]).length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:4}}>{(item.keywords||[]).slice(0,4).map(k=><span key={k} style={{background:C.chip,color:C.chipText,borderRadius:2,padding:"2px 8px",fontSize:10,fontFamily:sans}}>{k}</span>)}</div>}
-        <div style={{fontFamily:serif,fontSize:15,lineHeight:1.25,fontWeight:700,color:C.ink}}>{item.title}</div>
+        <div style={{fontFamily:serif,fontSize:17,lineHeight:1.25,fontWeight:700,color:C.ink}}>{item.title}</div>
         <div style={{height:1,background:C.border}}/>
-        <div style={{fontSize:11,color:C.muted,lineHeight:1.65,flex:1,fontFamily:sans}}>{String(item.summary||"").slice(0,155)}{(item.summary||"").length>155?"…":""}</div>
+        <div style={{fontSize:13,color:C.muted,lineHeight:1.65,flex:1,fontFamily:sans}}>{String(item.summary||"").slice(0,155)}{(item.summary||"").length>155?"…":""}</div>
         <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
           <span style={{...sc(),fontSize:9}}>{(item.themes||[])[0]||""}</span>
           <div style={{display:"flex",gap:8,alignItems:"center"}}>
@@ -851,8 +851,8 @@ export default function VeilleDigestReader() {
           <main style={{background:C.panelSoft,display:"flex",flexDirection:"column"}}>
             <div style={{borderBottom:`3px double ${C.ink}`,padding:"12px 22px",display:"flex",alignItems:"center",justifyContent:"space-between",gap:16}}>
               <div>
-                <div style={{...sc(),color:C.dark,fontSize:10}}>digest éditorial · {todayLong}</div>
-                {lastUpdated&&<div style={{fontFamily:serif,fontStyle:"italic",fontSize:12,color:C.muted,marginTop:2}}>{pubCount} productions éditorialisées · mis à jour à {lastUpdated}</div>}
+                <div style={{...sc(),color:C.dark,fontSize:12}}>digest éditorial · {todayLong}</div>
+                {lastUpdated&&<div style={{fontFamily:serif,fontStyle:"italic",fontSize:13,color:C.muted,marginTop:2}}>{pubCount} productions éditorialisées · mis à jour à {lastUpdated}</div>}
               </div>
               <button onClick={loadDigest} disabled={isRefreshing} style={{fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:14,padding:"10px 22px",background:isRefreshing?C.muted:C.ink,color:C.white,border:"none",cursor:isRefreshing?"default":"pointer",display:"flex",alignItems:"center",gap:10,flexShrink:0,transition:"background .15s"}}
                 onMouseEnter={e=>{if(!isRefreshing)e.currentTarget.style.background=C.accent;}} onMouseLeave={e=>{if(!isRefreshing)e.currentTarget.style.background=C.ink;}}>
@@ -862,7 +862,7 @@ export default function VeilleDigestReader() {
 
             <div style={{display:"flex",alignItems:"center",borderBottom:`1px solid ${C.border}`,padding:"0 22px"}}>
               {[["productions",pubCount],["événements",evtCount],["agenda",events.length],["signaux faibles",signals.filter(s=>s.status!=="confirmé").length],["experts",experts.length],["produire",""]].map(([key,count])=>(
-                <button key={key} onClick={()=>setTab(key)} style={{padding:"10px 11px",background:"none",border:"none",borderBottom:tab===key?`2px solid ${C.ink}`:"2px solid transparent",marginBottom:-1,color:tab===key?C.ink:C.muted,cursor:"pointer",fontSize:10,letterSpacing:".11em",textTransform:"uppercase",fontFamily:sans,fontWeight:tab===key?500:400,display:"flex",alignItems:"center",gap:6}}>
+                <button key={key} onClick={()=>setTab(key)} style={{padding:"10px 11px",background:"none",border:"none",borderBottom:tab===key?`2px solid ${C.ink}`:"2px solid transparent",marginBottom:-1,color:tab===key?C.ink:C.muted,cursor:"pointer",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",fontFamily:sans,fontWeight:tab===key?500:400,display:"flex",alignItems:"center",gap:6}}>
                   {key}{count!==""&&<span style={{background:C.chip,color:C.chipText,borderRadius:2,padding:"1px 6px",fontSize:10,textTransform:"none",letterSpacing:0,fontWeight:400}}>{count}</span>}
                 </button>
               ))}
