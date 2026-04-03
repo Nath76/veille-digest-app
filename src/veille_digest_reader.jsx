@@ -108,8 +108,7 @@ export default function VeilleDigestReader() {
   const [userDataLoading, setUserDataLoading] = useState(true);
 
   // — état produire —
-  const CLAUDE_API = "https://api.anthropic.com/v1/messages";
-  const [prodApiKey,    setProdApiKey]    = useState(() => { try{return localStorage.getItem("veille_apikey")||"";}catch{return "";} });
+  const [prodApiKey,    setProdApiKey]    = useState("");
   const [prodSelItems,  setProdSelItems]  = useState(new Set());
   const [prodTheme,     setProdTheme]     = useState("tous");
   const [prodFormat,    setProdFormat]    = useState("synthèse");
@@ -168,18 +167,15 @@ export default function VeilleDigestReader() {
     setUserDataLoading(false);
   },[]);
 
-  useEffect(()=>{ try{localStorage.setItem("veille_apikey",prodApiKey);}catch{} },[prodApiKey]);
+  useEffect(()=>{ loadDigest(); loadUserData(); },[loadDigest,loadUserData]);
 
-  // — fonctions produire —
+  // — fonctions produire (Claude via Apps Script, pas de CORS) —
   async function callClaude(prompt) {
-    const r = await fetch(CLAUDE_API, {
-      method:"POST",
-      headers:{"Content-Type":"application/json","x-api-key":prodApiKey,"anthropic-version":"2023-06-01"},
-      body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1500,messages:[{role:"user",content:prompt}]})
-    });
-    if(!r.ok){const e=await r.json();throw new Error(e.error?.message||"erreur API");}
-    const d=await r.json();
-    return d.content.map(b=>b.type==="text"?b.text:"").join("\n");
+    const r = await fetch(`${SCRIPT_URL}?action=claude&prompt=${encodeURIComponent(prompt)}&t=${Date.now()}`);
+    if(!r.ok) throw new Error("erreur serveur");
+    const d = await r.json();
+    if(d.error) throw new Error(d.error);
+    return d.result;
   }
 
   const prodItems = useMemo(()=>
@@ -198,7 +194,6 @@ export default function VeilleDigestReader() {
   function clearProdSel(){ setProdSelItems(new Set()); }
 
   async function generateProd(format){
-    if(!prodApiKey.trim()){setProdError("clé API Anthropic requise");return;}
     const sel = prodSelected.slice(0, format==="comm"?1:20);
     if(sel.length===0){setProdError("aucun article sélectionné");return;}
     setProdLoading(true);setProdResult(null);setProdError("");
@@ -609,11 +604,10 @@ export default function VeilleDigestReader() {
     return (
       <div style={{flex:1,padding:"24px 28px",overflowY:"auto",display:"flex",flexDirection:"column",gap:22}}>
 
-        {/* Clé API */}
-        <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"14px 18px",display:"flex",gap:12,alignItems:"center"}}>
-          <div style={{...sc(),flexShrink:0}}>clé API Anthropic</div>
-          <input type="password" value={prodApiKey} onChange={e=>setProdApiKey(e.target.value)} placeholder="sk-ant-…" style={{flex:1,fontFamily:sans,fontSize:12,padding:"6px 10px",border:`1px solid ${C.border}`,background:prodApiKey?"#f0faf4":C.panelSoft,color:C.ink,outline:"none"}}/>
-          {prodApiKey&&<span style={{fontSize:10,color:C.green,fontFamily:sans,letterSpacing:".06em",textTransform:"uppercase"}}>✓ configurée</span>}
+        {/* Bandeau informatif */}
+        <div style={{background:"#f0faf4",border:"1px solid #9FE1CB",padding:"12px 18px",display:"flex",gap:10,alignItems:"center"}}>
+          <span style={{fontSize:14,color:C.green}}>✓</span>
+          <span style={{fontSize:12,color:"#085041",fontFamily:sans}}>génération propulsée par Claude · via Apps Script · aucune configuration requise</span>
         </div>
 
         {/* Sélection articles */}
@@ -921,4 +915,3 @@ export default function VeilleDigestReader() {
     </div>
   );
 }
-
