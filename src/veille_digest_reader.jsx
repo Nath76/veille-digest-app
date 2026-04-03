@@ -604,23 +604,14 @@ export default function VeilleDigestReader() {
     return (
       <div style={{flex:1,padding:"24px 28px",overflowY:"auto",display:"flex",flexDirection:"column",gap:22}}>
 
-        {/* Bandeau informatif */}
-        <div style={{background:"#f0faf4",border:"1px solid #9FE1CB",padding:"12px 18px",display:"flex",gap:10,alignItems:"center"}}>
-          <span style={{fontSize:14,color:C.green}}>✓</span>
-          <span style={{fontSize:12,color:"#085041",fontFamily:sans}}>génération propulsée par Claude · via Apps Script · aucune configuration requise</span>
-        </div>
-
-        {/* Sélection articles */}
-        <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"18px 20px"}}>
-          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
-            <div style={{...sc()}}>sélection des articles</div>
-            <div style={{display:"flex",gap:8,alignItems:"center"}}>
-              <span style={{fontSize:11,color:C.muted,fontFamily:sans}}>{prodSelItems.size>0?`${prodSelItems.size} sélectionné${prodSelItems.size>1?"s":""}`:`tous (${prodItems.length})`}</span>
-              <button onClick={selectAllProd} style={{...pill(false),fontSize:10,padding:"2px 8px"}}>tout sélectionner</button>
-              {prodSelItems.size>0&&<button onClick={clearProdSel} style={{...pill(false),fontSize:10,padding:"2px 8px"}}>effacer</button>}
-            </div>
-          </div>
-
+    {/* Bandeau informatif */}
+<div style={{background:"#f0faf4",border:"1px solid #9FE1CB",padding:"12px 18px",display:"flex",gap:10,alignItems:"flex-start"}}>
+  <span style={{fontSize:14,color:C.green,flexShrink:0}}>✓</span>
+  <div>
+    <span style={{fontSize:12,color:"#085041",fontFamily:sans}}>génération propulsée par Claude · via Apps Script · aucune configuration requise</span>
+    <div style={{fontSize:11,color:"#085041",fontFamily:sans,marginTop:4,opacity:.8}}>en cas d'erreur réseau, faire <strong>Ctrl+Shift+R</strong> (ou Ctrl+F5) pour forcer le rechargement sans cache.</div>
+  </div>
+</div>
           {/* Filtre thème */}
           <div style={{display:"flex",gap:6,flexWrap:"wrap",marginBottom:14}}>
             {allThemesList.slice(0,8).map(t=>(
