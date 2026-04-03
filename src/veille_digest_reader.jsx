@@ -604,7 +604,7 @@ export default function VeilleDigestReader() {
     return (
       <div style={{flex:1,padding:"24px 28px",overflowY:"auto",display:"flex",flexDirection:"column",gap:22}}>
 
-    {/* Bandeau informatif */}
+{/* Bandeau informatif */}
 <div style={{background:"#f0faf4",border:"1px solid #9FE1CB",padding:"12px 18px",display:"flex",gap:10,alignItems:"flex-start"}}>
   <span style={{fontSize:14,color:C.green,flexShrink:0}}>✓</span>
   <div>
