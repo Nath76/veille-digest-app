@@ -662,7 +662,7 @@ export default function VeilleDigestReader() {
           </div>}
         </div>
 
-        {/* Format 2 : Revue narrative */}
+        {/* Format 2 Revue narrative */}
         <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"18px 20px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
             <div>
@@ -684,7 +684,7 @@ export default function VeilleDigestReader() {
           </div>}
         </div>
 
-        {/* Format 3 : Fiche angle de communication */}
+        {/* Format 3 Fiche angle de communication */}
         <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"18px 20px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
             <div>
