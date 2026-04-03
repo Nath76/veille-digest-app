@@ -643,7 +643,7 @@ export default function VeilleDigestReader() {
           </div>
         </div>
 
-        {/* Format 1 : Synthèse thématique */}
+        {/* Format 1 Synthèse thématique */}
         <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"18px 20px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",marginBottom:10}}>
             <div>
