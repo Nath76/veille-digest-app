@@ -152,17 +152,18 @@ export default function VeilleDigestReader() {
 
   useEffect(()=>{ loadDigest(); loadUserData(); },[loadDigest,loadUserData]);
 
-async function callClaude(prompt) {
-  const r = await fetch(SCRIPT_URL, {
-    method: "POST",
-    headers: {"Content-Type": "text/plain"},
-    body: JSON.stringify({action:"claude", prompt}),
-  });
-  if(!r.ok) throw new Error("erreur serveur");
-  const d = await r.json();
-  if(d.error) throw new Error(d.error);
-  return d.result;
-}
+  async function callClaude(prompt) {
+    const r = await fetch(SCRIPT_URL, {
+      method:"POST",
+      headers:{"Content-Type":"text/plain"},
+      body:JSON.stringify({action:"claude",prompt}),
+    });
+    if(!r.ok) throw new Error("erreur serveur");
+    const d = await r.json();
+    if(d.error) throw new Error(d.error);
+    return d.result;
+  }
+
   const prodItems = useMemo(()=>
     items.filter(i=>!dismissed.has(i.id)&&!isEv(i)&&i.title&&i.summary)
       .filter(i=>prodTheme==="tous"||(i.themes||[]).join(";").toLowerCase().includes(prodTheme.toLowerCase()))
@@ -963,3 +964,4 @@ async function callClaude(prompt) {
     </div>
   );
 }
+
