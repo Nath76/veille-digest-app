@@ -955,7 +955,7 @@ export default function VeilleDigestReader() {
 
   // ── VUE POINT VEILLE ─────────────────────────────────────
   function PointVeilleView(){
-    const PV={header:"#1a3660",band:"#22487a",accent:"#3b6cc5",accentLight:"#e8effe",accentText:"#1a3660",headerText:"#eef2ff",bandText:"#a5b4fc",border:"#c7d2fe",ink:"#1a3660",paper:"#ffffff",soft:"#f8f9fe",muted:"#6b7280"};
+    const PV={header:C.ink,band:C.dark,accent:C.accent,accentLight:"#f2e8df",accentText:C.accent,headerText:C.white,bandText:"#9a8f7a",border:C.border,ink:C.ink,paper:C.white,soft:C.panelSoft,muted:C.muted};
     const scPV={fontSize:9,letterSpacing:".14em",textTransform:"uppercase",color:PV.muted,fontFamily:sans};
 
     const [pvTitre,      setPvTitre]      = useState("Point Veille");
@@ -1025,22 +1025,22 @@ export default function VeilleDigestReader() {
 
     function pvExport(){
       let html=`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-body{font-family:Arial,sans-serif;margin:2cm;color:#1a1a2e}
-.pv-header{background:#1a3660;color:white;padding:20px 24px;margin-bottom:20px}
-.pv-titre{font-size:26pt;font-weight:900;letter-spacing:-1px;margin:0 0 4px}
-.pv-meta{font-size:10pt;opacity:.75;margin:0}
-.raccord-top{background:#e8effe;border-left:4px solid #3b6cc5;padding:10px 14px;margin-bottom:20px}
-.lbl{font-size:8pt;text-transform:uppercase;letter-spacing:.1em;color:#6b7280;margin:0 0 4px}
-h2{color:#1a3660;border-bottom:2px solid #1a3660;padding-bottom:6px;margin:24px 0 12px;font-size:13pt}
-.art{border:1px solid #c7d2fe;padding:12px 14px;margin-bottom:10px;background:#f8f9fe}
-.art-title{font-size:13pt;font-weight:bold;color:#1a3660;margin:0 0 4px}
-.art-meta{font-size:8pt;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin:0 0 10px}
-.bloc{background:white;border-left:3px solid #3b6cc5;padding:8px 12px;margin:6px 0}
-.bloc-inst{background:white;border-left:3px solid #1a3660;padding:8px 12px;margin:6px 0}
-.bloc-raccord{background:#fef9c3;border-left:3px solid #d97706;padding:8px 12px;margin:6px 0}
-.bt{font-size:10pt;line-height:1.65;margin:4px 0 0;color:#374151}
-.ext-tag{font-size:8pt;background:#fef9c3;color:#92400e;padding:1px 6px;border:1px solid #fde68a}
-.footer{border-top:2px solid #1a3660;margin-top:24px;padding-top:8px;font-size:8pt;color:#6b7280}
+body{font-family:Arial,sans-serif;margin:2cm;color:#18180f;background:#f2efe8}
+.pv-header{background:#18180f;color:#fffdf8;padding:20px 24px;margin-bottom:20px}
+.pv-titre{font-size:26pt;font-weight:900;letter-spacing:-1px;margin:0 0 4px;font-family:Georgia,serif}
+.pv-meta{font-size:10pt;opacity:.7;margin:0}
+.raccord-top{background:#f2e8df;border-left:4px solid #8a4b22;padding:10px 14px;margin-bottom:20px}
+.lbl{font-size:8pt;text-transform:uppercase;letter-spacing:.1em;color:#7a6f5c;margin:0 0 4px}
+h2{color:#18180f;border-bottom:2px solid #18180f;padding-bottom:6px;margin:24px 0 12px;font-size:13pt;font-family:Georgia,serif}
+.art{border:1px solid #cbbfa8;padding:12px 14px;margin-bottom:10px;background:#fffdf8}
+.art-title{font-size:13pt;font-weight:bold;color:#18180f;margin:0 0 4px;font-family:Georgia,serif}
+.art-meta{font-size:8pt;text-transform:uppercase;letter-spacing:.06em;color:#7a6f5c;margin:0 0 10px}
+.bloc{background:#f2efe8;border-left:3px solid #8a4b22;padding:8px 12px;margin:6px 0}
+.bloc-inst{background:#f2efe8;border-left:3px solid #18180f;padding:8px 12px;margin:6px 0}
+.bloc-raccord{background:#faeeda;border-left:3px solid #854f0b;padding:8px 12px;margin:6px 0}
+.bt{font-size:10pt;line-height:1.65;margin:4px 0 0;color:#1e293b}
+.ext-tag{font-size:8pt;background:#faeeda;color:#854f0b;padding:1px 6px;border:1px solid #e8c87a}
+.footer{border-top:2px solid #18180f;margin-top:24px;padding-top:8px;font-size:8pt;color:#7a6f5c}
 </style></head><body>`;
       html+=`<div class="pv-header"><p class="pv-titre">${pvTitre}</p><p class="pv-meta">${pvSemaine} &nbsp;·&nbsp; ${pvNumero}</p></div>`;
       if(pvShowRaccord&&pvRaccordText) html+=`<div class="raccord-top"><p class="lbl">↔ Raccords agenda</p><p style="font-style:italic;margin:0;font-size:11pt;color:#1a3660">${pvRaccordText}</p></div>`;
