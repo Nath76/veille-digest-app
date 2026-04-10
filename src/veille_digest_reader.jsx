@@ -986,10 +986,19 @@ export default function VeilleDigestReader() {
       if(pvArticleData[id]?.analyse) return;
       setPvGenerating(p=>new Set([...p,id]));
       try{
-        const prompt=`Tu es analyste pour le département de l'influence du ministère de l'Intérieur français.\n\nPour cet article de veille, rédige une analyse concise (3-4 phrases) sur les enjeux pour le ministère :\n\nTitre : ${item.title}\nRésumé : ${String(item.summary||"").slice(0,400)}\nThèmes : ${norm(item.themes).join(", ")}\nAngle d'exploitation : ${item.exploitationAngle||""}\n\nRéponds directement avec l'analyse, sans introduction ni titre.`;
+        const td=today();
+        const prochains=CALENDRIER_2026.filter(e=>e.date&&e.date>=td).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,10).map(e=>`- ${fsFR(e.date)} : ${e.title} (${e.type})`).join("\n");
+        const prompt=`Tu es analyste pour le département de l'influence du ministère de l'Intérieur français.\n\nPour cet article de veille, produis deux choses :\n\n1. ANALYSE : 3 à 5 points clés sur les enjeux pour le ministère. Format strict : une liste de points courts commençant par "• ".\n\n2. RACCORD AGENDA : examine si cet article peut être mis en lien avec une des prochaines échéances ci-dessous. Si oui, cite l'échéance et explique le lien en une phrase. Si non, réponds exactement "pas de raccord possible".\n\nTitre : ${item.title}\nRésumé : ${String(item.summary||"").slice(0,400)}\nThèmes : ${norm(item.themes).join(", ")}\nAngle d'exploitation : ${item.exploitationAngle||""}\n\nProchaines échéances :\n${prochains}\n\nFormat de réponse :\nANALYSE\n• point 1\n• point 2\n...\nRACCORD\n[raccord ou "pas de raccord possible"]`;
         const r=await fetch(SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"claude",prompt})});
         const d=await r.json();
-        if(d.result) setPvArticleData(p=>({...p,[id]:{...p[id],analyse:d.result}}));
+        if(d.result){
+          const txt=d.result;
+          const analyseMatch=txt.match(/ANALYSE\s*([\s\S]*?)(?:RACCORD|$)/i);
+          const raccordMatch=txt.match(/RACCORD\s*([\s\S]*?)$/i);
+          const analyse=analyseMatch?analyseMatch[1].trim():"";
+          const raccord=raccordMatch?raccordMatch[1].trim():"pas de raccord possible";
+          setPvArticleData(p=>({...p,[id]:{...p[id],analyse,raccord}}));
+        }
       }catch(e){console.error(e);}
       setPvGenerating(p=>{const n=new Set(p);n.delete(id);return n;});
     }
@@ -1010,7 +1019,7 @@ export default function VeilleDigestReader() {
     function pvRemove(id){ setPvAssigned(prev=>{const next={...prev};Object.keys(next).forEach(k=>{next[k]=next[k].filter(x=>x!==id);});return next;}); }
     function pvUpdateData(id,field,val){ setPvArticleData(p=>({...p,[id]:{...p[id],[field]:val}})); }
     function pvUpdateSection(id,val){ setPvSections(p=>p.map(s=>s.id===id?{...s,label:val}:s)); }
-    function pvAddExternal(sectionId){ const id=`ext_${Date.now()}`;setPvExternals(p=>({...p,[sectionId]:[...p[sectionId],{id,title:"",source:"",date:"",summary:""}]}));setPvArticleData(p=>({...p,[id]:{analyse:"",actionnable:""}})); }
+    function pvAddExternal(sectionId){ const id=`ext_${Date.now()}`;setPvExternals(p=>({...p,[sectionId]:[...p[sectionId],{id,title:"",source:"",date:"",summary:"",url:""}]}));setPvArticleData(p=>({...p,[id]:{analyse:"",actionnable:"",raccord:""}})); }
     function pvUpdateExternal(sectionId,id,field,val){ setPvExternals(p=>({...p,[sectionId]:p[sectionId].map(e=>e.id===id?{...e,[field]:val}:e)})); }
     function pvRemoveExternal(sectionId,id){ setPvExternals(p=>({...p,[sectionId]:p[sectionId].filter(e=>e.id!==id)})); }
 
@@ -1028,6 +1037,7 @@ h2{color:#1a3660;border-bottom:2px solid #1a3660;padding-bottom:6px;margin:24px 
 .art-meta{font-size:8pt;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin:0 0 10px}
 .bloc{background:white;border-left:3px solid #3b6cc5;padding:8px 12px;margin:6px 0}
 .bloc-inst{background:white;border-left:3px solid #1a3660;padding:8px 12px;margin:6px 0}
+.bloc-raccord{background:#fef9c3;border-left:3px solid #d97706;padding:8px 12px;margin:6px 0}
 .bt{font-size:10pt;line-height:1.65;margin:4px 0 0;color:#374151}
 .ext-tag{font-size:8pt;background:#fef9c3;color:#92400e;padding:1px 6px;border:1px solid #fde68a}
 .footer{border-top:2px solid #1a3660;margin-top:24px;padding-top:8px;font-size:8pt;color:#6b7280}
@@ -1041,17 +1051,25 @@ h2{color:#1a3660;border-bottom:2px solid #1a3660;padding-bottom:6px;margin:24px 
         html+=`<h2>0${si+1} — ${sec.label}</h2>`;
         arts.forEach(a=>{
           const d=pvArticleData[a.id]||{};
-          html+=`<div class="art"><p class="art-title">${a.title}</p><p class="art-meta">${a.source||""} · ${a.date||""}</p>
+          const bullets=(d.analyse||"").split("\n").filter(l=>l.trim().startsWith("•")).map(l=>l.trim().replace(/^•\s*/,""));
+          const analyseHtml=bullets.length>0?`<ul>${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>`:`<p class="bt" style="font-style:italic">${d.analyse||""}</p>`;
+          const titleHtml=a.url?`<a href="${a.url}" style="color:#1a3660;font-weight:bold">${a.title}</a>`:a.title;
+          const raccord=d.raccord||"pas de raccord possible";
+          html+=`<div class="art"><p class="art-title">${titleHtml}</p><p class="art-meta">${a.source||""} · ${a.date||""}</p>
             <div class="bloc"><p class="lbl">Résumé</p><p class="bt">${String(a.summary||"")}</p></div>
-            ${d.analyse?`<div class="bloc"><p class="lbl">Analyse &amp; enjeux pour le ministère</p><p class="bt" style="font-style:italic">${d.analyse}</p></div>`:""}
+            ${d.analyse?`<div class="bloc"><p class="lbl">Analyse &amp; enjeux pour le ministère</p>${analyseHtml}</div>`:""}
+            <div class="bloc-raccord"><p class="lbl">↔ Raccord agenda</p><p class="bt">${raccord}</p></div>
             ${d.actionnable?`<div class="bloc-inst"><p class="lbl">Pourquoi actionnable ?</p><p class="bt">${d.actionnable}</p></div>`:""}
           </div>`;
         });
         exts.forEach(e=>{
           const d=pvArticleData[e.id]||{};
-          html+=`<div class="art"><p class="art-title">${e.title||"Article externe"} <span class="ext-tag">externe</span></p><p class="art-meta">${e.source||""} · ${e.date||""}</p>
+          const bullets=(d.analyse||"").split("\n").filter(l=>l.trim().startsWith("•")).map(l=>l.trim().replace(/^•\s*/,""));
+          const analyseHtml=bullets.length>0?`<ul>${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>`:`<p class="bt" style="font-style:italic">${d.analyse||""}</p>`;
+          const titleHtml=e.url?`<a href="${e.url}" style="color:#1a3660;font-weight:bold">${e.title||"Article externe"}</a>`:(e.title||"Article externe");
+          html+=`<div class="art"><p class="art-title">${titleHtml} <span class="ext-tag">externe</span></p><p class="art-meta">${e.source||""} · ${e.date||""}</p>
             ${e.summary?`<div class="bloc"><p class="lbl">Résumé</p><p class="bt">${e.summary}</p></div>`:""}
-            ${d.analyse?`<div class="bloc"><p class="lbl">Analyse &amp; enjeux pour le ministère</p><p class="bt" style="font-style:italic">${d.analyse}</p></div>`:""}
+            ${d.analyse?`<div class="bloc"><p class="lbl">Analyse &amp; enjeux pour le ministère</p>${analyseHtml}</div>`:""}
             ${d.actionnable?`<div class="bloc-inst"><p class="lbl">Pourquoi actionnable ?</p><p class="bt">${d.actionnable}</p></div>`:""}
           </div>`;
         });
@@ -1120,6 +1138,10 @@ h2{color:#1a3660;border-bottom:2px solid #1a3660;padding-bottom:6px;margin:24px 
               </div>
             )}
 
+            <div style={{margin:"12px 24px 0",padding:"8px 12px",background:"#f0f4fb",border:`1px solid ${PV.border}`,fontSize:11,color:PV.muted,fontStyle:"italic",lineHeight:1.6}}>
+              Les titres des articles sont cliquables et renvoient vers la source originale.
+            </div>
+
             <div style={{padding:"16px 24px"}}>
               {pvSections.map((sec,si)=>{
                 const arts=pvAssigned[sec.id].map(id=>items.find(i=>i.id===id)).filter(Boolean);
@@ -1143,11 +1165,16 @@ h2{color:#1a3660;border-bottom:2px solid #1a3660;padding-bottom:6px;margin:24px 
                           {arts.map(a=>{
                             const d=pvArticleData[a.id]||{};
                             const isGen=pvGenerating.has(a.id);
+                            const bullets=(d.analyse||"").split("\n").filter(l=>l.trim().startsWith("•")).map(l=>l.trim());
+                            const analyseRaw=bullets.length>0?d.analyse:d.analyse;
                             return(
                               <div key={a.id} style={{background:PV.soft,border:`1px solid ${PV.border}`,padding:"12px 14px",marginBottom:8}}>
                                 <div style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:6}}>
                                   <div style={{flex:1}}>
-                                    <div style={{fontFamily:serif,fontSize:14,fontWeight:700,color:PV.ink,lineHeight:1.3,marginBottom:3}}>{a.title}</div>
+                                    {a.url
+                                      ?<a href={a.url} target="_blank" rel="noreferrer" style={{fontFamily:serif,fontSize:14,fontWeight:700,color:PV.accent,lineHeight:1.3,marginBottom:3,display:"block",textDecoration:"none"}} onMouseEnter={e=>e.currentTarget.style.textDecoration="underline"} onMouseLeave={e=>e.currentTarget.style.textDecoration="none"}>{a.title}</a>
+                                      :<div style={{fontFamily:serif,fontSize:14,fontWeight:700,color:PV.ink,lineHeight:1.3,marginBottom:3}}>{a.title}</div>
+                                    }
                                     <div style={{...scPV,fontSize:8}}>{a.source||""} · {a.date||""}</div>
                                   </div>
                                   <button onClick={()=>pvRemove(a.id)} style={{fontSize:13,background:"none",border:"none",color:PV.muted,cursor:"pointer",padding:0,opacity:.35,flexShrink:0}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=.35}>×</button>
@@ -1159,15 +1186,21 @@ h2{color:#1a3660;border-bottom:2px solid #1a3660;padding-bottom:6px;margin:24px 
                                   <div style={{...scPV,color:PV.accent,marginBottom:5}}>analyse & enjeux pour le ministère</div>
                                   {isGen
                                     ?<div style={{fontSize:11,color:PV.muted,fontStyle:"italic"}}>génération en cours…</div>
-                                    :<textarea value={d.analyse||""} onChange={e=>pvUpdateData(a.id,"analyse",e.target.value)} rows={3}
-                                      placeholder="Analyse générée par Claude — modifiable"
-                                      style={taS({background:"transparent",border:"none",fontStyle:"italic"})}/>
+                                    :bullets.length>0
+                                      ?<div>
+                                          {bullets.map((b,i)=><div key={i} style={{fontSize:11,color:PV.ink,lineHeight:1.7,display:"flex",gap:6,marginBottom:3}}><span style={{color:PV.accent,flexShrink:0}}>•</span><span>{b.replace(/^•\s*/,"")}</span></div>)}
+                                          <textarea value={d.analyse||""} onChange={e=>pvUpdateData(a.id,"analyse",e.target.value)} rows={3} style={taS({background:"transparent",border:"none",fontSize:10,marginTop:4,color:PV.muted})}/>
+                                        </div>
+                                      :<textarea value={d.analyse||""} onChange={e=>pvUpdateData(a.id,"analyse",e.target.value)} rows={3} placeholder="Génération en attente…" style={taS({background:"transparent",border:"none",fontStyle:"italic"})}/>
                                   }
+                                </div>
+                                <div style={{background:d.raccord&&d.raccord!=="pas de raccord possible"?"#fef9c3":PV.soft,border:`1px solid ${d.raccord&&d.raccord!=="pas de raccord possible"?"#fde68a":PV.border}`,borderLeft:`3px solid ${d.raccord&&d.raccord!=="pas de raccord possible"?"#d97706":PV.border}`,padding:"7px 10px",marginBottom:6}}>
+                                  <div style={{...scPV,color:d.raccord&&d.raccord!=="pas de raccord possible"?"#92400e":PV.muted,marginBottom:2}}>↔ raccord agenda</div>
+                                  <textarea value={d.raccord||""} onChange={e=>pvUpdateData(a.id,"raccord",e.target.value)} rows={1} placeholder="…" style={taS({background:"transparent",border:"none",fontSize:11,fontStyle:"normal",color:d.raccord&&d.raccord!=="pas de raccord possible"?"#451a03":PV.muted})}/>
                                 </div>
                                 <div style={{background:PV.paper,border:`1px solid ${PV.border}`,borderLeft:`3px solid ${PV.header}`,padding:"9px 12px"}}>
                                   <div style={{...scPV,color:PV.accentText,marginBottom:5}}>pourquoi actionnable ?</div>
-                                  <textarea value={d.actionnable||""} onChange={e=>pvUpdateData(a.id,"actionnable",e.target.value)} rows={2}
-                                    placeholder="Saisir…" style={taS({background:"transparent",border:"none",fontStyle:"normal"})}/>
+                                  <textarea value={d.actionnable||""} onChange={e=>pvUpdateData(a.id,"actionnable",e.target.value)} rows={2} placeholder="Saisir…" style={taS({background:"transparent",border:"none",fontStyle:"normal"})}/>
                                 </div>
                               </div>
                             );
@@ -1181,7 +1214,9 @@ h2{color:#1a3660;border-bottom:2px solid #1a3660;padding-bottom:6px;margin:24px 
                                   <button onClick={()=>pvRemoveExternal(sec.id,e.id)} style={{marginLeft:"auto",fontSize:13,background:"none",border:"none",color:PV.muted,cursor:"pointer",padding:0,opacity:.35}} onMouseEnter={el=>el.currentTarget.style.opacity=1} onMouseLeave={el=>el.currentTarget.style.opacity=.35}>×</button>
                                 </div>
                                 <input value={e.title} onChange={el=>pvUpdateExternal(sec.id,e.id,"title",el.target.value)} placeholder="Titre…"
-                                  style={inpS({fontFamily:serif,fontSize:14,fontWeight:700,color:PV.ink,width:"100%",borderBottom:`1px dashed ${PV.border}`,marginBottom:6,paddingBottom:2})}/>
+                                  style={inpS({fontFamily:serif,fontSize:14,fontWeight:700,color:PV.ink,width:"100%",borderBottom:`1px dashed ${PV.border}`,marginBottom:4,paddingBottom:2})}/>
+                                <input value={e.url||""} onChange={el=>pvUpdateExternal(sec.id,e.id,"url",el.target.value)} placeholder="URL (optionnel)"
+                                  style={inpS({fontSize:10,color:PV.accent,width:"100%",borderBottom:`1px dashed ${PV.border}`,marginBottom:6})}/>
                                 <div style={{display:"flex",gap:8,marginBottom:8}}>
                                   <input value={e.source} onChange={el=>pvUpdateExternal(sec.id,e.id,"source",el.target.value)} placeholder="Source"
                                     style={inpS({flex:1,fontSize:10,color:PV.muted,borderBottom:`1px dashed ${PV.border}`})}/>
@@ -1442,4 +1477,3 @@ h2{color:#1a3660;border-bottom:2px solid #1a3660;padding-bottom:6px;margin:24px 
     </div>
   );
 }
-
