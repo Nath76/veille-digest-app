@@ -953,6 +953,283 @@ export default function VeilleDigestReader() {
     );
   }
 
+  // ── VUE POINT VEILLE ─────────────────────────────────────
+  function PointVeilleView(){
+    const PV={header:"#1a3660",band:"#22487a",accent:"#3b6cc5",accentLight:"#e8effe",accentText:"#1a3660",headerText:"#eef2ff",bandText:"#a5b4fc",border:"#c7d2fe",ink:"#1a3660",paper:"#ffffff",soft:"#f8f9fe",muted:"#6b7280"};
+    const scPV={fontSize:9,letterSpacing:".14em",textTransform:"uppercase",color:PV.muted,fontFamily:sans};
+
+    const [pvTitre,      setPvTitre]      = useState("Point Veille");
+    const [pvSemaine,    setPvSemaine]    = useState(todayLong);
+    const [pvNumero,     setPvNumero]     = useState("N° 1");
+    const [pvSections,   setPvSections]   = useState([
+      {id:"s1",label:"Actionnable"},
+      {id:"s2",label:"Possiblement à préparer"},
+      {id:"s3",label:"Nouveautés du Centre de documentation"},
+      {id:"s4",label:"Actualité de l'ATE"},
+    ]);
+    const [pvAssigned,    setPvAssigned]    = useState({s1:[],s2:[],s3:[],s4:[]});
+    const [pvArticleData, setPvArticleData] = useState({});
+    const [pvExternals,   setPvExternals]   = useState({s1:[],s2:[],s3:[],s4:[]});
+    const [pvDragging,    setPvDragging]    = useState(null);
+    const [pvDragOver,    setPvDragOver]    = useState(null);
+    const [pvShowRadar,   setPvShowRadar]   = useState(true);
+    const [pvShowRaccord, setPvShowRaccord] = useState(true);
+    const [pvRaccordText, setPvRaccordText] = useState("");
+    const [pvGenerating,  setPvGenerating]  = useState(new Set());
+
+    const allAssignedIds = Object.values(pvAssigned).flat();
+    const pvPool = items.filter(i=>!dismissed.has(i.id)&&!isEv(i)&&i.title&&i.summary&&!allAssignedIds.includes(i.id));
+
+    async function pvGenerateAnalyse(id){
+      const item=items.find(i=>i.id===id);
+      if(!item) return;
+      if(pvArticleData[id]?.analyse) return;
+      setPvGenerating(p=>new Set([...p,id]));
+      try{
+        const prompt=`Tu es analyste pour le département de l'influence du ministère de l'Intérieur français.\n\nPour cet article de veille, rédige une analyse concise (3-4 phrases) sur les enjeux pour le ministère :\n\nTitre : ${item.title}\nRésumé : ${String(item.summary||"").slice(0,400)}\nThèmes : ${norm(item.themes).join(", ")}\nAngle d'exploitation : ${item.exploitationAngle||""}\n\nRéponds directement avec l'analyse, sans introduction ni titre.`;
+        const r=await fetch(SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"claude",prompt})});
+        const d=await r.json();
+        if(d.result) setPvArticleData(p=>({...p,[id]:{...p[id],analyse:d.result}}));
+      }catch(e){console.error(e);}
+      setPvGenerating(p=>{const n=new Set(p);n.delete(id);return n;});
+    }
+
+    function pvDrop(sectionId){
+      if(!pvDragging) return;
+      const id=pvDragging;
+      setPvAssigned(prev=>{
+        const next={...prev};
+        Object.keys(next).forEach(k=>{next[k]=next[k].filter(x=>x!==id);});
+        next[sectionId]=[...next[sectionId],id];
+        return next;
+      });
+      setPvDragging(null);setPvDragOver(null);
+      pvGenerateAnalyse(id);
+    }
+
+    function pvRemove(id){ setPvAssigned(prev=>{const next={...prev};Object.keys(next).forEach(k=>{next[k]=next[k].filter(x=>x!==id);});return next;}); }
+    function pvUpdateData(id,field,val){ setPvArticleData(p=>({...p,[id]:{...p[id],[field]:val}})); }
+    function pvUpdateSection(id,val){ setPvSections(p=>p.map(s=>s.id===id?{...s,label:val}:s)); }
+    function pvAddExternal(sectionId){ const id=`ext_${Date.now()}`;setPvExternals(p=>({...p,[sectionId]:[...p[sectionId],{id,title:"",source:"",date:"",summary:""}]}));setPvArticleData(p=>({...p,[id]:{analyse:"",actionnable:""}})); }
+    function pvUpdateExternal(sectionId,id,field,val){ setPvExternals(p=>({...p,[sectionId]:p[sectionId].map(e=>e.id===id?{...e,[field]:val}:e)})); }
+    function pvRemoveExternal(sectionId,id){ setPvExternals(p=>({...p,[sectionId]:p[sectionId].filter(e=>e.id!==id)})); }
+
+    function pvExport(){
+      let html=`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
+body{font-family:Arial,sans-serif;margin:2cm;color:#1a1a2e}
+.pv-header{background:#1a3660;color:white;padding:20px 24px;margin-bottom:20px}
+.pv-titre{font-size:26pt;font-weight:900;letter-spacing:-1px;margin:0 0 4px}
+.pv-meta{font-size:10pt;opacity:.75;margin:0}
+.raccord-top{background:#e8effe;border-left:4px solid #3b6cc5;padding:10px 14px;margin-bottom:20px}
+.lbl{font-size:8pt;text-transform:uppercase;letter-spacing:.1em;color:#6b7280;margin:0 0 4px}
+h2{color:#1a3660;border-bottom:2px solid #1a3660;padding-bottom:6px;margin:24px 0 12px;font-size:13pt}
+.art{border:1px solid #c7d2fe;padding:12px 14px;margin-bottom:10px;background:#f8f9fe}
+.art-title{font-size:13pt;font-weight:bold;color:#1a3660;margin:0 0 4px}
+.art-meta{font-size:8pt;text-transform:uppercase;letter-spacing:.06em;color:#6b7280;margin:0 0 10px}
+.bloc{background:white;border-left:3px solid #3b6cc5;padding:8px 12px;margin:6px 0}
+.bloc-inst{background:white;border-left:3px solid #1a3660;padding:8px 12px;margin:6px 0}
+.bt{font-size:10pt;line-height:1.65;margin:4px 0 0;color:#374151}
+.ext-tag{font-size:8pt;background:#fef9c3;color:#92400e;padding:1px 6px;border:1px solid #fde68a}
+.footer{border-top:2px solid #1a3660;margin-top:24px;padding-top:8px;font-size:8pt;color:#6b7280}
+</style></head><body>`;
+      html+=`<div class="pv-header"><p class="pv-titre">${pvTitre}</p><p class="pv-meta">${pvSemaine} &nbsp;·&nbsp; ${pvNumero}</p></div>`;
+      if(pvShowRaccord&&pvRaccordText) html+=`<div class="raccord-top"><p class="lbl">↔ Raccords agenda</p><p style="font-style:italic;margin:0;font-size:11pt;color:#1a3660">${pvRaccordText}</p></div>`;
+      pvSections.forEach((sec,si)=>{
+        const arts=pvAssigned[sec.id].map(id=>items.find(i=>i.id===id)).filter(Boolean);
+        const exts=pvExternals[sec.id]||[];
+        if(arts.length===0&&exts.length===0) return;
+        html+=`<h2>0${si+1} — ${sec.label}</h2>`;
+        arts.forEach(a=>{
+          const d=pvArticleData[a.id]||{};
+          html+=`<div class="art"><p class="art-title">${a.title}</p><p class="art-meta">${a.source||""} · ${a.date||""}</p>
+            <div class="bloc"><p class="lbl">Résumé</p><p class="bt">${String(a.summary||"")}</p></div>
+            ${d.analyse?`<div class="bloc"><p class="lbl">Analyse &amp; enjeux pour le ministère</p><p class="bt" style="font-style:italic">${d.analyse}</p></div>`:""}
+            ${d.actionnable?`<div class="bloc-inst"><p class="lbl">Pourquoi actionnable ?</p><p class="bt">${d.actionnable}</p></div>`:""}
+          </div>`;
+        });
+        exts.forEach(e=>{
+          const d=pvArticleData[e.id]||{};
+          html+=`<div class="art"><p class="art-title">${e.title||"Article externe"} <span class="ext-tag">externe</span></p><p class="art-meta">${e.source||""} · ${e.date||""}</p>
+            ${e.summary?`<div class="bloc"><p class="lbl">Résumé</p><p class="bt">${e.summary}</p></div>`:""}
+            ${d.analyse?`<div class="bloc"><p class="lbl">Analyse &amp; enjeux pour le ministère</p><p class="bt" style="font-style:italic">${d.analyse}</p></div>`:""}
+            ${d.actionnable?`<div class="bloc-inst"><p class="lbl">Pourquoi actionnable ?</p><p class="bt">${d.actionnable}</p></div>`:""}
+          </div>`;
+        });
+      });
+      html+=`<p class="footer">${pvTitre} &nbsp;·&nbsp; Usage interne &nbsp;·&nbsp; ${pvNumero} &nbsp;·&nbsp; ${pvSemaine}</p></body></html>`;
+      const blob=new Blob(['\ufeff',html],{type:'application/msword'});
+      const url=URL.createObjectURL(blob);
+      const a=document.createElement('a');
+      a.href=url;a.download=`point-veille-${pvNumero.replace(/[^\w]/g,'-')}.doc`;
+      a.click();URL.revokeObjectURL(url);
+    }
+
+    const inpS=(extra={})=>({border:"none",outline:"none",background:"transparent",fontFamily:"inherit",color:"inherit",...extra});
+    const taS=(extra={})=>({width:"100%",border:`1px solid ${PV.border}`,outline:"none",background:PV.paper,fontFamily:serif,fontSize:11,fontStyle:"italic",color:PV.ink,lineHeight:1.7,padding:"6px 8px",resize:"vertical",...extra});
+
+    return(
+      <div style={{flex:1,display:"grid",gridTemplateColumns:"248px 1fr",minHeight:0,overflow:"hidden"}}>
+        <div style={{borderRight:`1px solid ${PV.border}`,background:PV.soft,display:"flex",flexDirection:"column",overflowY:"auto",padding:14,gap:10}}>
+          <div style={{background:PV.paper,border:`1px solid ${PV.border}`,padding:12}}>
+            <div style={{...scPV,marginBottom:8}}>options</div>
+            {[[pvShowRadar,setPvShowRadar,"cible radar"],[pvShowRaccord,setPvShowRaccord,"bloc raccords"]].map(([v,s,l])=>(
+              <label key={l} style={{display:"flex",alignItems:"center",gap:8,marginBottom:5,cursor:"pointer",fontSize:11}}>
+                <input type="checkbox" checked={v} onChange={e=>s(e.target.checked)} style={{accentColor:PV.accent}}/>{l}
+              </label>
+            ))}
+          </div>
+          <div style={{...scPV,marginBottom:2}}>articles · glisser vers une rubrique</div>
+          {pvPool.length===0
+            ?<div style={{background:PV.paper,border:`1px solid ${PV.border}`,padding:12,fontSize:11,color:PV.muted,fontStyle:"italic",textAlign:"center"}}>tous les articles sont placés</div>
+            :pvPool.map(a=>(
+              <div key={a.id} draggable onDragStart={()=>setPvDragging(a.id)} onDragEnd={()=>{setPvDragging(null);setPvDragOver(null);}}
+                style={{background:PV.paper,border:`1px solid ${PV.border}`,borderLeft:`3px solid ${PV.accent}`,padding:"9px 11px",cursor:"grab",opacity:pvDragging===a.id?.4:1,transition:"opacity .15s",userSelect:"none"}}>
+                <div style={{fontFamily:serif,fontSize:12,color:PV.ink,lineHeight:1.3,marginBottom:3}}>{a.title}</div>
+                <div style={{...scPV,fontSize:8}}>{a.source||""}</div>
+              </div>
+            ))
+          }
+        </div>
+
+        <div style={{overflowY:"auto",background:"#edf0f7",padding:20}}>
+          <div style={{background:PV.paper,maxWidth:800,margin:"0 auto",boxShadow:"0 4px 24px rgba(0,0,0,.1)"}}>
+            <div style={{background:PV.header,padding:"22px 28px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+              <div style={{flex:1}}>
+                <input value={pvTitre} onChange={e=>setPvTitre(e.target.value)} style={inpS({fontSize:30,fontWeight:900,fontFamily:serif,color:PV.headerText,letterSpacing:"-1px",lineHeight:.9,display:"block",marginBottom:4,width:"100%"})} placeholder="Titre"/>
+              </div>
+              <div style={{textAlign:"right",marginLeft:16,flexShrink:0}}>
+                <input value={pvSemaine} onChange={e=>setPvSemaine(e.target.value)} style={inpS({fontSize:9,letterSpacing:".1em",textTransform:"uppercase",color:PV.bandText,display:"block",marginBottom:3,width:"100%",textAlign:"right"})} placeholder="Semaine"/>
+                <input value={pvNumero} onChange={e=>setPvNumero(e.target.value)} style={inpS({fontFamily:serif,fontSize:18,fontWeight:700,color:PV.headerText,display:"block",marginBottom:pvShowRadar?6:0,width:"100%",textAlign:"right"})} placeholder="N°"/>
+                {pvShowRadar&&(
+                  <svg width="66" height="66" viewBox="0 0 66 66" style={{display:"block",marginLeft:"auto"}}>
+                    {[28,19,11].map(r=><circle key={r} cx="33" cy="33" r={r} fill="none" stroke={PV.bandText} strokeWidth="1.2" opacity=".4"/>)}
+                    <circle cx="33" cy="33" r="5" fill={PV.accent} opacity=".75"/>
+                    {[[33,3,33,15],[33,51,33,63],[3,33,15,33],[51,33,63,33]].map(([x1,y1,x2,y2],i)=><line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={PV.bandText} strokeWidth="1.2" opacity=".45"/>)}
+                    <circle cx="33" cy="33" r="2.5" fill="white"/>
+                  </svg>
+                )}
+              </div>
+            </div>
+
+            {pvShowRaccord&&(
+              <div style={{margin:"14px 24px 0",padding:"10px 14px",background:PV.accentLight,borderLeft:`3px solid ${PV.accent}`}}>
+                <div style={{...scPV,color:PV.accentText,marginBottom:5}}>↔ raccords agenda</div>
+                <textarea value={pvRaccordText} onChange={e=>setPvRaccordText(e.target.value)} rows={2}
+                  placeholder="Saisir les raccords détectés avec l'agenda…"
+                  style={taS({background:PV.accentLight,border:"none",fontStyle:"italic",fontSize:12,color:PV.ink})}/>
+              </div>
+            )}
+
+            <div style={{padding:"16px 24px"}}>
+              {pvSections.map((sec,si)=>{
+                const arts=pvAssigned[sec.id].map(id=>items.find(i=>i.id===id)).filter(Boolean);
+                const exts=pvExternals[sec.id]||[];
+                const isOver=pvDragOver===sec.id;
+                return(
+                  <div key={sec.id} style={{marginBottom:26}}>
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,paddingBottom:7,borderBottom:`2px solid ${PV.header}`}}>
+                      <span style={{fontFamily:serif,fontSize:20,fontWeight:900,color:PV.border}}>0{si+1}</span>
+                      <input value={sec.label} onChange={e=>pvUpdateSection(sec.id,e.target.value)} style={inpS({fontFamily:serif,fontSize:16,fontWeight:700,color:PV.ink,flex:1})} placeholder="Nom de la rubrique"/>
+                      <button onClick={()=>pvAddExternal(sec.id)} style={{fontSize:9,letterSpacing:".08em",textTransform:"uppercase",padding:"3px 10px",border:`1px solid ${PV.border}`,background:"white",color:PV.muted,cursor:"pointer",flexShrink:0}}>+ article externe</button>
+                    </div>
+                    <div onDragOver={e=>{e.preventDefault();setPvDragOver(sec.id);}} onDragLeave={()=>setPvDragOver(null)} onDrop={()=>pvDrop(sec.id)}
+                      style={{minHeight:arts.length===0&&exts.length===0?56:undefined,border:isOver?`2px dashed ${PV.accent}`:`1px dashed ${PV.border}`,borderRadius:3,padding:isOver?"8px":"4px",background:isOver?PV.accentLight:"transparent",transition:"all .15s"}}>
+                      {arts.length===0&&exts.length===0?(
+                        <div style={{display:"flex",alignItems:"center",justifyContent:"center",height:44,fontSize:11,color:PV.muted,fontStyle:"italic"}}>
+                          {pvDragging?"⬇ déposer ici":"aucun article — glisser ou + article externe"}
+                        </div>
+                      ):(
+                        <>
+                          {arts.map(a=>{
+                            const d=pvArticleData[a.id]||{};
+                            const isGen=pvGenerating.has(a.id);
+                            return(
+                              <div key={a.id} style={{background:PV.soft,border:`1px solid ${PV.border}`,padding:"12px 14px",marginBottom:8}}>
+                                <div style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:6}}>
+                                  <div style={{flex:1}}>
+                                    <div style={{fontFamily:serif,fontSize:14,fontWeight:700,color:PV.ink,lineHeight:1.3,marginBottom:3}}>{a.title}</div>
+                                    <div style={{...scPV,fontSize:8}}>{a.source||""} · {a.date||""}</div>
+                                  </div>
+                                  <button onClick={()=>pvRemove(a.id)} style={{fontSize:13,background:"none",border:"none",color:PV.muted,cursor:"pointer",padding:0,opacity:.35,flexShrink:0}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=.35}>×</button>
+                                </div>
+                                <div style={{height:1,background:PV.border,marginBottom:8}}/>
+                                <div style={{...scPV,marginBottom:4}}>résumé</div>
+                                <div style={{fontSize:11,color:"#374151",lineHeight:1.8,marginBottom:8}}>{String(a.summary||"")}</div>
+                                <div style={{background:PV.paper,border:`1px solid ${PV.border}`,borderLeft:`3px solid ${PV.accent}`,padding:"9px 12px",marginBottom:6}}>
+                                  <div style={{...scPV,color:PV.accent,marginBottom:5}}>analyse & enjeux pour le ministère</div>
+                                  {isGen
+                                    ?<div style={{fontSize:11,color:PV.muted,fontStyle:"italic"}}>génération en cours…</div>
+                                    :<textarea value={d.analyse||""} onChange={e=>pvUpdateData(a.id,"analyse",e.target.value)} rows={3}
+                                      placeholder="Analyse générée par Claude — modifiable"
+                                      style={taS({background:"transparent",border:"none",fontStyle:"italic"})}/>
+                                  }
+                                </div>
+                                <div style={{background:PV.paper,border:`1px solid ${PV.border}`,borderLeft:`3px solid ${PV.header}`,padding:"9px 12px"}}>
+                                  <div style={{...scPV,color:PV.accentText,marginBottom:5}}>pourquoi actionnable ?</div>
+                                  <textarea value={d.actionnable||""} onChange={e=>pvUpdateData(a.id,"actionnable",e.target.value)} rows={2}
+                                    placeholder="Saisir…" style={taS({background:"transparent",border:"none",fontStyle:"normal"})}/>
+                                </div>
+                              </div>
+                            );
+                          })}
+                          {exts.map(e=>{
+                            const d=pvArticleData[e.id]||{};
+                            return(
+                              <div key={e.id} style={{background:"#fffef5",border:`1px solid #e5dfc8`,borderLeft:`3px solid #d97706`,padding:"12px 14px",marginBottom:8}}>
+                                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
+                                  <span style={{...scPV,color:"#92400e"}}>article externe</span>
+                                  <button onClick={()=>pvRemoveExternal(sec.id,e.id)} style={{marginLeft:"auto",fontSize:13,background:"none",border:"none",color:PV.muted,cursor:"pointer",padding:0,opacity:.35}} onMouseEnter={el=>el.currentTarget.style.opacity=1} onMouseLeave={el=>el.currentTarget.style.opacity=.35}>×</button>
+                                </div>
+                                <input value={e.title} onChange={el=>pvUpdateExternal(sec.id,e.id,"title",el.target.value)} placeholder="Titre…"
+                                  style={inpS({fontFamily:serif,fontSize:14,fontWeight:700,color:PV.ink,width:"100%",borderBottom:`1px dashed ${PV.border}`,marginBottom:6,paddingBottom:2})}/>
+                                <div style={{display:"flex",gap:8,marginBottom:8}}>
+                                  <input value={e.source} onChange={el=>pvUpdateExternal(sec.id,e.id,"source",el.target.value)} placeholder="Source"
+                                    style={inpS({flex:1,fontSize:10,color:PV.muted,borderBottom:`1px dashed ${PV.border}`})}/>
+                                  <input value={e.date} onChange={el=>pvUpdateExternal(sec.id,e.id,"date",el.target.value)} placeholder="Date"
+                                    style={inpS({width:90,fontSize:10,color:PV.muted,borderBottom:`1px dashed ${PV.border}`})}/>
+                                </div>
+                                <div style={{height:1,background:"#e5dfc8",marginBottom:8}}/>
+                                <div style={{...scPV,marginBottom:4}}>résumé / contenu</div>
+                                <textarea value={e.summary} onChange={el=>pvUpdateExternal(sec.id,e.id,"summary",el.target.value)} rows={3}
+                                  placeholder="Coller ou saisir le contenu…" style={taS({marginBottom:6,background:"white",fontStyle:"normal",fontSize:11})}/>
+                                <div style={{background:PV.paper,border:`1px solid ${PV.border}`,borderLeft:`3px solid ${PV.accent}`,padding:"9px 12px",marginBottom:6}}>
+                                  <div style={{...scPV,color:PV.accent,marginBottom:5}}>analyse & enjeux pour le ministère</div>
+                                  <textarea value={d.analyse||""} onChange={el=>pvUpdateData(e.id,"analyse",el.target.value)} rows={3}
+                                    placeholder="Saisir l'analyse…" style={taS({background:"transparent",border:"none",fontStyle:"italic"})}/>
+                                </div>
+                                <div style={{background:PV.paper,border:`1px solid ${PV.border}`,borderLeft:`3px solid ${PV.header}`,padding:"9px 12px"}}>
+                                  <div style={{...scPV,color:PV.accentText,marginBottom:5}}>pourquoi actionnable ?</div>
+                                  <textarea value={d.actionnable||""} onChange={el=>pvUpdateData(e.id,"actionnable",el.target.value)} rows={2}
+                                    placeholder="Saisir…" style={taS({background:"transparent",border:"none",fontStyle:"normal"})}/>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+
+            <div style={{borderTop:`3px double ${PV.header}`,padding:"10px 24px",display:"flex",justifyContent:"space-between",background:PV.soft}}>
+              <div style={{...scPV}}>{pvTitre} · usage interne</div>
+              <div style={{...scPV}}>{pvNumero} · {pvSemaine}</div>
+            </div>
+          </div>
+          <div style={{maxWidth:800,margin:"14px auto 0",display:"flex",justifyContent:"flex-end"}}>
+            <button onClick={pvExport}
+              style={{fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"10px 24px",background:PV.header,color:"white",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:8}}
+              onMouseEnter={e=>e.currentTarget.style.background=PV.accent} onMouseLeave={e=>e.currentTarget.style.background=PV.header}>
+              ↓ exporter en Word (.doc)
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
   return(
     <div style={{minHeight:"100vh",background:C.page,fontFamily:sans,color:C.text}}>
       {toast&&(
@@ -1091,12 +1368,12 @@ export default function VeilleDigestReader() {
             </div>
 
             <div style={{display:"flex",alignItems:"center",borderBottom:`1px solid ${C.border}`,padding:"0 22px"}}>
-              {[["productions",pubCount],["événements",evtCount],["agenda",events.length],["signaux faibles",signals.filter(s=>s.status!=="confirmé").length],["experts",experts.length],["produire",""]].map(([key,count])=>(
+              {[["productions",pubCount],["événements",evtCount],["agenda",events.length],["signaux faibles",signals.filter(s=>s.status!=="confirmé").length],["experts",experts.length],["produire",""],["point veille",""]].map(([key,count])=>(
                 <button key={key} onClick={()=>setTab(key)} style={{padding:"10px 11px",background:"none",border:"none",borderBottom:tab===key?`2px solid ${C.ink}`:"2px solid transparent",marginBottom:-1,color:tab===key?C.ink:C.muted,cursor:"pointer",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",fontFamily:sans,fontWeight:tab===key?500:400,display:"flex",alignItems:"center",gap:6}}>
                   {key}{count!==""&&<span style={{background:C.chip,color:C.chipText,borderRadius:2,padding:"1px 6px",fontSize:10,textTransform:"none",letterSpacing:0,fontWeight:400}}>{count}</span>}
                 </button>
               ))}
-              {!["agenda","signaux faibles","experts","produire"].includes(tab)&&(
+              {!["agenda","signaux faibles","experts","produire","point veille"].includes(tab)&&(
                 <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="rechercher dans le digest…" style={{marginLeft:"auto",border:"none",background:"transparent",outline:"none",color:C.accent,fontSize:12,fontFamily:serif,fontStyle:"italic",padding:"10px 0",width:190}}/>
               )}
             </div>
@@ -1105,6 +1382,7 @@ export default function VeilleDigestReader() {
             :tab==="signaux faibles"? <SignauxView/>
             :tab==="experts"       ? <ExpertsView/>
             :tab==="produire"      ? <ProduireView/>
+            :tab==="point veille"  ? <PointVeilleView/>
             :(
               <>
                 <div style={{flex:1,padding:"20px 22px",overflowY:"auto"}}>
@@ -1128,7 +1406,7 @@ export default function VeilleDigestReader() {
           </main>
         </div>
 
-        {noteIds.size>0&&!["agenda","signaux faibles","experts","produire"].includes(tab)&&(
+        {noteIds.size>0&&!["agenda","signaux faibles","experts","produire","point veille"].includes(tab)&&(
           <div style={{marginTop:18,background:C.panelSoft,border:`1px solid ${C.border}`,padding:22}}>
             <div style={{...sc(),marginBottom:14}}>préparer une note — {noteIds.size} article{noteIds.size>1?"s":""}</div>
             <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))",gap:12}}>
@@ -1164,3 +1442,4 @@ export default function VeilleDigestReader() {
     </div>
   );
 }
+
