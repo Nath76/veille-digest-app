@@ -376,7 +376,7 @@ export default function VeilleDigestReader() {
   const calDays2   = useMemo(()=>calDays(calY,calM),[calY,calM]);
   const byDay      = useMemo(()=>{const m={};events.forEach(e=>{if(!m[e.date])m[e.date]=[];m[e.date].push(e);});return m;},[events]);
   const dayEvts    = useMemo(()=>(byDay[selDay]||[]).sort((a,b)=>a.date.localeCompare(b.date)),[byDay,selDay]);
-  const monthUp = useMemo(()=>{const p=`${calY}-${String(calM+1).padStart(2,"0")}`;return events.filter(e=>e.date&&e.date.startsWith(p)&&e.date!==selDay)
+  const monthUp    = useMemo(()=>{const p=`${calY}-${String(calM+1).padStart(2,"0")}`;return events.filter(e=>e.date&&e.date.startsWith(p)&&e.date!==selDay).sort((a,b)=>a.date.localeCompare(b.date));},[events,calY,calM,selDay]);
   const importSug  = useMemo(()=>items.filter(i=>isEv(i)&&!dismissed.has(i.id)&&!events.some(e=>e.importedId===i.id)).slice(0,3),[items,dismissed,events]);
   const sigSug     = useMemo(()=>items.filter(i=>i.weakSignal&&!signals.some(s=>s.sourceId===i.id)).slice(0,3),[items,signals]);
   const activeSigs = useMemo(()=>signals.filter(s=>s.status!=="confirmé").filter(s=>sigFSt==="tous"||s.status===sigFSt).filter(s=>sigFTag==="tous"||s.tags.includes(sigFTag)).sort((a,b)=>b.dateDetected.localeCompare(a.dateDetected)),[signals,sigFSt,sigFTag]);
@@ -1164,4 +1164,3 @@ export default function VeilleDigestReader() {
     </div>
   );
 }
-
