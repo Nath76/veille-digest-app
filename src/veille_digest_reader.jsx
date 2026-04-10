@@ -1051,12 +1051,13 @@ h2{color:#18180f;border-bottom:2px solid #18180f;padding-bottom:6px;margin:24px 
         html+=`<h2>0${si+1} — ${sec.label}</h2>`;
         arts.forEach(a=>{
           const d=pvArticleData[a.id]||{};
+          const resumeText=d.resume||String(a.summary||"");
           const bullets=(d.analyse||"").split("\n").filter(l=>l.trim().startsWith("•")).map(l=>l.trim().replace(/^•\s*/,""));
           const analyseHtml=bullets.length>0?`<ul>${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>`:`<p class="bt" style="font-style:italic">${d.analyse||""}</p>`;
           const titleHtml=a.url?`<a href="${a.url}" style="color:#18180f;font-weight:bold">${a.title}</a>`:a.title;
           const raccord=d.raccord||"pas de raccord possible";
           html+=`<div class="art"><p class="art-title">${titleHtml}</p><p class="art-meta">${a.source||""} · ${a.date||""}</p>
-            <div class="bloc"><p class="lbl">Résumé</p><p class="bt">${String(a.summary||"")}</p></div>
+            <div class="bloc"><p class="lbl">Résumé</p><p class="bt">${resumeText}</p></div>
             ${d.analyse?`<div class="bloc"><p class="lbl">Analyse &amp; enjeux pour le ministère</p>${analyseHtml}</div>`:""}
             <div class="bloc-raccord"><p class="lbl">↔ Raccord agenda</p><p class="bt">${raccord}</p></div>
             ${d.actionnable?`<div class="bloc-inst"><p class="lbl">Pourquoi actionnable ?</p><p class="bt">${d.actionnable}</p></div>`:""}
@@ -1194,7 +1195,8 @@ h2{color:#18180f;border-bottom:2px solid #18180f;padding-bottom:6px;margin:24px 
                                 </div>
                                 <div style={{height:1,background:PV.border,marginBottom:8}}/>
                                 <div style={{...scPV,marginBottom:4}}>résumé</div>
-                                <div style={{fontSize:11,color:"#374151",lineHeight:1.8,marginBottom:8}}>{String(a.summary||"")}</div>
+                                <textarea value={d.resume||String(a.summary||"")} onChange={e=>pvUpdateData(a.id,"resume",e.target.value)} rows={4}
+                                  style={taS({marginBottom:8,background:"transparent",border:`1px dashed ${PV.border}`,fontStyle:"normal",fontSize:11,color:"#374151"})}/>
                                 <div style={{background:PV.paper,border:`1px solid ${PV.border}`,borderLeft:`3px solid ${PV.accent}`,padding:"9px 12px",marginBottom:6}}>
                                   <div style={{...scPV,color:PV.accent,marginBottom:5}}>analyse & enjeux pour le ministère</div>
                                   {isGen
@@ -1490,3 +1492,4 @@ h2{color:#18180f;border-bottom:2px solid #18180f;padding-bottom:6px;margin:24px 
     </div>
   );
 }
+
