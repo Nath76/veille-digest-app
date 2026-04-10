@@ -955,10 +955,10 @@ export default function VeilleDigestReader() {
 
   // ── VUE POINT VEILLE ─────────────────────────────────────
   function PointVeilleView(){
-    const PV={header:C.ink,band:C.dark,accent:C.accent,accentLight:"#f2e8df",accentText:C.accent,headerText:C.white,bandText:"#9a8f7a",border:C.border,ink:C.ink,paper:C.white,soft:C.panelSoft,muted:C.muted};
+    const PV={header:C.page,band:C.panel,accent:C.accent,accentLight:"#f2e8df",accentText:C.accent,headerText:C.ink,bandText:C.muted,border:C.border,ink:C.ink,paper:C.white,soft:C.panelSoft,muted:C.muted};
     const scPV={fontSize:9,letterSpacing:".14em",textTransform:"uppercase",color:PV.muted,fontFamily:sans};
 
-    const [pvTitre,      setPvTitre]      = useState("Point Veille");
+    const [pvTitre,      setPvTitre]      = useState("Point Veille Hebdomadaire");
     const [pvSemaine,    setPvSemaine]    = useState(todayLong);
     const [pvNumero,     setPvNumero]     = useState("N° 1");
     const [pvSections,   setPvSections]   = useState([
@@ -1053,7 +1053,7 @@ h2{color:#18180f;border-bottom:2px solid #18180f;padding-bottom:6px;margin:24px 
           const d=pvArticleData[a.id]||{};
           const bullets=(d.analyse||"").split("\n").filter(l=>l.trim().startsWith("•")).map(l=>l.trim().replace(/^•\s*/,""));
           const analyseHtml=bullets.length>0?`<ul>${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>`:`<p class="bt" style="font-style:italic">${d.analyse||""}</p>`;
-          const titleHtml=a.url?`<a href="${a.url}" style="color:#1a3660;font-weight:bold">${a.title}</a>`:a.title;
+          const titleHtml=a.url?`<a href="${a.url}" style="color:#18180f;font-weight:bold">${a.title}</a>`:a.title;
           const raccord=d.raccord||"pas de raccord possible";
           html+=`<div class="art"><p class="art-title">${titleHtml}</p><p class="art-meta">${a.source||""} · ${a.date||""}</p>
             <div class="bloc"><p class="lbl">Résumé</p><p class="bt">${String(a.summary||"")}</p></div>
@@ -1066,7 +1066,7 @@ h2{color:#18180f;border-bottom:2px solid #18180f;padding-bottom:6px;margin:24px 
           const d=pvArticleData[e.id]||{};
           const bullets=(d.analyse||"").split("\n").filter(l=>l.trim().startsWith("•")).map(l=>l.trim().replace(/^•\s*/,""));
           const analyseHtml=bullets.length>0?`<ul>${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>`:`<p class="bt" style="font-style:italic">${d.analyse||""}</p>`;
-          const titleHtml=e.url?`<a href="${e.url}" style="color:#1a3660;font-weight:bold">${e.title||"Article externe"}</a>`:(e.title||"Article externe");
+          const titleHtml=e.url?`<a href="${e.url}" style="color:#18180f;font-weight:bold">${e.title||"Article externe"}</a>`:(e.title||"Article externe");
           html+=`<div class="art"><p class="art-title">${titleHtml} <span class="ext-tag">externe</span></p><p class="art-meta">${e.source||""} · ${e.date||""}</p>
             ${e.summary?`<div class="bloc"><p class="lbl">Résumé</p><p class="bt">${e.summary}</p></div>`:""}
             ${d.analyse?`<div class="bloc"><p class="lbl">Analyse &amp; enjeux pour le ministère</p>${analyseHtml}</div>`:""}
@@ -1109,9 +1109,9 @@ h2{color:#18180f;border-bottom:2px solid #18180f;padding-bottom:6px;margin:24px 
           }
         </div>
 
-        <div style={{overflowY:"auto",background:"#edf0f7",padding:20}}>
+        <div style={{overflowY:"auto",background:C.page,padding:20}}>
           <div style={{background:PV.paper,maxWidth:800,margin:"0 auto",boxShadow:"0 4px 24px rgba(0,0,0,.1)"}}>
-            <div style={{background:PV.header,padding:"22px 28px",display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+            <div style={{background:PV.header,padding:"22px 28px",display:"flex",justifyContent:"space-between",alignItems:"center",borderBottom:`4px double ${C.ink}`}}>
               <div style={{flex:1}}>
                 <input value={pvTitre} onChange={e=>setPvTitre(e.target.value)} style={inpS({fontSize:30,fontWeight:900,fontFamily:serif,color:PV.headerText,letterSpacing:"-1px",lineHeight:.9,display:"block",marginBottom:4,width:"100%"})} placeholder="Titre"/>
               </div>
@@ -1119,11 +1119,24 @@ h2{color:#18180f;border-bottom:2px solid #18180f;padding-bottom:6px;margin:24px 
                 <input value={pvSemaine} onChange={e=>setPvSemaine(e.target.value)} style={inpS({fontSize:9,letterSpacing:".1em",textTransform:"uppercase",color:PV.bandText,display:"block",marginBottom:3,width:"100%",textAlign:"right"})} placeholder="Semaine"/>
                 <input value={pvNumero} onChange={e=>setPvNumero(e.target.value)} style={inpS({fontFamily:serif,fontSize:18,fontWeight:700,color:PV.headerText,display:"block",marginBottom:pvShowRadar?6:0,width:"100%",textAlign:"right"})} placeholder="N°"/>
                 {pvShowRadar&&(
-                  <svg width="66" height="66" viewBox="0 0 66 66" style={{display:"block",marginLeft:"auto"}}>
-                    {[28,19,11].map(r=><circle key={r} cx="33" cy="33" r={r} fill="none" stroke={PV.bandText} strokeWidth="1.2" opacity=".4"/>)}
-                    <circle cx="33" cy="33" r="5" fill={PV.accent} opacity=".75"/>
-                    {[[33,3,33,15],[33,51,33,63],[3,33,15,33],[51,33,63,33]].map(([x1,y1,x2,y2],i)=><line key={i} x1={x1} y1={y1} x2={x2} y2={y2} stroke={PV.bandText} strokeWidth="1.2" opacity=".45"/>)}
-                    <circle cx="33" cy="33" r="2.5" fill="white"/>
+                  <svg width="90" height="90" viewBox="0 0 90 90" style={{display:"block",marginLeft:"auto"}}>
+                    {/* Cercles concentriques */}
+                    {[38,28,18,9].map((r,i)=><circle key={r} cx="45" cy="45" r={r} fill="none" stroke={C.accent} strokeWidth={i===0?1:1.2} opacity={0.2+i*0.15}/>)}
+                    {/* Secteur balayage */}
+                    <path d="M45,45 L45,7 A38,38 0 0,1 78,60 Z" fill={C.accent} opacity=".18"/>
+                    <path d="M45,45 L45,7 A38,38 0 0,1 63,74 Z" fill={C.accent} opacity=".10"/>
+                    {/* Lignes de grille */}
+                    {[0,45,90,135].map((a,i)=>{const r=Math.PI*a/180;return<line key={i} x1={45+38*Math.cos(r-Math.PI/2)} y1={45+38*Math.sin(r-Math.PI/2)} x2={45-38*Math.cos(r-Math.PI/2)} y2={45-38*Math.sin(r-Math.PI/2)} stroke={C.accent} strokeWidth=".7" opacity=".3"/>;})}
+                    {/* Points détectés */}
+                    <circle cx="58" cy="24" r="3.5" fill={C.accent} opacity=".9"/>
+                    <circle cx="58" cy="24" r="7" fill="none" stroke={C.accent} strokeWidth="1" opacity=".5"/>
+                    <circle cx="34" cy="52" r="2.5" fill={C.accent} opacity=".7"/>
+                    <circle cx="62" cy="48" r="2" fill={C.accent} opacity=".6"/>
+                    {/* Centre */}
+                    <circle cx="45" cy="45" r="3.5" fill={C.ink}/>
+                    <circle cx="45" cy="45" r="1.5" fill={C.accent}/>
+                    {/* Ligne balayage */}
+                    <line x1="45" y1="45" x2="45" y2="7" stroke={C.accent} strokeWidth="1.5" opacity=".8"/>
                   </svg>
                 )}
               </div>
@@ -1138,7 +1151,7 @@ h2{color:#18180f;border-bottom:2px solid #18180f;padding-bottom:6px;margin:24px 
               </div>
             )}
 
-            <div style={{margin:"12px 24px 0",padding:"8px 12px",background:"#f0f4fb",border:`1px solid ${PV.border}`,fontSize:11,color:PV.muted,fontStyle:"italic",lineHeight:1.6}}>
+            <div style={{margin:"12px 24px 0",padding:"8px 12px",background:C.panelSoft,border:`1px solid ${C.border}`,fontSize:11,color:C.muted,fontStyle:"italic",lineHeight:1.6}}>
               Les titres des articles sont cliquables et renvoient vers la source originale.
             </div>
 
