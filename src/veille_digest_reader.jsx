@@ -27,6 +27,145 @@ const SIGNAL_ST    = {
 };
 const EXPERT_DOMAINS = ["sécurité publique","renseignement","numérique","communication","juridique","autre"];
 
+// ── CALENDRIER 2026 ───────────────────────────────────────
+// Événements fixes — fenêtres d'opportunité pour le travail d'influence.
+// Codés directement, visibles par tous les utilisateurs, non modifiables.
+const CALENDRIER_2026 = [
+  // AVRIL
+  {id:"c001",title:"PJL constitutionnel relatif à la Nouvelle-Calédonie",date:"2026-04-03",type:"législatif"},
+  {id:"c002",title:"Journée mondiale de la santé",date:"2026-04-07",type:"journée"},
+  {id:"c003",title:"PPL Gouvernance claire, juste et solidaire pour la gestion des milieux aquatiques et prévention des inondations",date:"2026-04-07",type:"législatif"},
+  {id:"c004",title:"PPL visant à mettre fin au devoir conjugal",date:"2026-04-09",type:"législatif"},
+  {id:"c005",title:"PJL organique relatif au renforcement des juridictions criminelles",date:"2026-04-13",type:"législatif"},
+  {id:"c006",title:"PJL sur la justice criminelle et le respect des victimes",date:"2026-04-13",type:"législatif"},
+  {id:"c007",title:"Journée de la créativité et de l'innovation",date:"2026-04-21",type:"journée"},
+  {id:"c008",title:"Journée de la terre",date:"2026-04-22",type:"journée"},
+  {id:"c009",title:"Journée de la santé et de la sécurité au travail",date:"2026-04-28",type:"journée"},
+  {id:"c010",title:"Foire de Paris & concours Lépine",date:"2026-04-30",type:"culturel"},
+  // DATES À VENIR
+  {id:"c011",title:"PPL visant à garantir le droit de visite des parlementaires et des bâtonniers dans les lieux de privation de liberté",date:null,type:"législatif"},
+  {id:"c012",title:"PPL visant à lutter contre l'exploitation sexuelle en ligne",date:null,type:"législatif"},
+  {id:"c013",title:"Proposition de résolution visant à renforcer la lutte contre la contrefaçon, vecteur de criminalité organisée et de blanchiment d'argent",date:null,type:"législatif"},
+  {id:"c014",title:"PJL relatif à l'extension des prérogatives, des moyens, de l'organisation et du contrôle des polices municipales et des gardes champêtres",date:null,type:"législatif"},
+  {id:"c015",title:"PJL relatif à la restitution de biens culturels provenant d'État qui, du fait d'une appropriation illicite, en ont été privés",date:null,type:"législatif"},
+  {id:"c016",title:"PJL relatif à la lutte contre les fraudes sociales et fiscales",date:null,type:"législatif"},
+  {id:"c017",title:"PJL relatif à la résilience des infrastructures critiques et au renforcement de la cybersécurité",date:null,type:"législatif"},
+  // MAI
+  {id:"c018",title:"Fête du travail",date:"2026-05-01",type:"commémoration"},
+  {id:"c019",title:"Journée mondiale du rire",date:"2026-05-03",type:"journée"},
+  {id:"c020",title:"PPL visant à lutter contre l'entrisme islamique en France",date:"2026-05-05",type:"législatif"},
+  {id:"c021",title:"PPL améliorant la protection des personnes ciblées par les réseaux de criminalité organisée",date:"2026-05-07",type:"législatif"},
+  {id:"c022",title:"Commémorations Armistice 1945",date:"2026-05-08",type:"commémoration"},
+  {id:"c023",title:"Journée de l'Europe",date:"2026-05-09",type:"journée"},
+  {id:"c024",title:"Sommet franco-africain à Nairobi (Africa Forward)",date:"2026-05-11",type:"institutionnel"},
+  {id:"c025",title:"Ouverture du Festival de Cannes",date:"2026-05-12",type:"culturel"},
+  {id:"c026",title:"Finale de l'Eurovision",date:"2026-05-16",type:"culturel"},
+  {id:"c027",title:"Journée internationale de lutte contre l'homophobie",date:"2026-05-17",type:"journée"},
+  {id:"c028",title:"PJL visant à offrir des réponses immédiates aux phénomènes troublant l'ordre public (RIPOST)",date:"2026-05-18",type:"législatif"},
+  {id:"c029",title:"Journée mondiale de la biodiversité",date:"2026-05-22",type:"journée"},
+  {id:"c030",title:"Nuit des musées",date:"2026-05-23",type:"culturel"},
+  {id:"c031",title:"Début de Roland Garros",date:"2026-05-24",type:"culturel"},
+  {id:"c032",title:"Fête des voisins",date:"2026-05-29",type:"culturel"},
+  {id:"c033",title:"Finale Ligue des Champions",date:"2026-05-30",type:"culturel"},
+  {id:"c034",title:"Fête des mères",date:"2026-05-31",type:"commémoration"},
+  {id:"c035",title:"Journée mondiale sans tabac",date:"2026-05-31",type:"journée"},
+  {id:"c036",title:"90e anniversaire des grandes grèves de 1936",date:"2026-05-01",type:"commémoration"},
+  // JUIN
+  {id:"c037",title:"Début du mois des Fiertés",date:"2026-06-01",type:"culturel"},
+  {id:"c038",title:"Nomination d'un nouveau Défenseur des droits",date:"2026-06-01",type:"institutionnel"},
+  {id:"c039",title:"Salon des maires de France",date:"2026-06-02",type:"institutionnel"},
+  {id:"c040",title:"Journée mondiale du vélo et de la course à pied",date:"2026-06-03",type:"journée"},
+  {id:"c041",title:"Journée mondiale de l'environnement",date:"2026-06-05",type:"journée"},
+  {id:"c042",title:"Nuit Blanche",date:"2026-06-06",type:"culturel"},
+  {id:"c043",title:"Journée mondiale des Océans",date:"2026-06-08",type:"journée"},
+  {id:"c044",title:"24H du Mans",date:"2026-06-10",type:"culturel"},
+  {id:"c045",title:"Journée mondiale du bien-être",date:"2026-06-11",type:"journée"},
+  {id:"c046",title:"Ouverture de la coupe du monde de football",date:"2026-06-11",type:"culturel"},
+  {id:"c047",title:"Journée mondiale des donneurs de sang",date:"2026-06-14",type:"journée"},
+  {id:"c048",title:"Début du baccalauréat",date:"2026-06-15",type:"institutionnel"},
+  {id:"c049",title:"G7 à Evian",date:"2026-06-15",type:"institutionnel"},
+  {id:"c050",title:"Salon VivaTech",date:"2026-06-17",type:"institutionnel"},
+  {id:"c051",title:"Fête des pères",date:"2026-06-21",type:"commémoration"},
+  {id:"c052",title:"Fête de la musique",date:"2026-06-21",type:"culturel"},
+  {id:"c053",title:"Panthéonisation de Marc Bloch",date:"2026-06-23",type:"commémoration"},
+  {id:"c054",title:"Soldes d'été",date:"2026-06-24",type:"culturel"},
+  {id:"c055",title:"Meeting de Paris (athlétisme)",date:"2026-06-26",type:"culturel"},
+  {id:"c056",title:"Festival Solidays",date:"2026-06-26",type:"culturel"},
+  {id:"c057",title:"Marche des fiertés",date:"2026-06-27",type:"culturel"},
+  // JUILLET
+  {id:"c058",title:"Festival Calvi on the Rocks",date:"2026-07-02",type:"culturel"},
+  {id:"c059",title:"Indépendance américaine - 250 ans",date:"2026-07-04",type:"commémoration"},
+  {id:"c060",title:"Paris Plage",date:"2026-07-04",type:"culturel"},
+  {id:"c061",title:"Départ du Tour de France",date:"2026-07-04",type:"culturel"},
+  {id:"c062",title:"Festival d'Avignon",date:"2026-07-04",type:"culturel"},
+  {id:"c063",title:"Rencontres de la photographie à Arles",date:"2026-07-06",type:"culturel"},
+  {id:"c064",title:"Japan Expo à Paris",date:"2026-07-09",type:"culturel"},
+  {id:"c065",title:"10 ans de la catastrophe Seveso",date:"2026-07-10",type:"commémoration"},
+  {id:"c066",title:"Cérémonie en souvenir d'Alfred Dreyfus",date:"2026-07-12",type:"commémoration"},
+  {id:"c067",title:"Fête nationale",date:"2026-07-14",type:"commémoration"},
+  {id:"c068",title:"10 ans des attentats de Nice",date:"2026-07-14",type:"commémoration"},
+  {id:"c069",title:"10 ans de la mort d'Adama Traoré",date:"2026-07-19",type:"commémoration"},
+  {id:"c070",title:"Anniversaire 2 ans de la cérémonie d'ouverture JOP 2024",date:"2026-07-26",type:"commémoration"},
+  {id:"c071",title:"Championnats d'Europe de natation",date:"2026-07-31",type:"culturel"},
+  // AOÛT
+  {id:"c072",title:"Journée du chat",date:"2026-08-08",type:"journée"},
+  {id:"c073",title:"Eclipse totale du soleil",date:"2026-08-12",type:"culturel"},
+  {id:"c074",title:"Journée du chien",date:"2026-08-26",type:"journée"},
+  {id:"c075",title:"Rock en Seine",date:"2026-08-26",type:"culturel"},
+  // SEPTEMBRE
+  {id:"c076",title:"Festival du cinéma américain à Deauville",date:"2026-09-04",type:"culturel"},
+  {id:"c077",title:"Grande braderie de Lille",date:"2026-09-05",type:"culturel"},
+  {id:"c078",title:"Journée mondiale de la prévention du suicide",date:"2026-09-10",type:"journée"},
+  {id:"c079",title:"Fête de l'Huma",date:"2026-09-11",type:"culturel"},
+  {id:"c080",title:"25 ans de l'attentat du World Trade Center",date:"2026-09-11",type:"commémoration"},
+  {id:"c081",title:"Journée mondiale des premiers secours",date:"2026-09-12",type:"journée"},
+  {id:"c082",title:"Journées européennes du patrimoine",date:"2026-09-19",type:"culturel"},
+  {id:"c083",title:"25e anniversaire explosion AZF",date:"2026-09-21",type:"commémoration"},
+  {id:"c084",title:"Elections sénatoriales",date:"2026-09-27",type:"institutionnel"},
+  // OCTOBRE
+  {id:"c085",title:"Début Octobre rose",date:"2026-10-01",type:"journée"},
+  {id:"c086",title:"Journée internationale des personnes âgées",date:"2026-10-01",type:"journée"},
+  {id:"c087",title:"Journée mondiale des animaux",date:"2026-10-04",type:"journée"},
+  {id:"c088",title:"Journée nationale des aveugles et malvoyants",date:"2026-10-04",type:"journée"},
+  {id:"c089",title:"Journée mondiale du handicap",date:"2026-10-09",type:"journée"},
+  {id:"c090",title:"Journée mondiale de la santé mentale",date:"2026-10-10",type:"journée"},
+  {id:"c091",title:"Mondial de l'auto",date:"2026-10-12",type:"culturel"},
+  {id:"c092",title:"Journée mondiale de la vue",date:"2026-10-12",type:"journée"},
+  {id:"c093",title:"Journée nationale des toxicomanies",date:"2026-10-15",type:"journée"},
+  {id:"c094",title:"Paris Games Week",date:"2026-10-21",type:"culturel"},
+  {id:"c095",title:"Art Basel Paris",date:"2026-10-23",type:"culturel"},
+  {id:"c096",title:"Salon du chocolat",date:"2026-10-28",type:"culturel"},
+  {id:"c097",title:"Halloween",date:"2026-10-31",type:"culturel"},
+  {id:"c098",title:"Rolex Paris Masters",date:"2026-10-31",type:"culturel"},
+  {id:"c099",title:"108e Congrès des maires",date:"2026-11-01",type:"institutionnel"},
+  // NOVEMBRE
+  {id:"c100",title:"Départ de la Route du Rhum à Saint Malo",date:"2026-11-01",type:"culturel"},
+  {id:"c101",title:"Journée de la gentillesse",date:"2026-11-03",type:"journée"},
+  {id:"c102",title:"Elections des mid-terms USA",date:"2026-11-03",type:"institutionnel"},
+  {id:"c103",title:"Journée nationale de lutte contre le harcèlement scolaire",date:"2026-11-05",type:"journée"},
+  {id:"c104",title:"Armistice 1918",date:"2026-11-11",type:"commémoration"},
+  {id:"c105",title:"Salon du Made in France",date:"2026-11-12",type:"institutionnel"},
+  {id:"c106",title:"Sommet de la francophonie",date:"2026-11-15",type:"institutionnel"},
+  {id:"c107",title:"Beaujolais nouveau",date:"2026-11-19",type:"culturel"},
+  {id:"c108",title:"Black Friday",date:"2026-11-27",type:"culturel"},
+  // DÉCEMBRE
+  {id:"c109",title:"Journée mondiale de lutte contre le SIDA",date:"2026-12-01",type:"journée"},
+  {id:"c110",title:"Journée internationale des personnes handicapées",date:"2026-12-03",type:"journée"},
+  {id:"c111",title:"Fête des Lumières à Lyon",date:"2026-12-05",type:"culturel"},
+  {id:"c112",title:"Journée mondiale du bénévolat",date:"2026-12-05",type:"journée"},
+  {id:"c113",title:"40e anniversaire de la mort de Malik Oussekine",date:"2026-12-06",type:"commémoration"},
+  {id:"c114",title:"Journée mondiale du climat",date:"2026-12-08",type:"journée"},
+  {id:"c115",title:"Journées des droits de l'homme",date:"2026-12-10",type:"journée"},
+];
+
+const CAL_TYPE_S = {
+  "législatif":   {bg:"#e8effe",color:"#3730a3"},
+  "journée":      {bg:"#e1f5ee",color:"#0f6e56"},
+  "commémoration":{bg:"#f2e2da",color:"#9a3412"},
+  "culturel":     {bg:"#faeeda",color:"#854f0b"},
+  "institutionnel":{bg:"#ece7dc",color:"#4f4638"},
+};
+
 const sc    = (x={}) => ({fontSize:11,letterSpacing:".14em",textTransform:"uppercase",color:C.muted,fontFamily:sans,...x});
 const sp    = s => { const n=Number(s||0); if(n>=85)return{background:"#dcefdc",color:"#1f7a45"}; if(n>=70)return{background:"#f9e7c8",color:"#a16207"}; if(n>=50)return{background:"#f2e2da",color:"#9a3412"}; return{background:"#ece7dc",color:"#6b7280"}; };
 const pArr  = v => { if(Array.isArray(v))return v; if(!v)return []; return String(v).split(";").map(s=>s.trim()).filter(Boolean); };
@@ -181,18 +320,28 @@ export default function VeilleDigestReader() {
     const sel=prodSelected.slice(0,format==="comm"?1:20);
     if(sel.length===0){setProdError("aucun article sélectionné");return;}
     setProdLoading(true);setProdResult(null);setProdError("");
+
+    const td=today();
+    const upcoming30=CALENDRIER_2026
+      .filter(e=>e.date&&e.date>=td&&e.date<=`${td.slice(0,7)}-31`)
+      .sort((a,b)=>a.date.localeCompare(b.date))
+      .slice(0,8)
+      .map(e=>`- ${fsFR(e.date)} : ${e.title} (${e.type})`)
+      .join("\n");
+    const calContext=upcoming30?`\nFenêtres d'opportunité à venir :\n${upcoming30}\n`:"";
+
     try {
       let prompt="";
       if(format==="synthèse"){
         const list=sel.map((a,i)=>`${i+1}. ${a.title}\nRésumé: ${String(a.summary||"").slice(0,300)}\nThèmes: ${norm(a.themes).join(", ")}`).join("\n\n");
-        prompt=`Tu es un analyste de veille pour le département de l'influence du ministère de l'Intérieur français.\n\nProduis une synthèse thématique hebdomadaire structurée à partir de ces ${sel.length} articles de veille. Organise par thèmes, identifie les tendances, les signaux importants et les enjeux pour le ministère. Rédige en français, avec un style éditorial professionnel.\n\nArticles :\n${list}`;
+        prompt=`Tu es un analyste de veille pour le département de l'influence du ministère de l'Intérieur français.\n${calContext}\nProduis une synthèse thématique hebdomadaire structurée à partir de ces ${sel.length} articles de veille. Organise par thèmes, identifie les tendances, les signaux importants et les enjeux pour le ministère. Si des fenêtres d'opportunité sont mentionnées ci-dessus, indique comment les articles peuvent être mobilisés à ces occasions. Rédige en français, avec un style éditorial professionnel.\n\nArticles :\n${list}`;
       } else if(format==="narrative"){
         const n=prodNarCount==="top 5"?5:prodNarCount==="top 15"?15:10;
         const list=sel.slice(0,n).map(a=>`- ${a.title} : ${String(a.summary||"").slice(0,200)}`).join("\n");
-        prompt=`Tu es un éditorialiste senior spécialisé dans les affaires intérieures françaises.\n\nRédige une revue de presse narrative de la semaine à partir de ces articles. Raconte l'actualité comme un éditorialiste : un fil conducteur, une mise en perspective, une voix. Pas de liste, pas de titres — du texte continu, vivant, avec du sens.\n\nArticles :\n${list}`;
+        prompt=`Tu es un éditorialiste senior spécialisé dans les affaires intérieures françaises.\n${calContext}\nRédige une revue de presse narrative de la semaine à partir de ces articles. Raconte l'actualité comme un éditorialiste : un fil conducteur, une mise en perspective, une voix. Si des fenêtres d'opportunité sont proches, intègre-les naturellement dans le récit. Pas de liste, pas de titres — du texte continu, vivant, avec du sens.\n\nArticles :\n${list}`;
       } else if(format==="comm"){
         const a=sel[0];
-        prompt=`Tu es expert en communication institutionnelle pour le ministère de l'Intérieur français, département de l'influence.\n\nPour cet article de veille, propose 4 formats de production concrets pour faire passer l'information efficacement :\n\nArticle : ${a.title}\nRésumé : ${String(a.summary||"").slice(0,400)}\nAngle d'exploitation : ${a.exploitationAngle||""}\n\nPour chaque format, donne un titre court (3-4 mots) et une description de 2-3 phrases. Formate ainsi :\n\nFORMAT 1 - [titre]\n[description]\n\nFORMAT 2 - [titre]\n[description]\n\netc.`;
+        prompt=`Tu es expert en communication institutionnelle pour le ministère de l'Intérieur français, département de l'influence.\n${calContext}\nPour cet article de veille, propose 4 formats de production concrets pour faire passer l'information efficacement. Si des fenêtres d'opportunité sont proches, propose des formats qui s'appuient sur ces échéances.\n\nArticle : ${a.title}\nRésumé : ${String(a.summary||"").slice(0,400)}\nAngle d'exploitation : ${a.exploitationAngle||""}\n\nPour chaque format, donne un titre court (3-4 mots) et une description de 2-3 phrases. Formate ainsi :\n\nFORMAT 1 - [titre]\n[description]\n\nFORMAT 2 - [titre]\n[description]\n\netc.`;
       }
       const result=await callClaude(prompt);
       setProdResult({text:result,format,timestamp:new Date().toLocaleTimeString("fr-FR",{hour:"2-digit",minute:"2-digit"})});
@@ -389,6 +538,26 @@ export default function VeilleDigestReader() {
               {monthUp.map(e=><EvCard key={e.id} ev={e}/>)}
             </div>
           )}
+          {(()=>{
+            const p=`${calY}-${String(calM+1).padStart(2,"0")}`;
+            const calMonth=CALENDRIER_2026.filter(e=>e.date&&e.date.startsWith(p)).sort((a,b)=>a.date.localeCompare(b.date));
+            const calSansDates=CALENDRIER_2026.filter(e=>!e.date);
+            return calMonth.length>0||calSansDates.length>0?(
+              <div style={{marginTop:24,paddingTop:16,borderTop:`1px solid ${C.border}`}}>
+                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:12}}>
+                  <div style={{...sc()}}>opportunités ce mois</div>
+                  <span style={{fontSize:9,padding:"2px 7px",borderRadius:2,background:"#e8effe",color:"#3730a3",fontFamily:sans,letterSpacing:".06em",textTransform:"uppercase"}}>calendrier 2026</span>
+                </div>
+                {calMonth.map(ev=><CalCard key={ev.id} ev={ev}/>)}
+                {calSansDates.length>0&&calM===new Date().getMonth()&&calY===new Date().getFullYear()&&(
+                  <div style={{marginTop:12}}>
+                    <div style={{...sc(),fontSize:9,marginBottom:8}}>dates à confirmer</div>
+                    {calSansDates.map(ev=><CalCard key={ev.id} ev={ev}/>)}
+                  </div>
+                )}
+              </div>
+            ):null;
+          })()}
           {importSug.length>0&&(
             <div style={{marginTop:24,paddingTop:16,borderTop:`1px solid ${C.border}`}}>
               <div style={{...sc(),marginBottom:12}}>événements détectés dans le digest</div>
@@ -416,6 +585,20 @@ export default function VeilleDigestReader() {
         <div style={{fontFamily:serif,fontSize:15,lineHeight:1.25,color:C.ink,marginBottom:4}}>{ev.title}</div>
         {ev.note&&<div style={{fontSize:11,color:C.muted,lineHeight:1.6,fontFamily:sans,marginBottom:4}}>{ev.note}</div>}
         {ev.date!==selDay&&<div style={{...sc(),fontSize:9,marginTop:4}}>{fsFR(ev.date)}</div>}
+      </div>
+    );
+  }
+
+  function CalCard({ev}){
+    const ts=CAL_TYPE_S[ev.type]||CAL_TYPE_S["institutionnel"];
+    return(
+      <div style={{background:C.white,border:`1px solid ${C.border}`,borderLeft:`3px solid ${ts.color}`,padding:"10px 14px",marginBottom:8}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:8}}>
+          <div style={{fontFamily:serif,fontSize:14,color:C.ink,lineHeight:1.3,flex:1}}>{ev.title}</div>
+          <span style={{fontSize:9,padding:"2px 7px",borderRadius:2,fontFamily:sans,letterSpacing:".06em",textTransform:"uppercase",flexShrink:0,...ts}}>{ev.type}</span>
+        </div>
+        {ev.date&&<div style={{...sc(),fontSize:9,marginTop:4,color:ts.color}}>{fsFR(ev.date)}</div>}
+        {!ev.date&&<div style={{...sc(),fontSize:9,marginTop:4,color:C.muted}}>date à confirmer</div>}
       </div>
     );
   }
@@ -618,6 +801,23 @@ export default function VeilleDigestReader() {
             <div style={{fontSize:11,color:"#085041",fontFamily:sans,marginTop:4,opacity:.8}}>en cas d'erreur réseau, faire <strong>Ctrl+Shift+R</strong> (ou Ctrl+F5) pour forcer le rechargement sans cache.</div>
           </div>
         </div>
+
+        {(()=>{
+          const td=today();
+          const next=CALENDRIER_2026.filter(e=>e.date&&e.date>=td).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,5);
+          return next.length>0?(
+            <div style={{background:C.white,border:`1px solid ${C.border}`,borderLeft:`3px solid #3730a3`,padding:"14px 18px"}}>
+              <div style={{...sc(),marginBottom:10,color:"#3730a3"}}>prochaines fenêtres d'opportunité · automatiquement transmises à Claude</div>
+              {next.map(ev=>{const ts=CAL_TYPE_S[ev.type]||CAL_TYPE_S["institutionnel"];return(
+                <div key={ev.id} style={{display:"flex",gap:10,alignItems:"baseline",marginBottom:6}}>
+                  <span style={{fontSize:10,padding:"1px 7px",borderRadius:2,fontFamily:sans,...ts,flexShrink:0}}>{ev.type}</span>
+                  <span style={{fontFamily:serif,fontSize:13,color:C.ink}}>{ev.title}</span>
+                  <span style={{...sc(),fontSize:9,marginLeft:"auto",flexShrink:0,color:ts.color}}>{fsFR(ev.date)}</span>
+                </div>
+              );})}
+            </div>
+          ):null;
+        })()}
 
         <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"18px 20px"}}>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:14}}>
