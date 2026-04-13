@@ -244,6 +244,7 @@ export default function VeilleDigestReader() {
 
   const [pvSelectedForPV, setPvSelectedForPV] = useState(new Set());
   const [pvWordColor,     setPvWordColor]     = useState("#18180f");
+  const [pvDirectAssign,  setPvDirectAssign]  = useState({});
 
   const prevIds  = useRef(new Set());
   const toastTmr = useRef(null);
@@ -475,10 +476,19 @@ export default function VeilleDigestReader() {
   const saveBtn = (extra={}) => ({width:"100%",fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:12,padding:"8px",background:C.ink,color:C.white,border:"none",cursor:"pointer",...extra});
   const genBtn  = (loading,disabled) => ({fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"9px 20px",background:(loading||disabled)?C.muted:C.ink,color:C.white,border:"none",cursor:(loading||disabled)?"default":"pointer",display:"flex",alignItems:"center",gap:8});
 
+  const PV_SECTIONS_LABELS = [{id:"s1",label:"Actionnable"},{id:"s2",label:"Possiblement à préparer"},{id:"s3",label:"Centre de documentation"},{id:"s4",label:"Actualité de l'ATE"}];
+
   function Card({item}){
     const isFav=favoriteIds.has(item.id),scoreN=Math.round((item.relevanceScore||0)/20)||0;
     const isSelPV=pvSelectedForPV.has(item.id);
     const togPV=(e)=>{e.stopPropagation();setPvSelectedForPV(p=>{const n=new Set(p);n.has(item.id)?n.delete(item.id):n.add(item.id);return n;});};
+    const assignDirect=(e,secId)=>{
+      e.stopPropagation();
+      setPvSelectedForPV(p=>{const n=new Set(p);n.add(item.id);return n;});
+      // On stocke la rubrique cible pour attribution directe
+      setPvDirectAssign(p=>({...p,[item.id]:secId}));
+      showToast(`Article assigné à "${PV_SECTIONS_LABELS.find(s=>s.id===secId)?.label}"`);
+    };
     return(
       <div onClick={()=>setSelectedId(item.id)} style={{background:isSelPV?"#fdf5f0":C.white,border:`1px solid ${isSelPV?C.accent:C.border}`,borderWidth:isSelPV?"2px":"1px",margin:"-0.5px",padding:"14px",cursor:"pointer",position:"relative",display:"flex",flexDirection:"column",gap:8,transition:"box-shadow .15s"}}
         onMouseEnter={e=>(e.currentTarget.style.boxShadow="0 4px 20px rgba(0,0,0,.1)")} onMouseLeave={e=>(e.currentTarget.style.boxShadow="none")}>
@@ -494,9 +504,17 @@ export default function VeilleDigestReader() {
         <div style={{fontFamily:serif,fontSize:17,lineHeight:1.25,fontWeight:700,color:C.ink}}>{item.title}</div>
         <div style={{height:1,background:C.border}}/>
         <div style={{fontSize:13,color:C.muted,lineHeight:1.65,flex:1,fontFamily:sans}}>{String(item.summary||"").slice(0,155)}{(item.summary||"").length>155?"…":""}</div>
-        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:6}}>
           <span style={{...sc(),fontSize:9}}>{(item.themes||[])[0]||""}</span>
-          <div style={{display:"flex",gap:8,alignItems:"center"}}>
+          <div style={{display:"flex",gap:6,alignItems:"center",flexWrap:"wrap"}}>
+            <div style={{display:"flex",gap:3}} onClick={e=>e.stopPropagation()}>
+              {PV_SECTIONS_LABELS.map(s=>(
+                <button key={s.id} onClick={e=>assignDirect(e,s.id)}
+                  style={{fontSize:8,padding:"2px 6px",border:`1px solid ${pvDirectAssign[item.id]===s.id?C.accent:C.border}`,background:pvDirectAssign[item.id]===s.id?C.accent:C.white,color:pvDirectAssign[item.id]===s.id?C.white:C.muted,cursor:"pointer",borderRadius:2,fontFamily:sans,letterSpacing:".04em",textTransform:"uppercase",whiteSpace:"nowrap"}}>
+                  {s.id.replace("s","")}·{s.label.slice(0,4)}
+                </button>
+              ))}
+            </div>
             {isEv(item)&&<button onClick={e=>{e.stopPropagation();importToAgenda(item);}} style={{background:"none",border:`1px solid ${C.border}`,cursor:"pointer",fontSize:10,color:C.dark,padding:"2px 8px",fontFamily:sans,letterSpacing:".06em",textTransform:"uppercase"}}>+ agenda</button>}
             <button onClick={e=>togFav(item.id,e)} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:C.accent,opacity:isFav?1:.35,padding:0}}>{isFav?"★":"☆"}</button>
           </div>
@@ -990,6 +1008,22 @@ export default function VeilleDigestReader() {
     const allAssignedIds = Object.values(pvAssigned).flat();
     const pvPool = items.filter(i=>pvSelectedForPV.has(i.id)&&!isEv(i)&&i.title&&i.summary&&!allAssignedIds.includes(i.id));
 
+    // Assignation directe depuis Productions : on place l'article dès l'arrivée dans PV
+    useEffect(()=>{
+      Object.entries(pvDirectAssign).forEach(([itemId,secId])=>{
+        if(!allAssignedIds.includes(itemId)&&pvSelectedForPV.has(itemId)){
+          setPvAssigned(prev=>{
+            const next={...prev};
+            Object.keys(next).forEach(k=>{next[k]=next[k].filter(x=>x!==itemId);});
+            if(next[secId]&&!next[secId].includes(itemId)) next[secId]=[...next[secId],itemId];
+            return next;
+          });
+          pvGenerateAnalyse(itemId);
+          setPvDirectAssign(p=>{const n={...p};delete n[itemId];return n;});
+        }
+      });
+    },[tab]);
+
     async function pvGenerateAnalyse(id){
       const item=items.find(i=>i.id===id);
       if(!item) return;
@@ -1088,67 +1122,96 @@ export default function VeilleDigestReader() {
 
     function pvExport(){
       const wc=pvWordColor;
+      const wcLight=wc+"22";
       let html=`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-body{font-family:Arial,sans-serif;margin:2cm;color:#1a1a1a;background:#f2efe8}
-.pv-header{background:#f2efe8;border-bottom:4px double ${wc};padding:20px 24px;margin-bottom:20px}
-.pv-titre{font-size:26pt;font-weight:900;letter-spacing:-1px;margin:0 0 4px;font-family:Georgia,serif;color:${wc}}
-.pv-meta{font-size:10pt;opacity:.7;margin:0;color:#7a6f5c}
-.raccord-top{background:#f2e8df;border-left:4px solid ${wc};padding:10px 14px;margin-bottom:20px}
-.lbl{font-size:8pt;text-transform:uppercase;letter-spacing:.1em;color:#7a6f5c;margin:0 0 4px}
-h2{color:${wc};border-bottom:2px solid ${wc};padding-bottom:6px;margin:24px 0 12px;font-size:13pt;font-family:Georgia,serif}
-.art{border:1px solid #cbbfa8;border-left:3px solid ${wc};padding:12px 14px;margin-bottom:10px;background:#fffdf8}
-.art-title{font-size:13pt;font-weight:bold;color:${wc};margin:0 0 4px;font-family:Georgia,serif}
-.art-meta{font-size:8pt;text-transform:uppercase;letter-spacing:.06em;color:#7a6f5c;margin:0 0 10px}
-.bloc{background:#f2efe8;border-left:3px solid ${wc};padding:8px 12px;margin:6px 0}
-.bloc-inst{background:#f2efe8;border-left:3px solid #4f4638;padding:8px 12px;margin:6px 0}
-.bloc-raccord{background:#faeeda;border-left:3px solid #854f0b;padding:8px 12px;margin:6px 0}
-.bt{font-size:10pt;line-height:1.65;margin:4px 0 0;color:#374151}
-ul.bt{padding-left:18px}
-ul.bt li{margin-bottom:4px}
-.ext-tag{font-size:8pt;background:#faeeda;color:#854f0b;padding:1px 6px;border:1px solid #e8c87a}
-.footer{border-top:2px solid ${wc};margin-top:24px;padding-top:8px;font-size:8pt;color:#7a6f5c}
+@page{margin:2cm 2.5cm}
+body{font-family:'Georgia',serif;color:#1a1a1a;background:white;font-size:10.5pt;line-height:1.6}
+/* HEADER */
+.pv-header{background:${wc};padding:28px 32px;margin-bottom:0;page-break-inside:avoid}
+.pv-header-inner{display:flex;justify-content:space-between;align-items:flex-end}
+.pv-titre{font-size:28pt;font-weight:900;letter-spacing:-1px;margin:0;color:white;font-family:Georgia,serif;line-height:1}
+.pv-subtitle{font-size:13pt;color:rgba(255,255,255,.75);margin:4px 0 0;font-style:italic}
+.pv-meta-right{text-align:right}
+.pv-num{font-size:20pt;font-weight:700;color:white;margin:0;font-family:Georgia,serif}
+.pv-date{font-size:9pt;color:rgba(255,255,255,.7);letter-spacing:.08em;text-transform:uppercase;margin:0}
+/* BANDE */
+.pv-band{background:#f2efe8;border-top:3px solid rgba(255,255,255,.3);padding:10px 32px;margin-bottom:24px}
+.raccord-top{background:#fef9ed;border-left:4px solid ${wc};border-right:1px solid #e8c87a;border-top:1px solid #e8c87a;border-bottom:1px solid #e8c87a;padding:12px 16px;margin-bottom:24px;border-radius:0 4px 4px 0}
+/* SECTION */
+.section-header{display:flex;align-items:center;gap:12px;margin:28px 0 14px;padding-bottom:8px;border-bottom:2px solid ${wc}}
+.section-num{font-size:18pt;font-weight:900;color:${wc}22;font-family:Georgia,serif;line-height:1}
+.section-title{font-size:14pt;font-weight:700;color:${wc};font-family:Georgia,serif;margin:0}
+/* ARTICLE */
+.art{margin-bottom:18px;page-break-inside:avoid}
+.art-inner{border:1px solid #ddd;border-radius:4px;overflow:hidden}
+.art-titlebar{background:${wc}11;padding:14px 18px;border-bottom:1px solid #ddd}
+.art-title{font-size:12pt;font-weight:700;color:${wc};margin:0 0 4px;font-family:Georgia,serif;line-height:1.3}
+.art-title a{color:${wc};text-decoration:none}
+.art-meta{font-size:8pt;text-transform:uppercase;letter-spacing:.08em;color:#888;margin:0}
+.art-body{padding:14px 18px;background:white}
+.bloc-label{font-size:7.5pt;text-transform:uppercase;letter-spacing:.14em;color:#888;margin:0 0 5px;font-family:Arial,sans-serif}
+.bloc-text{font-size:10pt;line-height:1.7;margin:0 0 14px;color:#2a2a2a}
+.bloc-analyse{background:${wc}0a;border-left:3px solid ${wc};padding:10px 14px;margin-bottom:12px;border-radius:0 3px 3px 0}
+.bloc-raccord{background:#fffbf0;border-left:3px solid #d97706;padding:10px 14px;margin-bottom:12px;border-radius:0 3px 3px 0}
+.bloc-action{background:#f0f8f0;border-left:3px solid #2d7d46;padding:10px 14px;margin-bottom:12px;border-radius:0 3px 3px 0}
+ul.bullets{margin:4px 0;padding-left:16px}
+ul.bullets li{margin-bottom:5px;font-size:10pt;line-height:1.6;color:#2a2a2a}
+.ext-tag{font-size:7.5pt;background:#fef3c7;color:#92400e;padding:1px 7px;border:1px solid #fde68a;border-radius:2px;font-family:Arial,sans-serif}
+.footer{border-top:2px solid ${wc};margin-top:32px;padding-top:10px;display:flex;justify-content:space-between;font-size:8pt;color:#888;font-family:Arial,sans-serif}
+.info-line{background:#f8f5f0;border:1px solid #e0d8c8;padding:8px 16px;margin-bottom:20px;font-size:9pt;color:#7a6f5c;font-style:italic;font-family:Arial,sans-serif;border-radius:3px}
 </style></head><body>`;
-      html+=`<div class="pv-header"><p class="pv-titre">${pvTitre}</p><p class="pv-meta">${pvSemaine} &nbsp;·&nbsp; ${pvNumero}</p></div>`;
-      if(pvShowRaccord&&pvRaccordText) html+=`<div class="raccord-top"><p class="lbl">↔ Raccords agenda</p><p style="font-style:italic;margin:0;font-size:11pt;color:#3a3020">${pvRaccordText}</p></div>`;
+      // HEADER
+      html+=`<div class="pv-header"><div class="pv-header-inner"><div><p class="pv-titre">${pvTitre}</p></div><div class="pv-meta-right"><p class="pv-num">${pvNumero}</p><p class="pv-date">${pvSemaine}</p></div></div></div>`;
+      html+=`<div class="pv-band"><p style="font-size:9pt;color:#7a6f5c;margin:0;font-family:Arial,sans-serif">Département de l'influence · Ministère de l'Intérieur · Usage interne</p></div>`;
+      html+=`<p class="info-line">Les titres des articles sont cliquables et renvoient vers la source originale.</p>`;
+      if(pvShowRaccord&&pvRaccordText) html+=`<div class="raccord-top"><p class="bloc-label">↔ Raccords agenda détectés</p><p style="font-style:italic;margin:0;font-size:10.5pt;color:#5a3a10">${pvRaccordText}</p></div>`;
       pvSections.forEach((sec,si)=>{
         const arts=pvAssigned[sec.id].map(id=>items.find(i=>i.id===id)).filter(Boolean);
         const exts=pvExternals[sec.id]||[];
         if(arts.length===0&&exts.length===0) return;
-        html+=`<h2>0${si+1} — ${sec.label}</h2>`;
+        html+=`<div class="section-header"><span class="section-num">0${si+1}</span><h2 class="section-title" style="margin:0">${sec.label}</h2></div>`;
         arts.forEach(a=>{
           const d=pvArticleData[a.id]||{};
           const resumeText=d.resume||String(a.summary||"");
           const titleUsed=d.title||a.title;
           const bullets=(d.analyse||"").split("\n").filter(l=>l.trim().startsWith("•")).map(l=>l.trim().replace(/^•\s*/,""));
-          const analyseHtml=bullets.length>0?`<ul class="bt">${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>`:`<p class="bt" style="font-style:italic">${d.analyse||""}</p>`;
-          const titleHtml=a.url?`<a href="${a.url}" style="color:${wc};font-weight:bold;text-decoration:none">${titleUsed}</a>`:titleUsed;
+          const analyseHtml=bullets.length>0?`<ul class="bullets">${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>`:`<p style="font-style:italic;margin:4px 0 0;font-size:10pt;color:#2a2a2a">${d.analyse||""}</p>`;
+          const titleHtml=a.url?`<a href="${a.url}" class="art-title" style="color:${wc};font-weight:700;text-decoration:none;font-family:Georgia,serif;font-size:12pt">${titleUsed}</a>`:`<span style="font-weight:700;font-family:Georgia,serif;font-size:12pt;color:${wc}">${titleUsed}</span>`;
           const raccord=d.raccord||"pas de raccord possible";
-          const imgHtml=d.imageData?`<p><img src="${d.imageData}" style="max-width:100%;max-height:200px;display:block;margin:8px 0"></p>`:"";
-          html+=`<div class="art"><p class="art-title">${titleHtml}</p><p class="art-meta">${a.source||""} · ${a.date||""}</p>
-            <div class="bloc"><p class="lbl">Résumé</p><p class="bt">${resumeText}</p></div>
-            ${d.analyse?`<div class="bloc"><p class="lbl">Analyse &amp; enjeux pour le ministère</p>${analyseHtml}</div>`:""}
-            <div class="bloc-raccord"><p class="lbl">↔ Raccord agenda</p><p class="bt">${raccord}</p></div>
-            ${d.actionnable?`<div class="bloc-inst"><p class="lbl">Pourquoi actionnable ?</p><p class="bt">${d.actionnable}</p></div>`:""}
-            ${imgHtml}
-          </div>`;
+          const isRacc=raccord!=="pas de raccord possible";
+          const imgHtml=d.imageData?`<p style="margin:10px 0 0"><img src="${d.imageData}" style="max-width:100%;max-height:180px;display:block"></p>`:"";
+          html+=`<div class="art"><div class="art-inner">
+            <div class="art-titlebar"><p style="margin:0 0 4px">${titleHtml}</p><p class="art-meta">${a.source||""} · ${a.date||""}</p></div>
+            <div class="art-body">
+              <p class="bloc-label">Résumé</p><p class="bloc-text">${resumeText}</p>
+              ${d.analyse?`<div class="bloc-analyse"><p class="bloc-label">Analyse &amp; enjeux pour le ministère</p>${analyseHtml}</div>`:""}
+              <div class="bloc-raccord"><p class="bloc-label">↔ Raccord agenda</p><p style="margin:0;font-size:10pt;color:${isRacc?"#5a3a10":"#888"};${isRacc?"font-weight:600":"font-style:italic"}">${raccord}</p></div>
+              ${d.actionnable?`<div class="bloc-action"><p class="bloc-label">Pourquoi actionnable ?</p><p style="margin:0;font-size:10pt;color:#1a4d2a;font-weight:500">${d.actionnable}</p></div>`:""}
+              ${imgHtml}
+            </div>
+          </div></div>`;
         });
         exts.forEach(e=>{
           const d=pvArticleData[e.id]||{};
           const titleUsed=d.title||e.title||"Article externe";
           const bullets=(d.analyse||"").split("\n").filter(l=>l.trim().startsWith("•")).map(l=>l.trim().replace(/^•\s*/,""));
-          const analyseHtml=bullets.length>0?`<ul class="bt">${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>`:`<p class="bt" style="font-style:italic">${d.analyse||""}</p>`;
-          const titleHtml=e.url?`<a href="${e.url}" style="color:${wc};font-weight:bold;text-decoration:none">${titleUsed}</a>`:titleUsed;
-          const imgHtml=d.imageData?`<p><img src="${d.imageData}" style="max-width:100%;max-height:200px;display:block;margin:8px 0"></p>`:"";
-          html+=`<div class="art"><p class="art-title">${titleHtml} <span class="ext-tag">externe</span></p><p class="art-meta">${e.source||""} · ${e.date||""}</p>
-            ${d.resume||e.summary?`<div class="bloc"><p class="lbl">Résumé</p><p class="bt">${d.resume||e.summary}</p></div>`:""}
-            ${d.analyse?`<div class="bloc"><p class="lbl">Analyse &amp; enjeux pour le ministère</p>${analyseHtml}</div>`:""}
-            <div class="bloc-raccord"><p class="lbl">↔ Raccord agenda</p><p class="bt">${d.raccord||"pas de raccord possible"}</p></div>
-            ${d.actionnable?`<div class="bloc-inst"><p class="lbl">Pourquoi actionnable ?</p><p class="bt">${d.actionnable}</p></div>`:""}
-            ${imgHtml}
-          </div>`;
+          const analyseHtml=bullets.length>0?`<ul class="bullets">${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>`:`<p style="font-style:italic;margin:4px 0 0;font-size:10pt">${d.analyse||""}</p>`;
+          const titleHtml=e.url?`<a href="${e.url}" style="color:${wc};font-weight:700;text-decoration:none;font-family:Georgia,serif;font-size:12pt">${titleUsed}</a>`:`<span style="font-weight:700;font-family:Georgia,serif;font-size:12pt;color:${wc}">${titleUsed}</span>`;
+          const isRacc=(d.raccord||"")&&d.raccord!=="pas de raccord possible";
+          const imgHtml=d.imageData?`<p style="margin:10px 0 0"><img src="${d.imageData}" style="max-width:100%;max-height:180px;display:block"></p>`:"";
+          html+=`<div class="art"><div class="art-inner">
+            <div class="art-titlebar"><p style="margin:0 0 4px">${titleHtml} <span class="ext-tag">externe</span></p><p class="art-meta">${e.source||""} · ${e.date||""}</p></div>
+            <div class="art-body">
+              ${d.resume||e.summary?`<p class="bloc-label">Résumé</p><p class="bloc-text">${d.resume||e.summary}</p>`:""} 
+              ${d.analyse?`<div class="bloc-analyse"><p class="bloc-label">Analyse &amp; enjeux pour le ministère</p>${analyseHtml}</div>`:""}
+              <div class="bloc-raccord"><p class="bloc-label">↔ Raccord agenda</p><p style="margin:0;font-size:10pt;color:${isRacc?"#5a3a10":"#888"};${isRacc?"font-weight:600":"font-style:italic"}">${d.raccord||"pas de raccord possible"}</p></div>
+              ${d.actionnable?`<div class="bloc-action"><p class="bloc-label">Pourquoi actionnable ?</p><p style="margin:0;font-size:10pt;color:#1a4d2a;font-weight:500">${d.actionnable}</p></div>`:""}
+              ${imgHtml}
+            </div>
+          </div></div>`;
         });
       });
-      html+=`<p class="footer">${pvTitre} &nbsp;·&nbsp; Usage interne &nbsp;·&nbsp; ${pvNumero} &nbsp;·&nbsp; ${pvSemaine}</p></body></html>`;
+      html+=`<div class="footer"><span>${pvTitre} · Usage interne</span><span>${pvNumero} · ${pvSemaine}</span></div></body></html>`;
       const blob=new Blob(['﻿',html],{type:'application/msword'});
       const url=URL.createObjectURL(blob);
       const a=document.createElement('a');
@@ -1274,34 +1337,38 @@ ul.bt li{margin-bottom:4px}
                                   </select>
                                   <button onClick={()=>pvRemove(a.id)} style={{marginLeft:"auto",fontSize:14,background:"none",border:"none",color:C.muted,cursor:"pointer",padding:0,opacity:.35,lineHeight:1}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=.35}>×</button>
                                 </div>
-                                <div style={{marginBottom:6}}>
-                                  <input value={d.title||a.title||""} onChange={e=>pvUpdateData(a.id,"title",e.target.value)}
-                                    style={{fontFamily:serif,fontSize:14,fontWeight:700,color:C.accent,width:"100%",border:"none",borderBottom:`1px dashed ${C.border}`,outline:"none",background:"transparent",marginBottom:3,paddingBottom:2,cursor:"text"}}/>
+                                <div style={{marginBottom:8}}>
+                                  <div style={{display:"flex",alignItems:"flex-start",gap:6,marginBottom:3}}>
+                                    <input value={d.title||a.title||""} onChange={e=>pvUpdateData(a.id,"title",e.target.value)}
+                                      style={{fontFamily:serif,fontSize:15,fontWeight:700,color:C.accent,flex:1,border:"none",borderBottom:`1px dashed ${C.border}`,outline:"none",background:"transparent",paddingBottom:2,cursor:"text"}}/>
+                                    {a.url&&<a href={a.url} target="_blank" rel="noreferrer" onClick={e=>e.stopPropagation()} title="Ouvrir la source"
+                                      style={{fontSize:13,color:C.accent,textDecoration:"none",flexShrink:0,marginTop:2,opacity:.7}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=.7}>↗</a>}
+                                  </div>
                                   <div style={{...scPV,fontSize:8}}>{a.source||""} · {a.date||""}</div>
                                 </div>
-                                <div style={{height:1,background:PV.border,marginBottom:8}}/>
-                                <div style={{...scPV,marginBottom:4}}>résumé</div>
-                                <textarea value={d.resume||String(a.summary||"")} onChange={e=>pvUpdateData(a.id,"resume",e.target.value)} rows={4}
-                                  style={taS({marginBottom:8,background:"transparent",border:`1px dashed ${PV.border}`,fontStyle:"normal",fontSize:11,color:"#374151"})}/>
-                                <div style={{background:PV.paper,border:`1px solid ${PV.border}`,borderLeft:`3px solid ${PV.accent}`,padding:"9px 12px",marginBottom:6}}>
-                                  <div style={{...scPV,color:PV.accent,marginBottom:5}}>analyse & enjeux pour le ministère</div>
-                                  {isGen
-                                    ?<div style={{fontSize:11,color:PV.muted,fontStyle:"italic"}}>génération en cours…</div>
-                                    :bullets.length>0
-                                      ?<div>
-                                          {bullets.map((b,i)=><div key={i} style={{fontSize:11,color:PV.ink,lineHeight:1.7,display:"flex",gap:6,marginBottom:3}}><span style={{color:PV.accent,flexShrink:0}}>•</span><span>{b.replace(/^•\s*/,"")}</span></div>)}
-                                          <textarea value={d.analyse||""} onChange={e=>pvUpdateData(a.id,"analyse",e.target.value)} rows={3} style={taS({background:"transparent",border:"none",fontSize:10,marginTop:4,color:PV.muted})}/>
-                                        </div>
-                                      :<textarea value={d.analyse||""} onChange={e=>pvUpdateData(a.id,"analyse",e.target.value)} rows={3} placeholder="Génération en attente…" style={taS({background:"transparent",border:"none",fontStyle:"italic"})}/>
-                                  }
+                                <div style={{height:1,background:C.border,marginBottom:10}}/>
+                                <div style={{...scPV,marginBottom:5}}>résumé <span style={{color:C.accent,fontSize:8}}>· éditable</span></div>
+                                <textarea value={d.resume||String(a.summary||"")} onChange={e=>pvUpdateData(a.id,"resume",e.target.value)} rows={6}
+                                  style={taS({marginBottom:10,background:C.white,border:`1px solid ${C.border}`,fontStyle:"normal",fontSize:12,color:C.ink,lineHeight:1.75,padding:"8px 10px"})}/>
+                                <div style={{background:C.white,border:`1px solid ${C.border}`,borderLeft:`3px solid ${C.accent}`,padding:"12px 14px",marginBottom:8}}>
+                                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
+                                    <div style={{...scPV,color:C.accent}}>analyse & enjeux pour le ministère</div>
+                                    <span style={{...scPV,color:C.accent,fontSize:8}}>· éditable</span>
+                                    {isGen&&<span style={{fontSize:10,color:C.muted,fontStyle:"italic",marginLeft:"auto"}}>génération en cours…</span>}
+                                  </div>
+                                  <textarea value={d.analyse||""} onChange={e=>pvUpdateData(a.id,"analyse",e.target.value)} rows={5}
+                                    placeholder="Généré par Claude au dépôt — modifiable"
+                                    style={taS({background:"transparent",border:"none",fontStyle:"italic",fontSize:12,lineHeight:1.75,padding:0})}/>
                                 </div>
-                                <div style={{background:d.raccord&&d.raccord!=="pas de raccord possible"?"#fef9c3":PV.soft,border:`1px solid ${d.raccord&&d.raccord!=="pas de raccord possible"?"#fde68a":PV.border}`,borderLeft:`3px solid ${d.raccord&&d.raccord!=="pas de raccord possible"?"#d97706":PV.border}`,padding:"7px 10px",marginBottom:6}}>
-                                  <div style={{...scPV,color:d.raccord&&d.raccord!=="pas de raccord possible"?"#92400e":PV.muted,marginBottom:2}}>↔ raccord agenda</div>
-                                  <textarea value={d.raccord||""} onChange={e=>pvUpdateData(a.id,"raccord",e.target.value)} rows={1} placeholder="…" style={taS({background:"transparent",border:"none",fontSize:11,fontStyle:"normal",color:d.raccord&&d.raccord!=="pas de raccord possible"?"#451a03":PV.muted})}/>
+                                <div style={{background:d.raccord&&d.raccord!=="pas de raccord possible"?"#fef9c3":C.panelSoft,border:`1px solid ${d.raccord&&d.raccord!=="pas de raccord possible"?"#fde68a":C.border}`,borderLeft:`3px solid ${d.raccord&&d.raccord!=="pas de raccord possible"?"#d97706":C.border}`,padding:"9px 12px",marginBottom:8}}>
+                                  <div style={{...scPV,color:d.raccord&&d.raccord!=="pas de raccord possible"?"#92400e":C.muted,marginBottom:5}}>↔ raccord agenda <span style={{fontSize:8}}>· éditable</span></div>
+                                  <textarea value={d.raccord||""} onChange={e=>pvUpdateData(a.id,"raccord",e.target.value)} rows={2}
+                                    placeholder="…" style={taS({background:"transparent",border:"none",fontSize:12,fontStyle:"normal",color:d.raccord&&d.raccord!=="pas de raccord possible"?"#451a03":C.muted,lineHeight:1.6,padding:0})}/>
                                 </div>
-                                <div style={{background:PV.paper,border:`1px solid ${PV.border}`,borderLeft:`3px solid ${PV.header}`,padding:"9px 12px"}}>
-                                  <div style={{...scPV,color:PV.accentText,marginBottom:5}}>pourquoi actionnable ?</div>
-                                  <textarea value={d.actionnable||""} onChange={e=>pvUpdateData(a.id,"actionnable",e.target.value)} rows={2} placeholder="Saisir…" style={taS({background:"transparent",border:"none",fontStyle:"normal"})}/>
+                                <div style={{background:C.white,border:`1px solid ${C.border}`,borderLeft:`3px solid ${C.ink}`,padding:"12px 14px"}}>
+                                  <div style={{...scPV,marginBottom:8}}>pourquoi actionnable ? <span style={{color:C.accent,fontSize:8}}>· éditable</span></div>
+                                  <textarea value={d.actionnable||""} onChange={e=>pvUpdateData(a.id,"actionnable",e.target.value)} rows={3}
+                                    placeholder="Saisir…" style={taS({background:"transparent",border:"none",fontStyle:"normal",fontSize:12,lineHeight:1.75,padding:0})}/>
                                 </div>
                               </div>
                             );
