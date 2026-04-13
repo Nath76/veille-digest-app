@@ -242,6 +242,9 @@ export default function VeilleDigestReader() {
   const [prodError,    setProdError]    = useState("");
   const [prodCommItem, setProdCommItem] = useState(null);
 
+  const [pvSelectedForPV, setPvSelectedForPV] = useState(new Set());
+  const [pvWordColor,     setPvWordColor]     = useState("#18180f");
+
   const prevIds  = useRef(new Set());
   const toastTmr = useRef(null);
 
@@ -474,12 +477,19 @@ export default function VeilleDigestReader() {
 
   function Card({item}){
     const isFav=favoriteIds.has(item.id),scoreN=Math.round((item.relevanceScore||0)/20)||0;
+    const isSelPV=pvSelectedForPV.has(item.id);
+    const togPV=(e)=>{e.stopPropagation();setPvSelectedForPV(p=>{const n=new Set(p);n.has(item.id)?n.delete(item.id):n.add(item.id);return n;});};
     return(
-      <div onClick={()=>setSelectedId(item.id)} style={{background:C.white,border:`1px solid ${C.border}`,margin:"-0.5px",padding:"14px",cursor:"pointer",position:"relative",display:"flex",flexDirection:"column",gap:8,transition:"box-shadow .15s"}}
+      <div onClick={()=>setSelectedId(item.id)} style={{background:isSelPV?"#fdf5f0":C.white,border:`1px solid ${isSelPV?C.accent:C.border}`,borderWidth:isSelPV?"2px":"1px",margin:"-0.5px",padding:"14px",cursor:"pointer",position:"relative",display:"flex",flexDirection:"column",gap:8,transition:"box-shadow .15s"}}
         onMouseEnter={e=>(e.currentTarget.style.boxShadow="0 4px 20px rgba(0,0,0,.1)")} onMouseLeave={e=>(e.currentTarget.style.boxShadow="none")}>
         <button onClick={e=>dismiss(item.id,e)} style={{position:"absolute",top:8,right:9,background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:15,lineHeight:1,opacity:.3,padding:0}} onMouseEnter={e=>(e.currentTarget.style.opacity=1)} onMouseLeave={e=>(e.currentTarget.style.opacity=.3)}>×</button>
-        {item.date&&<div style={{...sc(),fontSize:9}}>{item.date}</div>}
-        <div style={{display:"flex",justifyContent:"flex-end"}}><span style={{borderRadius:2,padding:"2px 8px",fontSize:9,fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",...sp(item.relevanceScore)}}>pertinence {scoreN}/5</span></div>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <div onClick={togPV} style={{width:16,height:16,borderRadius:2,border:`1.5px solid ${isSelPV?C.accent:C.border}`,background:isSelPV?C.accent:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all .15s"}} title="Sélectionner pour le Point Veille">
+            {isSelPV&&<span style={{color:C.white,fontSize:10,lineHeight:1,fontWeight:700}}>✓</span>}
+          </div>
+          {item.date&&<div style={{...sc(),fontSize:9}}>{item.date}</div>}
+          <div style={{marginLeft:"auto"}}><span style={{borderRadius:2,padding:"2px 8px",fontSize:9,fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",...sp(item.relevanceScore)}}>pertinence {scoreN}/5</span></div>
+        </div>
         {(item.keywords||[]).length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:4}}>{(item.keywords||[]).slice(0,4).map(k=><span key={k} style={{background:C.chip,color:C.chipText,borderRadius:2,padding:"2px 8px",fontSize:10,fontFamily:sans}}>{k}</span>)}</div>}
         <div style={{fontFamily:serif,fontSize:17,lineHeight:1.25,fontWeight:700,color:C.ink}}>{item.title}</div>
         <div style={{height:1,background:C.border}}/>
@@ -978,7 +988,7 @@ export default function VeilleDigestReader() {
     const [pvGenerating,  setPvGenerating]  = useState(new Set());
 
     const allAssignedIds = Object.values(pvAssigned).flat();
-    const pvPool = items.filter(i=>!dismissed.has(i.id)&&!isEv(i)&&i.title&&i.summary&&!allAssignedIds.includes(i.id));
+    const pvPool = items.filter(i=>pvSelectedForPV.has(i.id)&&!isEv(i)&&i.title&&i.summary&&!allAssignedIds.includes(i.id));
 
     async function pvGenerateAnalyse(id){
       const item=items.find(i=>i.id===id);
@@ -1023,27 +1033,83 @@ export default function VeilleDigestReader() {
     function pvUpdateExternal(sectionId,id,field,val){ setPvExternals(p=>({...p,[sectionId]:p[sectionId].map(e=>e.id===id?{...e,[field]:val}:e)})); }
     function pvRemoveExternal(sectionId,id){ setPvExternals(p=>({...p,[sectionId]:p[sectionId].filter(e=>e.id!==id)})); }
 
+    function pvMoveItem(itemId,secId,dir,type){
+      setPvAssigned(prev=>{
+        const next={...prev};
+        const arr=next[secId];
+        if(!arr) return prev;
+        const idx=arr.indexOf(itemId);
+        if(idx<0) return prev;
+        if(dir==="up"&&idx>0){[arr[idx-1],arr[idx]]=[arr[idx],arr[idx-1]];}
+        else if(dir==="down"&&idx<arr.length-1){[arr[idx],arr[idx+1]]=[arr[idx+1],arr[idx]];}
+        return {...next,[secId]:[...arr]};
+      });
+    }
+
+    function pvMoveExtItem(itemId,fromSecId,dir){
+      setPvExternals(prev=>{
+        const next={...prev};
+        const arr=[...next[fromSecId]];
+        const idx=arr.findIndex(e=>e.id===itemId);
+        if(idx<0) return prev;
+        if(dir==="up"&&idx>0){[arr[idx-1],arr[idx]]=[arr[idx],arr[idx-1]];}
+        else if(dir==="down"&&idx<arr.length-1){[arr[idx],arr[idx+1]]=[arr[idx+1],arr[idx]];}
+        return {...next,[fromSecId]:arr};
+      });
+    }
+
+    function pvMoveToSection(itemId,fromSecId,toSecId,type){
+      if(type==="app"){
+        setPvAssigned(prev=>{
+          const next={...prev};
+          next[fromSecId]=next[fromSecId].filter(id=>id!==itemId);
+          next[toSecId]=[...next[toSecId],itemId];
+          return next;
+        });
+      } else {
+        setPvExternals(prev=>{
+          const next={...prev};
+          const ext=next[fromSecId].find(e=>e.id===itemId);
+          next[fromSecId]=next[fromSecId].filter(e=>e.id!==itemId);
+          if(ext) next[toSecId]=[...next[toSecId],ext];
+          return next;
+        });
+      }
+    }
+
+    function pvAddExternalAt(sectionId,pos){
+      const id=`ext_${Date.now()}`;
+      setPvExternals(p=>{
+        const ext={id,title:"",source:"",date:"",summary:"",url:""};
+        return {...p,[sectionId]:pos==="top"?[ext,...p[sectionId]]:[...p[sectionId],ext]};
+      });
+      setPvArticleData(p=>({...p,[id]:{analyse:"",actionnable:"",raccord:"",resume:"",title:""}}));
+    }
+
     function pvExport(){
+      const wc=pvWordColor;
       let html=`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-body{font-family:Arial,sans-serif;margin:2cm;color:#18180f;background:#f2efe8}
-.pv-header{background:#18180f;color:#fffdf8;padding:20px 24px;margin-bottom:20px}
-.pv-titre{font-size:26pt;font-weight:900;letter-spacing:-1px;margin:0 0 4px;font-family:Georgia,serif}
-.pv-meta{font-size:10pt;opacity:.7;margin:0}
-.raccord-top{background:#f2e8df;border-left:4px solid #8a4b22;padding:10px 14px;margin-bottom:20px}
+body{font-family:Arial,sans-serif;margin:2cm;color:#1a1a1a;background:#f2efe8}
+.pv-header{background:#f2efe8;border-bottom:4px double ${wc};padding:20px 24px;margin-bottom:20px}
+.pv-titre{font-size:26pt;font-weight:900;letter-spacing:-1px;margin:0 0 4px;font-family:Georgia,serif;color:${wc}}
+.pv-meta{font-size:10pt;opacity:.7;margin:0;color:#7a6f5c}
+.raccord-top{background:#f2e8df;border-left:4px solid ${wc};padding:10px 14px;margin-bottom:20px}
 .lbl{font-size:8pt;text-transform:uppercase;letter-spacing:.1em;color:#7a6f5c;margin:0 0 4px}
-h2{color:#18180f;border-bottom:2px solid #18180f;padding-bottom:6px;margin:24px 0 12px;font-size:13pt;font-family:Georgia,serif}
-.art{border:1px solid #cbbfa8;padding:12px 14px;margin-bottom:10px;background:#fffdf8}
-.art-title{font-size:13pt;font-weight:bold;color:#18180f;margin:0 0 4px;font-family:Georgia,serif}
+h2{color:${wc};border-bottom:2px solid ${wc};padding-bottom:6px;margin:24px 0 12px;font-size:13pt;font-family:Georgia,serif}
+.art{border:1px solid #cbbfa8;border-left:3px solid ${wc};padding:12px 14px;margin-bottom:10px;background:#fffdf8}
+.art-title{font-size:13pt;font-weight:bold;color:${wc};margin:0 0 4px;font-family:Georgia,serif}
 .art-meta{font-size:8pt;text-transform:uppercase;letter-spacing:.06em;color:#7a6f5c;margin:0 0 10px}
-.bloc{background:#f2efe8;border-left:3px solid #8a4b22;padding:8px 12px;margin:6px 0}
-.bloc-inst{background:#f2efe8;border-left:3px solid #18180f;padding:8px 12px;margin:6px 0}
+.bloc{background:#f2efe8;border-left:3px solid ${wc};padding:8px 12px;margin:6px 0}
+.bloc-inst{background:#f2efe8;border-left:3px solid #4f4638;padding:8px 12px;margin:6px 0}
 .bloc-raccord{background:#faeeda;border-left:3px solid #854f0b;padding:8px 12px;margin:6px 0}
-.bt{font-size:10pt;line-height:1.65;margin:4px 0 0;color:#1e293b}
+.bt{font-size:10pt;line-height:1.65;margin:4px 0 0;color:#374151}
+ul.bt{padding-left:18px}
+ul.bt li{margin-bottom:4px}
 .ext-tag{font-size:8pt;background:#faeeda;color:#854f0b;padding:1px 6px;border:1px solid #e8c87a}
-.footer{border-top:2px solid #18180f;margin-top:24px;padding-top:8px;font-size:8pt;color:#7a6f5c}
+.footer{border-top:2px solid ${wc};margin-top:24px;padding-top:8px;font-size:8pt;color:#7a6f5c}
 </style></head><body>`;
       html+=`<div class="pv-header"><p class="pv-titre">${pvTitre}</p><p class="pv-meta">${pvSemaine} &nbsp;·&nbsp; ${pvNumero}</p></div>`;
-      if(pvShowRaccord&&pvRaccordText) html+=`<div class="raccord-top"><p class="lbl">↔ Raccords agenda</p><p style="font-style:italic;margin:0;font-size:11pt;color:#1a3660">${pvRaccordText}</p></div>`;
+      if(pvShowRaccord&&pvRaccordText) html+=`<div class="raccord-top"><p class="lbl">↔ Raccords agenda</p><p style="font-style:italic;margin:0;font-size:11pt;color:#3a3020">${pvRaccordText}</p></div>`;
       pvSections.forEach((sec,si)=>{
         const arts=pvAssigned[sec.id].map(id=>items.find(i=>i.id===id)).filter(Boolean);
         const exts=pvExternals[sec.id]||[];
@@ -1052,31 +1118,40 @@ h2{color:#18180f;border-bottom:2px solid #18180f;padding-bottom:6px;margin:24px 
         arts.forEach(a=>{
           const d=pvArticleData[a.id]||{};
           const resumeText=d.resume||String(a.summary||"");
-          const bullets=(d.analyse||"").split("\n").filter(l=>l.trim().startsWith("•")).map(l=>l.trim().replace(/^•\s*/,""));
-          const analyseHtml=bullets.length>0?`<ul>${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>`:`<p class="bt" style="font-style:italic">${d.analyse||""}</p>`;
-          const titleHtml=a.url?`<a href="${a.url}" style="color:#18180f;font-weight:bold">${a.title}</a>`:a.title;
+          const titleUsed=d.title||a.title;
+          const bullets=(d.analyse||"").split("
+").filter(l=>l.trim().startsWith("•")).map(l=>l.trim().replace(/^•\s*/,""));
+          const analyseHtml=bullets.length>0?`<ul class="bt">${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>`:`<p class="bt" style="font-style:italic">${d.analyse||""}</p>`;
+          const titleHtml=a.url?`<a href="${a.url}" style="color:${wc};font-weight:bold;text-decoration:none">${titleUsed}</a>`:titleUsed;
           const raccord=d.raccord||"pas de raccord possible";
+          const imgHtml=d.imageData?`<p><img src="${d.imageData}" style="max-width:100%;max-height:200px;display:block;margin:8px 0"></p>`:"";
           html+=`<div class="art"><p class="art-title">${titleHtml}</p><p class="art-meta">${a.source||""} · ${a.date||""}</p>
             <div class="bloc"><p class="lbl">Résumé</p><p class="bt">${resumeText}</p></div>
             ${d.analyse?`<div class="bloc"><p class="lbl">Analyse &amp; enjeux pour le ministère</p>${analyseHtml}</div>`:""}
             <div class="bloc-raccord"><p class="lbl">↔ Raccord agenda</p><p class="bt">${raccord}</p></div>
             ${d.actionnable?`<div class="bloc-inst"><p class="lbl">Pourquoi actionnable ?</p><p class="bt">${d.actionnable}</p></div>`:""}
+            ${imgHtml}
           </div>`;
         });
         exts.forEach(e=>{
           const d=pvArticleData[e.id]||{};
-          const bullets=(d.analyse||"").split("\n").filter(l=>l.trim().startsWith("•")).map(l=>l.trim().replace(/^•\s*/,""));
-          const analyseHtml=bullets.length>0?`<ul>${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>`:`<p class="bt" style="font-style:italic">${d.analyse||""}</p>`;
-          const titleHtml=e.url?`<a href="${e.url}" style="color:#18180f;font-weight:bold">${e.title||"Article externe"}</a>`:(e.title||"Article externe");
+          const titleUsed=d.title||e.title||"Article externe";
+          const bullets=(d.analyse||"").split("
+").filter(l=>l.trim().startsWith("•")).map(l=>l.trim().replace(/^•\s*/,""));
+          const analyseHtml=bullets.length>0?`<ul class="bt">${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>`:`<p class="bt" style="font-style:italic">${d.analyse||""}</p>`;
+          const titleHtml=e.url?`<a href="${e.url}" style="color:${wc};font-weight:bold;text-decoration:none">${titleUsed}</a>`:titleUsed;
+          const imgHtml=d.imageData?`<p><img src="${d.imageData}" style="max-width:100%;max-height:200px;display:block;margin:8px 0"></p>`:"";
           html+=`<div class="art"><p class="art-title">${titleHtml} <span class="ext-tag">externe</span></p><p class="art-meta">${e.source||""} · ${e.date||""}</p>
-            ${e.summary?`<div class="bloc"><p class="lbl">Résumé</p><p class="bt">${e.summary}</p></div>`:""}
+            ${d.resume||e.summary?`<div class="bloc"><p class="lbl">Résumé</p><p class="bt">${d.resume||e.summary}</p></div>`:""}
             ${d.analyse?`<div class="bloc"><p class="lbl">Analyse &amp; enjeux pour le ministère</p>${analyseHtml}</div>`:""}
+            <div class="bloc-raccord"><p class="lbl">↔ Raccord agenda</p><p class="bt">${d.raccord||"pas de raccord possible"}</p></div>
             ${d.actionnable?`<div class="bloc-inst"><p class="lbl">Pourquoi actionnable ?</p><p class="bt">${d.actionnable}</p></div>`:""}
+            ${imgHtml}
           </div>`;
         });
       });
       html+=`<p class="footer">${pvTitre} &nbsp;·&nbsp; Usage interne &nbsp;·&nbsp; ${pvNumero} &nbsp;·&nbsp; ${pvSemaine}</p></body></html>`;
-      const blob=new Blob(['\ufeff',html],{type:'application/msword'});
+      const blob=new Blob(['﻿',html],{type:'application/msword'});
       const url=URL.createObjectURL(blob);
       const a=document.createElement('a');
       a.href=url;a.download=`point-veille-${pvNumero.replace(/[^\w]/g,'-')}.doc`;
@@ -1097,14 +1172,20 @@ h2{color:#18180f;border-bottom:2px solid #18180f;padding-bottom:6px;margin:24px 
               </label>
             ))}
           </div>
-          <div style={{...scPV,marginBottom:2}}>articles · glisser vers une rubrique</div>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <div style={{...scPV}}>articles sélectionnés · glisser</div>
+            <button onClick={()=>setTab("productions")} style={{fontSize:9,letterSpacing:".06em",textTransform:"uppercase",background:"none",border:"none",color:PV.accent,cursor:"pointer",textDecoration:"underline",fontFamily:sans}}>+ sélectionner</button>
+          </div>
           {pvPool.length===0
-            ?<div style={{background:PV.paper,border:`1px solid ${PV.border}`,padding:12,fontSize:11,color:PV.muted,fontStyle:"italic",textAlign:"center"}}>tous les articles sont placés</div>
+            ?<div style={{background:PV.paper,border:`1px solid ${PV.border}`,padding:12,fontSize:11,color:PV.muted,fontStyle:"italic",textAlign:"center"}}>
+              {pvSelectedForPV.size===0?"Aller dans Productions pour cocher des articles":"tous les articles sélectionnés sont placés"}
+            </div>
             :pvPool.map(a=>(
               <div key={a.id} draggable onDragStart={()=>setPvDragging(a.id)} onDragEnd={()=>{setPvDragging(null);setPvDragOver(null);}}
                 style={{background:PV.paper,border:`1px solid ${PV.border}`,borderLeft:`3px solid ${PV.accent}`,padding:"9px 11px",cursor:"grab",opacity:pvDragging===a.id?.4:1,transition:"opacity .15s",userSelect:"none"}}>
                 <div style={{fontFamily:serif,fontSize:12,color:PV.ink,lineHeight:1.3,marginBottom:3}}>{a.title}</div>
                 <div style={{...scPV,fontSize:8}}>{a.source||""}</div>
+                <div style={{...scPV,fontSize:8,color:PV.accent,marginTop:2}}>⠿ glisser</div>
               </div>
             ))
           }
@@ -1163,10 +1244,10 @@ h2{color:#18180f;border-bottom:2px solid #18180f;padding-bottom:6px;margin:24px 
                 const isOver=pvDragOver===sec.id;
                 return(
                   <div key={sec.id} style={{marginBottom:26}}>
-                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,paddingBottom:7,borderBottom:`2px solid ${PV.header}`}}>
-                      <span style={{fontFamily:serif,fontSize:20,fontWeight:900,color:PV.border}}>0{si+1}</span>
-                      <input value={sec.label} onChange={e=>pvUpdateSection(sec.id,e.target.value)} style={inpS({fontFamily:serif,fontSize:16,fontWeight:700,color:PV.ink,flex:1})} placeholder="Nom de la rubrique"/>
-                      <button onClick={()=>pvAddExternal(sec.id)} style={{fontSize:9,letterSpacing:".08em",textTransform:"uppercase",padding:"3px 10px",border:`1px solid ${PV.border}`,background:"white",color:PV.muted,cursor:"pointer",flexShrink:0}}>+ article externe</button>
+                    <div style={{display:"flex",alignItems:"center",gap:10,marginBottom:12,paddingBottom:7,borderBottom:`2px solid ${C.ink}`}}>
+                      <span style={{fontFamily:serif,fontSize:20,fontWeight:900,color:C.border}}>0{si+1}</span>
+                      <input value={sec.label} onChange={e=>pvUpdateSection(sec.id,e.target.value)} style={inpS({fontFamily:serif,fontSize:16,fontWeight:700,color:C.ink,flex:1})} placeholder="Nom de la rubrique"/>
+                      <button onClick={()=>pvAddExternalAt(sec.id,"top")} style={{fontSize:9,letterSpacing:".08em",textTransform:"uppercase",padding:"3px 9px",border:`1px solid ${C.border}`,background:C.white,color:C.muted,cursor:"pointer",flexShrink:0,borderRadius:2,fontFamily:sans}}>+ art. externe ↑</button>
                     </div>
                     <div onDragOver={e=>{e.preventDefault();setPvDragOver(sec.id);}} onDragLeave={()=>setPvDragOver(null)} onDrop={()=>pvDrop(sec.id)}
                       style={{minHeight:arts.length===0&&exts.length===0?56:undefined,border:isOver?`2px dashed ${PV.accent}`:`1px dashed ${PV.border}`,borderRadius:3,padding:isOver?"8px":"4px",background:isOver?PV.accentLight:"transparent",transition:"all .15s"}}>
@@ -1176,22 +1257,29 @@ h2{color:#18180f;border-bottom:2px solid #18180f;padding-bottom:6px;margin:24px 
                         </div>
                       ):(
                         <>
-                          {arts.map(a=>{
+                          {arts.map((a,ai)=>{
                             const d=pvArticleData[a.id]||{};
                             const isGen=pvGenerating.has(a.id);
                             const bullets=(d.analyse||"").split("\n").filter(l=>l.trim().startsWith("•")).map(l=>l.trim());
-                            const analyseRaw=bullets.length>0?d.analyse:d.analyse;
+                            const totalBlocs=arts.length+(pvExternals[sec.id]||[]).length;
+                            const isFirst=ai===0;
+                            const isLast=ai===arts.length-1&&(pvExternals[sec.id]||[]).length===0;
                             return(
-                              <div key={a.id} style={{background:PV.soft,border:`1px solid ${PV.border}`,padding:"12px 14px",marginBottom:8}}>
-                                <div style={{display:"flex",alignItems:"flex-start",gap:8,marginBottom:6}}>
-                                  <div style={{flex:1}}>
-                                    {a.url
-                                      ?<a href={a.url} target="_blank" rel="noreferrer" style={{fontFamily:serif,fontSize:14,fontWeight:700,color:PV.accent,lineHeight:1.3,marginBottom:3,display:"block",textDecoration:"none"}} onMouseEnter={e=>e.currentTarget.style.textDecoration="underline"} onMouseLeave={e=>e.currentTarget.style.textDecoration="none"}>{a.title}</a>
-                                      :<div style={{fontFamily:serif,fontSize:14,fontWeight:700,color:PV.ink,lineHeight:1.3,marginBottom:3}}>{a.title}</div>
-                                    }
-                                    <div style={{...scPV,fontSize:8}}>{a.source||""} · {a.date||""}</div>
-                                  </div>
-                                  <button onClick={()=>pvRemove(a.id)} style={{fontSize:13,background:"none",border:"none",color:PV.muted,cursor:"pointer",padding:0,opacity:.35,flexShrink:0}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=.35}>×</button>
+                              <div key={a.id} style={{background:C.panelSoft,border:`1px solid ${C.border}`,borderLeft:`3px solid ${C.accent}`,padding:"12px 14px",marginBottom:8}}>
+                                <div style={{display:"flex",gap:4,alignItems:"center",marginBottom:8}}>
+                                  <button onClick={()=>pvMoveItem(a.id,sec.id,"up","app")} disabled={isFirst} style={{fontSize:11,background:"none",border:`1px solid ${isFirst?C.border:C.muted}`,color:isFirst?C.border:C.muted,padding:"1px 7px",lineHeight:1.4,borderRadius:2,fontWeight:700,cursor:isFirst?"default":"pointer"}} title="Monter">↑</button>
+                                  <button onClick={()=>pvMoveItem(a.id,sec.id,"down","app")} disabled={isLast} style={{fontSize:11,background:"none",border:`1px solid ${isLast?C.border:C.muted}`,color:isLast?C.border:C.muted,padding:"1px 7px",lineHeight:1.4,borderRadius:2,fontWeight:700,cursor:isLast?"default":"pointer"}} title="Descendre">↓</button>
+                                  <select onChange={e=>{if(e.target.value){pvMoveToSection(a.id,sec.id,e.target.value,"app");e.target.value="";}}} defaultValue=""
+                                    style={{fontSize:9,border:`1px solid ${C.border}`,background:C.white,color:C.muted,padding:"2px 4px",outline:"none",letterSpacing:".04em",textTransform:"uppercase",borderRadius:2,fontFamily:sans}}>
+                                    <option value="">→ déplacer vers…</option>
+                                    {pvSections.filter(s=>s.id!==sec.id).map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
+                                  </select>
+                                  <button onClick={()=>pvRemove(a.id)} style={{marginLeft:"auto",fontSize:14,background:"none",border:"none",color:C.muted,cursor:"pointer",padding:0,opacity:.35,lineHeight:1}} onMouseEnter={e=>e.currentTarget.style.opacity=1} onMouseLeave={e=>e.currentTarget.style.opacity=.35}>×</button>
+                                </div>
+                                <div style={{marginBottom:6}}>
+                                  <input value={d.title||a.title||""} onChange={e=>pvUpdateData(a.id,"title",e.target.value)}
+                                    style={{fontFamily:serif,fontSize:14,fontWeight:700,color:C.accent,width:"100%",border:"none",borderBottom:`1px dashed ${C.border}`,outline:"none",background:"transparent",marginBottom:3,paddingBottom:2,cursor:"text"}}/>
+                                  <div style={{...scPV,fontSize:8}}>{a.source||""} · {a.date||""}</div>
                                 </div>
                                 <div style={{height:1,background:PV.border,marginBottom:8}}/>
                                 <div style={{...scPV,marginBottom:4}}>résumé</div>
@@ -1220,37 +1308,59 @@ h2{color:#18180f;border-bottom:2px solid #18180f;padding-bottom:6px;margin:24px 
                               </div>
                             );
                           })}
-                          {exts.map(e=>{
+                          {exts.map((e,ei)=>{
                             const d=pvArticleData[e.id]||{};
+                            const extIsFirst=arts.length===0&&ei===0;
+                            const extIsLast=ei===exts.length-1;
                             return(
                               <div key={e.id} style={{background:"#fffef5",border:`1px solid #e5dfc8`,borderLeft:`3px solid #d97706`,padding:"12px 14px",marginBottom:8}}>
-                                <div style={{display:"flex",alignItems:"center",gap:8,marginBottom:8}}>
-                                  <span style={{...scPV,color:"#92400e"}}>article externe</span>
-                                  <button onClick={()=>pvRemoveExternal(sec.id,e.id)} style={{marginLeft:"auto",fontSize:13,background:"none",border:"none",color:PV.muted,cursor:"pointer",padding:0,opacity:.35}} onMouseEnter={el=>el.currentTarget.style.opacity=1} onMouseLeave={el=>el.currentTarget.style.opacity=.35}>×</button>
+                                <div style={{display:"flex",gap:4,alignItems:"center",marginBottom:8}}>
+                                  <span style={{fontSize:9,letterSpacing:".1em",textTransform:"uppercase",color:"#92400e",fontFamily:sans}}>externe</span>
+                                  <button onClick={()=>pvMoveExtItem(e.id,sec.id,"up")} disabled={extIsFirst} style={{fontSize:11,background:"none",border:`1px solid ${extIsFirst?"#e5dfc8":C.muted}`,color:extIsFirst?"#e5dfc8":C.muted,padding:"1px 7px",lineHeight:1.4,borderRadius:2,fontWeight:700,cursor:extIsFirst?"default":"pointer"}} title="Monter">↑</button>
+                                  <button onClick={()=>pvMoveExtItem(e.id,sec.id,"down")} disabled={extIsLast} style={{fontSize:11,background:"none",border:`1px solid ${extIsLast?"#e5dfc8":C.muted}`,color:extIsLast?"#e5dfc8":C.muted,padding:"1px 7px",lineHeight:1.4,borderRadius:2,fontWeight:700,cursor:extIsLast?"default":"pointer"}} title="Descendre">↓</button>
+                                  <select onChange={el=>{if(el.target.value){pvMoveToSection(e.id,sec.id,el.target.value,"ext");el.target.value="";}}} defaultValue=""
+                                    style={{fontSize:9,border:`1px solid #e5dfc8`,background:C.white,color:C.muted,padding:"2px 4px",outline:"none",letterSpacing:".04em",textTransform:"uppercase",borderRadius:2,fontFamily:sans}}>
+                                    <option value="">→ déplacer vers…</option>
+                                    {pvSections.filter(s=>s.id!==sec.id).map(s=><option key={s.id} value={s.id}>{s.label}</option>)}
+                                  </select>
+                                  <button onClick={()=>pvRemoveExternal(sec.id,e.id)} style={{marginLeft:"auto",fontSize:14,background:"none",border:"none",color:C.muted,cursor:"pointer",padding:0,opacity:.35,lineHeight:1}} onMouseEnter={el=>el.currentTarget.style.opacity=1} onMouseLeave={el=>el.currentTarget.style.opacity=.35}>×</button>
                                 </div>
-                                <input value={e.title} onChange={el=>pvUpdateExternal(sec.id,e.id,"title",el.target.value)} placeholder="Titre…"
-                                  style={inpS({fontFamily:serif,fontSize:14,fontWeight:700,color:PV.ink,width:"100%",borderBottom:`1px dashed ${PV.border}`,marginBottom:4,paddingBottom:2})}/>
+                                <input value={d.title||e.title||""} onChange={el=>pvUpdateData(e.id,"title",el.target.value)} placeholder="Titre…"
+                                  style={inpS({fontFamily:serif,fontSize:14,fontWeight:700,color:C.accent,width:"100%",borderBottom:`1px dashed #e5dfc8`,marginBottom:4,paddingBottom:2})}/>
                                 <input value={e.url||""} onChange={el=>pvUpdateExternal(sec.id,e.id,"url",el.target.value)} placeholder="URL (optionnel)"
-                                  style={inpS({fontSize:10,color:PV.accent,width:"100%",borderBottom:`1px dashed ${PV.border}`,marginBottom:6})}/>
+                                  style={inpS({fontSize:10,color:C.accent,width:"100%",borderBottom:`1px dashed #e5dfc8`,marginBottom:6})}/>
                                 <div style={{display:"flex",gap:8,marginBottom:8}}>
                                   <input value={e.source} onChange={el=>pvUpdateExternal(sec.id,e.id,"source",el.target.value)} placeholder="Source"
-                                    style={inpS({flex:1,fontSize:10,color:PV.muted,borderBottom:`1px dashed ${PV.border}`})}/>
+                                    style={inpS({flex:1,fontSize:10,color:C.muted,borderBottom:`1px dashed #e5dfc8`})}/>
                                   <input value={e.date} onChange={el=>pvUpdateExternal(sec.id,e.id,"date",el.target.value)} placeholder="Date"
-                                    style={inpS({width:90,fontSize:10,color:PV.muted,borderBottom:`1px dashed ${PV.border}`})}/>
+                                    style={inpS({width:90,fontSize:10,color:C.muted,borderBottom:`1px dashed #e5dfc8`})}/>
                                 </div>
                                 <div style={{height:1,background:"#e5dfc8",marginBottom:8}}/>
                                 <div style={{...scPV,marginBottom:4}}>résumé / contenu</div>
-                                <textarea value={e.summary} onChange={el=>pvUpdateExternal(sec.id,e.id,"summary",el.target.value)} rows={3}
-                                  placeholder="Coller ou saisir le contenu…" style={taS({marginBottom:6,background:"white",fontStyle:"normal",fontSize:11})}/>
-                                <div style={{background:PV.paper,border:`1px solid ${PV.border}`,borderLeft:`3px solid ${PV.accent}`,padding:"9px 12px",marginBottom:6}}>
-                                  <div style={{...scPV,color:PV.accent,marginBottom:5}}>analyse & enjeux pour le ministère</div>
+                                <textarea value={d.resume||e.summary||""} onChange={el=>pvUpdateData(e.id,"resume",el.target.value)} rows={3}
+                                  placeholder="Coller ou saisir le contenu…" style={taS({marginBottom:6,background:"white",fontStyle:"normal",fontSize:11,border:`1px dashed #e5dfc8`})}/>
+                                <div style={{background:C.white,border:`1px solid #e5dfc8`,borderLeft:`3px solid ${C.accent}`,padding:"9px 12px",marginBottom:6}}>
+                                  <div style={{...scPV,color:C.accent,marginBottom:5}}>analyse & enjeux pour le ministère</div>
                                   <textarea value={d.analyse||""} onChange={el=>pvUpdateData(e.id,"analyse",el.target.value)} rows={3}
                                     placeholder="Saisir l'analyse…" style={taS({background:"transparent",border:"none",fontStyle:"italic"})}/>
                                 </div>
-                                <div style={{background:PV.paper,border:`1px solid ${PV.border}`,borderLeft:`3px solid ${PV.header}`,padding:"9px 12px"}}>
-                                  <div style={{...scPV,color:PV.accentText,marginBottom:5}}>pourquoi actionnable ?</div>
+                                <div style={{background:C.white,border:`1px solid #e5dfc8`,borderLeft:`3px solid ${C.ink}`,padding:"9px 12px",marginBottom:6}}>
+                                  <div style={{...scPV,marginBottom:5}}>pourquoi actionnable ?</div>
                                   <textarea value={d.actionnable||""} onChange={el=>pvUpdateData(e.id,"actionnable",el.target.value)} rows={2}
                                     placeholder="Saisir…" style={taS({background:"transparent",border:"none",fontStyle:"normal"})}/>
+                                </div>
+                                <div style={{background:"#fffef5",border:`1px dashed #e5dfc8`,padding:"7px 10px"}}>
+                                  <div style={{...scPV,fontSize:9,marginBottom:3}}>image pour le Word (optionnel)</div>
+                                  {d.imageData
+                                    ?<div style={{position:"relative"}}>
+                                        <img src={d.imageData} alt="" style={{maxWidth:"100%",maxHeight:80,display:"block",objectFit:"contain"}}/>
+                                        <button onClick={()=>pvUpdateData(e.id,"imageData",null)} style={{position:"absolute",top:2,right:2,fontSize:10,background:C.ink,color:C.white,border:"none",cursor:"pointer",padding:"1px 5px",borderRadius:2}}>× suppr.</button>
+                                      </div>
+                                    :<label style={{cursor:"pointer",fontSize:11,color:C.muted,fontStyle:"italic",display:"block",textAlign:"center",padding:"4px 0"}}>
+                                        glisser une image · ou <span style={{color:C.accent,textDecoration:"underline"}}>parcourir</span>
+                                        <input type="file" accept="image/*" style={{display:"none"}} onChange={ev=>{const f=ev.target.files[0];if(!f)return;const r=new FileReader();r.onload=ev2=>pvUpdateData(e.id,"imageData",ev2.target.result);r.readAsDataURL(f);}}/>
+                                      </label>
+                                  }
                                 </div>
                               </div>
                             );
@@ -1258,20 +1368,29 @@ h2{color:#18180f;border-bottom:2px solid #18180f;padding-bottom:6px;margin:24px 
                         </>
                       )}
                     </div>
+                    <button onClick={()=>pvAddExternalAt(sec.id,"bottom")} style={{width:"100%",marginTop:5,padding:"5px",border:`1px dashed ${C.border}`,background:"transparent",color:C.muted,cursor:"pointer",fontSize:9,letterSpacing:".08em",textTransform:"uppercase",fontFamily:sans,borderRadius:2}}>
+                      + article externe ↓
+                    </button>
                   </div>
                 );
               })}
             </div>
 
-            <div style={{borderTop:`3px double ${PV.header}`,padding:"10px 24px",display:"flex",justifyContent:"space-between",background:PV.soft}}>
+            <div style={{borderTop:`3px double ${C.ink}`,padding:"10px 24px",display:"flex",justifyContent:"space-between",background:C.panelSoft}}>
               <div style={{...scPV}}>{pvTitre} · usage interne</div>
               <div style={{...scPV}}>{pvNumero} · {pvSemaine}</div>
             </div>
           </div>
-          <div style={{maxWidth:800,margin:"14px auto 0",display:"flex",justifyContent:"flex-end"}}>
+          <div style={{maxWidth:800,margin:"14px auto 0",display:"flex",alignItems:"center",justifyContent:"flex-end",gap:10}}>
+            <div style={{display:"flex",alignItems:"center",gap:8,background:C.white,border:`1px solid ${C.border}`,padding:"6px 12px",fontSize:11,color:C.muted,fontFamily:sans}}>
+              <span>couleur du Word</span>
+              <input type="color" value={pvWordColor} onChange={e=>setPvWordColor(e.target.value)}
+                style={{width:28,height:22,border:`1px solid ${C.border}`,cursor:"pointer",padding:1,borderRadius:2}}/>
+              <span style={{fontSize:10,fontFamily:"monospace",color:C.muted}}>{pvWordColor}</span>
+            </div>
             <button onClick={pvExport}
-              style={{fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"10px 24px",background:PV.header,color:"white",border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:8}}
-              onMouseEnter={e=>e.currentTarget.style.background=PV.accent} onMouseLeave={e=>e.currentTarget.style.background=PV.header}>
+              style={{fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"10px 24px",background:C.ink,color:C.white,border:"none",cursor:"pointer",display:"flex",alignItems:"center",gap:8}}
+              onMouseEnter={e=>e.currentTarget.style.background=C.accent} onMouseLeave={e=>e.currentTarget.style.background=C.ink}>
               ↓ exporter en Word (.doc)
             </button>
           </div>
@@ -1435,6 +1554,18 @@ h2{color:#18180f;border-bottom:2px solid #18180f;padding-bottom:6px;margin:24px 
             :tab==="point veille"  ? <PointVeilleView/>
             :(
               <>
+                {tab==="productions"&&(
+                  <div style={{padding:"8px 22px",display:"flex",alignItems:"center",gap:10,borderBottom:`1px solid ${C.border}`,background:C.panelSoft}}>
+                    <span style={{fontFamily:serif,fontStyle:"italic",fontSize:12,color:pvSelectedForPV.size>0?C.accent:C.muted}}>
+                      {pvSelectedForPV.size>0?`${pvSelectedForPV.size} article${pvSelectedForPV.size>1?"s":""} sélectionné${pvSelectedForPV.size>1?"s":""} pour le Point Veille`:"Cocher les articles à inclure dans le Point Veille"}
+                    </span>
+                    <div style={{marginLeft:"auto",display:"flex",gap:6}}>
+                      <button onClick={()=>setPvSelectedForPV(new Set(visibleItems.map(i=>i.id)))} style={{fontSize:9,letterSpacing:".08em",textTransform:"uppercase",padding:"3px 10px",border:`1px solid ${C.border}`,background:C.white,color:C.muted,cursor:"pointer",borderRadius:2,fontFamily:sans}}>tout cocher</button>
+                      {pvSelectedForPV.size>0&&<button onClick={()=>setPvSelectedForPV(new Set())} style={{fontSize:9,letterSpacing:".08em",textTransform:"uppercase",padding:"3px 10px",border:`1px solid ${C.border}`,background:C.white,color:C.muted,cursor:"pointer",borderRadius:2,fontFamily:sans}}>tout décocher</button>}
+                      {pvSelectedForPV.size>0&&<button onClick={()=>setTab("point veille")} style={{fontSize:9,letterSpacing:".08em",textTransform:"uppercase",padding:"3px 14px",border:"none",background:C.accent,color:C.white,cursor:"pointer",borderRadius:2,fontFamily:sans,fontWeight:500}}>→ Point Veille ({pvSelectedForPV.size})</button>}
+                    </div>
+                  </div>
+                )}
                 <div style={{flex:1,padding:"20px 22px",overflowY:"auto"}}>
                   {items.length===0
                     ?<div style={{textAlign:"center",padding:60,...sc()}}>chargement en cours…</div>
