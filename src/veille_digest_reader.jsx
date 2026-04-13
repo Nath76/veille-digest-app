@@ -1119,8 +1119,7 @@ ul.bt li{margin-bottom:4px}
           const d=pvArticleData[a.id]||{};
           const resumeText=d.resume||String(a.summary||"");
           const titleUsed=d.title||a.title;
-          const bullets=(d.analyse||"").split("
-").filter(l=>l.trim().startsWith("•")).map(l=>l.trim().replace(/^•\s*/,""));
+          const bullets=(d.analyse||"").split("\n").filter(l=>l.trim().startsWith("•")).map(l=>l.trim().replace(/^•\s*/,""));
           const analyseHtml=bullets.length>0?`<ul class="bt">${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>`:`<p class="bt" style="font-style:italic">${d.analyse||""}</p>`;
           const titleHtml=a.url?`<a href="${a.url}" style="color:${wc};font-weight:bold;text-decoration:none">${titleUsed}</a>`:titleUsed;
           const raccord=d.raccord||"pas de raccord possible";
@@ -1136,8 +1135,7 @@ ul.bt li{margin-bottom:4px}
         exts.forEach(e=>{
           const d=pvArticleData[e.id]||{};
           const titleUsed=d.title||e.title||"Article externe";
-          const bullets=(d.analyse||"").split("
-").filter(l=>l.trim().startsWith("•")).map(l=>l.trim().replace(/^•\s*/,""));
+          const bullets=(d.analyse||"").split("\n").filter(l=>l.trim().startsWith("•")).map(l=>l.trim().replace(/^•\s*/,""));
           const analyseHtml=bullets.length>0?`<ul class="bt">${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>`:`<p class="bt" style="font-style:italic">${d.analyse||""}</p>`;
           const titleHtml=e.url?`<a href="${e.url}" style="color:${wc};font-weight:bold;text-decoration:none">${titleUsed}</a>`:titleUsed;
           const imgHtml=d.imageData?`<p><img src="${d.imageData}" style="max-width:100%;max-height:200px;display:block;margin:8px 0"></p>`:"";
@@ -1623,4 +1621,3 @@ ul.bt li{margin-bottom:4px}
     </div>
   );
 }
-
