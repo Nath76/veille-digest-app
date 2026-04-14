@@ -247,6 +247,7 @@ export default function VeilleDigestReader() {
   const [pvDirectAssign,  setPvDirectAssign]  = useState({});
   const [pvAssignedTop,   setPvAssignedTop]   = useState({s1:[],s2:[],s3:[],s4:[]});
   const [pvExternalsTop,  setPvExternalsTop]  = useState({s1:[],s2:[],s3:[],s4:[]});
+  const [pvPendingGen,    setPvPendingGen]    = useState(new Set());
 
   const prevIds  = useRef(new Set());
   const toastTmr = useRef(null);
@@ -495,6 +496,7 @@ export default function VeilleDigestReader() {
         return next;
       });
       setPvDirectAssign(p=>({...p,[item.id]:secId}));
+      setPvPendingGen(p=>{const n=new Set(p);n.add(item.id);return n;});
       showToast(`Article assigné à "${PV_SECTIONS_LABELS.find(s=>s.id===secId)?.label}"`);
     };
     return(
@@ -1019,6 +1021,13 @@ export default function VeilleDigestReader() {
     const pvPool = items.filter(i=>pvSelectedForPV.has(i.id)&&!isEv(i)&&i.title&&i.summary&&!allAssignedIds.includes(i.id));
 
     // pvAssigned et pvExternals sont maintenant au niveau principal — assignation directe depuis Card
+
+    // Déclencheur de génération Claude pour les articles assignés via bouton direct
+    useEffect(()=>{
+      if(pvPendingGen.size===0) return;
+      pvPendingGen.forEach(id=>pvGenerateAnalyse(id));
+      setPvPendingGen(new Set());
+    },[pvPendingGen]);
 
     async function pvGenerateAnalyse(id){
       const item=items.find(i=>i.id===id);
