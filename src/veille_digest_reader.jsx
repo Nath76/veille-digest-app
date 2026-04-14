@@ -1022,6 +1022,18 @@ export default function VeilleDigestReader() {
 
     // pvAssigned et pvExternals sont maintenant au niveau principal — assignation directe depuis Card
 
+    // Mise à jour automatique du bloc raccords dès que pvArticleData change
+    useEffect(()=>{
+      const allRaccords=Object.entries(pvArticleData)
+        .filter(([,d])=>d.raccord&&d.raccord!=="pas de raccord possible")
+        .map(([artId,d])=>{
+          const art=items.find(i=>i.id===artId);
+          return art?`• ${art.title.slice(0,55)}… → ${d.raccord}`:null;
+        })
+        .filter(Boolean);
+      if(allRaccords.length>0) setPvRaccordText(allRaccords.join("\n"));
+    },[pvArticleData]);
+
     // Déclencheur de génération Claude pour les articles assignés via bouton direct
     useEffect(()=>{
       if(pvPendingGen.size===0) return;
@@ -1046,20 +1058,7 @@ export default function VeilleDigestReader() {
           const raccordMatch=txt.match(/RACCORD\s*([\s\S]*?)$/i);
           const analyse=analyseMatch?analyseMatch[1].trim():"";
           const raccord=raccordMatch?raccordMatch[1].trim():"pas de raccord possible";
-          // 1. Mettre à jour les données de l'article
-          const newData={...pvArticleData,[id]:{...(pvArticleData[id]||{}),analyse,raccord}};
-          setPvArticleData(newData);
-          // 2. Agréger tous les raccords positifs dans le bloc du haut (setState indépendant)
-          if(raccord&&raccord!=="pas de raccord possible"){
-            const allRaccords=Object.entries(newData)
-              .filter(([,d])=>d.raccord&&d.raccord!=="pas de raccord possible")
-              .map(([artId,d])=>{
-                const art=items.find(i=>i.id===artId);
-                return art?`• ${art.title.slice(0,60)}… → ${d.raccord}`:null;
-              })
-              .filter(Boolean);
-            if(allRaccords.length>0) setPvRaccordText(allRaccords.join("\n"));
-          }
+          setPvArticleData(p=>({...p,[id]:{...(p[id]||{}),analyse,raccord}}));
         }
       }catch(e){console.error(e);}
       setPvGenerating(p=>{const n=new Set(p);n.delete(id);return n;});
@@ -1255,6 +1254,21 @@ ul.bullets li{margin-bottom:5px;font-size:10pt;line-height:1.6;color:#2a2a2a}
               </label>
             ))}
           </div>
+          <button
+            onClick={async()=>{
+              const allIds=Object.values(pvAssigned).flat();
+              if(allIds.length===0){showToast("Aucun article dans le bulletin");return;}
+              showToast("Génération en cours…");
+              for(const id of allIds){
+                await pvGenerateAnalyse(id);
+              }
+              showToast("Analyses & raccords générés ✓");
+            }}
+            style={{width:"100%",fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:12,padding:"9px",background:C.accent,color:C.white,border:"none",cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",gap:8}}
+            onMouseEnter={e=>e.currentTarget.style.background=C.ink}
+            onMouseLeave={e=>e.currentTarget.style.background=C.accent}>
+            <span style={{fontSize:14}}>✦</span> générer analyses & raccords
+          </button>
           <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
             <div style={{...scPV}}>articles sélectionnés · glisser</div>
             <button onClick={()=>setTab("productions")} style={{fontSize:9,letterSpacing:".06em",textTransform:"uppercase",background:"none",border:"none",color:PV.accent,cursor:"pointer",textDecoration:"underline",fontFamily:sans}}>+ sélectionner</button>
