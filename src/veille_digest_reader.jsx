@@ -1046,21 +1046,20 @@ export default function VeilleDigestReader() {
           const raccordMatch=txt.match(/RACCORD\s*([\s\S]*?)$/i);
           const analyse=analyseMatch?analyseMatch[1].trim():"";
           const raccord=raccordMatch?raccordMatch[1].trim():"pas de raccord possible";
-          setPvArticleData(p=>{
-            const next={...p,[id]:{...p[id],analyse,raccord}};
-            // Agréger tous les raccords positifs dans le bloc du haut
-            if(raccord&&raccord!=="pas de raccord possible"){
-              const allRaccords=Object.entries(next)
-                .filter(([,d])=>d.raccord&&d.raccord!=="pas de raccord possible")
-                .map(([artId,d])=>{
-                  const art=items.find(i=>i.id===artId);
-                  return art?`• ${art.title.slice(0,60)}… → ${d.raccord}`:null;
-                })
-                .filter(Boolean);
-              if(allRaccords.length>0) setPvRaccordText(allRaccords.join("\n"));
-            }
-            return next;
-          });
+          // 1. Mettre à jour les données de l'article
+          const newData={...pvArticleData,[id]:{...(pvArticleData[id]||{}),analyse,raccord}};
+          setPvArticleData(newData);
+          // 2. Agréger tous les raccords positifs dans le bloc du haut (setState indépendant)
+          if(raccord&&raccord!=="pas de raccord possible"){
+            const allRaccords=Object.entries(newData)
+              .filter(([,d])=>d.raccord&&d.raccord!=="pas de raccord possible")
+              .map(([artId,d])=>{
+                const art=items.find(i=>i.id===artId);
+                return art?`• ${art.title.slice(0,60)}… → ${d.raccord}`:null;
+              })
+              .filter(Boolean);
+            if(allRaccords.length>0) setPvRaccordText(allRaccords.join("\n"));
+          }
         }
       }catch(e){console.error(e);}
       setPvGenerating(p=>{const n=new Set(p);n.delete(id);return n;});
@@ -1711,4 +1710,3 @@ ul.bullets li{margin-bottom:5px;font-size:10pt;line-height:1.6;color:#2a2a2a}
     </div>
   );
 }
-
