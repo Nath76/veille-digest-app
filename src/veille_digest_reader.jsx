@@ -245,6 +245,8 @@ export default function VeilleDigestReader() {
   const [pvSelectedForPV, setPvSelectedForPV] = useState(new Set());
   const [pvWordColor,     setPvWordColor]     = useState("#18180f");
   const [pvDirectAssign,  setPvDirectAssign]  = useState({});
+  const [pvAssignedTop,   setPvAssignedTop]   = useState({s1:[],s2:[],s3:[],s4:[]});
+  const [pvExternalsTop,  setPvExternalsTop]  = useState({s1:[],s2:[],s3:[],s4:[]});
 
   const prevIds  = useRef(new Set());
   const toastTmr = useRef(null);
@@ -485,7 +487,13 @@ export default function VeilleDigestReader() {
     const assignDirect=(e,secId)=>{
       e.stopPropagation();
       setPvSelectedForPV(p=>{const n=new Set(p);n.add(item.id);return n;});
-      // On stocke la rubrique cible pour attribution directe
+      // Assignation directe dans pvAssignedTop
+      setPvAssignedTop(prev=>{
+        const next={...prev};
+        Object.keys(next).forEach(k=>{next[k]=next[k].filter(x=>x!==item.id);});
+        if(next[secId]) next[secId]=[...next[secId],item.id];
+        return next;
+      });
       setPvDirectAssign(p=>({...p,[item.id]:secId}));
       showToast(`Article assigné à "${PV_SECTIONS_LABELS.find(s=>s.id===secId)?.label}"`);
     };
@@ -995,9 +1003,11 @@ export default function VeilleDigestReader() {
       {id:"s3",label:"Nouveautés du Centre de documentation"},
       {id:"s4",label:"Actualité de l'ATE"},
     ]);
-    const [pvAssigned,    setPvAssigned]    = useState({s1:[],s2:[],s3:[],s4:[]});
+    const pvAssigned    = pvAssignedTop;
+    const setPvAssigned = setPvAssignedTop;
     const [pvArticleData, setPvArticleData] = useState({});
-    const [pvExternals,   setPvExternals]   = useState({s1:[],s2:[],s3:[],s4:[]});
+    const pvExternals    = pvExternalsTop;
+    const setPvExternals = setPvExternalsTop;
     const [pvDragging,    setPvDragging]    = useState(null);
     const [pvDragOver,    setPvDragOver]    = useState(null);
     const [pvShowRadar,   setPvShowRadar]   = useState(true);
@@ -1008,21 +1018,7 @@ export default function VeilleDigestReader() {
     const allAssignedIds = Object.values(pvAssigned).flat();
     const pvPool = items.filter(i=>pvSelectedForPV.has(i.id)&&!isEv(i)&&i.title&&i.summary&&!allAssignedIds.includes(i.id));
 
-    // Assignation directe depuis Productions : on place l'article dès l'arrivée dans PV
-    useEffect(()=>{
-      Object.entries(pvDirectAssign).forEach(([itemId,secId])=>{
-        if(!allAssignedIds.includes(itemId)&&pvSelectedForPV.has(itemId)){
-          setPvAssigned(prev=>{
-            const next={...prev};
-            Object.keys(next).forEach(k=>{next[k]=next[k].filter(x=>x!==itemId);});
-            if(next[secId]&&!next[secId].includes(itemId)) next[secId]=[...next[secId],itemId];
-            return next;
-          });
-          pvGenerateAnalyse(itemId);
-          setPvDirectAssign(p=>{const n={...p};delete n[itemId];return n;});
-        }
-      });
-    },[tab]);
+    // pvAssigned et pvExternals sont maintenant au niveau principal — assignation directe depuis Card
 
     async function pvGenerateAnalyse(id){
       const item=items.find(i=>i.id===id);
@@ -1041,7 +1037,22 @@ export default function VeilleDigestReader() {
           const raccordMatch=txt.match(/RACCORD\s*([\s\S]*?)$/i);
           const analyse=analyseMatch?analyseMatch[1].trim():"";
           const raccord=raccordMatch?raccordMatch[1].trim():"pas de raccord possible";
-          setPvArticleData(p=>({...p,[id]:{...p[id],analyse,raccord}}));
+          setPvArticleData(p=>{
+            const next={...p,[id]:{...p[id],analyse,raccord}};
+            // Agréger tous les raccords positifs dans le bloc du haut
+            if(raccord&&raccord!=="pas de raccord possible"){
+              const allRaccords=Object.entries(next)
+                .filter(([,d])=>d.raccord&&d.raccord!=="pas de raccord possible")
+                .map(([artId,d])=>{
+                  const art=items.find(i=>i.id===artId);
+                  return art?`• ${art.title.slice(0,60)}… → ${d.raccord}`:null;
+                })
+                .filter(Boolean);
+              if(allRaccords.length>0) setPvRaccordText(allRaccords.join("
+"));
+            }
+            return next;
+          });
         }
       }catch(e){console.error(e);}
       setPvGenerating(p=>{const n=new Set(p);n.delete(id);return n;});
@@ -1060,7 +1071,11 @@ export default function VeilleDigestReader() {
       pvGenerateAnalyse(id);
     }
 
-    function pvRemove(id){ setPvAssigned(prev=>{const next={...prev};Object.keys(next).forEach(k=>{next[k]=next[k].filter(x=>x!==id);});return next;}); }
+    function pvRemove(id){
+      setPvAssigned(prev=>{const next={...prev};Object.keys(next).forEach(k=>{next[k]=next[k].filter(x=>x!==id);});return next;});
+      setPvSelectedForPV(prev=>{const n=new Set(prev);n.delete(id);return n;});
+      setPvDirectAssign(prev=>{const n={...prev};delete n[id];return n;});
+    }
     function pvUpdateData(id,field,val){ setPvArticleData(p=>({...p,[id]:{...p[id],[field]:val}})); }
     function pvUpdateSection(id,val){ setPvSections(p=>p.map(s=>s.id===id?{...s,label:val}:s)); }
     function pvAddExternal(sectionId){ const id=`ext_${Date.now()}`;setPvExternals(p=>({...p,[sectionId]:[...p[sectionId],{id,title:"",source:"",date:"",summary:"",url:""}]}));setPvArticleData(p=>({...p,[id]:{analyse:"",actionnable:"",raccord:""}})); }
@@ -1688,3 +1703,4 @@ ul.bullets li{margin-bottom:5px;font-size:10pt;line-height:1.6;color:#2a2a2a}
     </div>
   );
 }
+
