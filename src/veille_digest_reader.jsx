@@ -247,7 +247,7 @@ export default function VeilleDigestReader() {
   const [pvDirectAssign,  setPvDirectAssign]  = useState({});
   const [pvAssignedTop,   setPvAssignedTop]   = useState({s1:[],s2:[],s3:[],s4:[]});
   const [pvExternalsTop,  setPvExternalsTop]  = useState({s1:[],s2:[],s3:[],s4:[]});
-  const [pvPendingGen,    setPvPendingGen]    = useState(new Set());
+  const [pvApiKey,        setPvApiKey]        = useState(localStorage.getItem("pv_api_key")||"");
 
   const prevIds  = useRef(new Set());
   const toastTmr = useRef(null);
@@ -496,7 +496,6 @@ export default function VeilleDigestReader() {
         return next;
       });
       setPvDirectAssign(p=>({...p,[item.id]:secId}));
-      setPvPendingGen(p=>{const n=new Set(p);n.add(item.id);return n;});
       showToast(`Article assigné à "${PV_SECTIONS_LABELS.find(s=>s.id===secId)?.label}"`);
     };
     return(
@@ -1022,6 +1021,14 @@ export default function VeilleDigestReader() {
 
     // pvAssigned et pvExternals sont maintenant au niveau principal — assignation directe depuis Card
 
+    // Générer les analyses dès qu'un article arrive dans une section
+    useEffect(()=>{
+      const allIds=Object.values(pvAssigned).flat();
+      allIds.forEach(id=>{
+        if(!pvArticleData[id]?.analyse) pvGenerateAnalyse(id);
+      });
+    },[pvAssigned]);
+
     // Mise à jour automatique du bloc raccords dès que pvArticleData change
     useEffect(()=>{
       const allRaccords=Object.entries(pvArticleData)
@@ -1034,13 +1041,6 @@ export default function VeilleDigestReader() {
       if(allRaccords.length>0) setPvRaccordText(allRaccords.join("\n"));
     },[pvArticleData]);
 
-    // Déclencheur de génération Claude pour les articles assignés via bouton direct
-    useEffect(()=>{
-      if(pvPendingGen.size===0) return;
-      pvPendingGen.forEach(id=>pvGenerateAnalyse(id));
-      setPvPendingGen(new Set());
-    },[pvPendingGen]);
-
     async function pvGenerateAnalyse(id){
       const item=items.find(i=>i.id===id);
       if(!item) return;
@@ -1050,17 +1050,39 @@ export default function VeilleDigestReader() {
         const td=today();
         const prochains=CALENDRIER_2026.filter(e=>e.date&&e.date>=td).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,10).map(e=>`- ${fsFR(e.date)} : ${e.title} (${e.type})`).join("\n");
         const prompt=`Tu es analyste pour le département de l'influence du ministère de l'Intérieur français.\n\nPour cet article de veille, produis deux choses :\n\n1. ANALYSE : 3 à 5 points clés sur les enjeux pour le ministère. Format strict : une liste de points courts commençant par "• ".\n\n2. RACCORD AGENDA : examine si cet article peut être mis en lien avec une des prochaines échéances ci-dessous. Si oui, cite l'échéance et explique le lien en une phrase. Si non, réponds exactement "pas de raccord possible".\n\nTitre : ${item.title}\nRésumé : ${String(item.summary||"").slice(0,400)}\nThèmes : ${norm(item.themes).join(", ")}\nAngle d'exploitation : ${item.exploitationAngle||""}\n\nProchaines échéances :\n${prochains}\n\nFormat de réponse :\nANALYSE\n• point 1\n• point 2\n...\nRACCORD\n[raccord ou "pas de raccord possible"]`;
-        const r=await fetch(SCRIPT_URL,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"claude",prompt})});
-        const d=await r.json();
-        if(d.result){
-          const txt=d.result;
-          const analyseMatch=txt.match(/ANALYSE\s*([\s\S]*?)(?:RACCORD|$)/i);
-          const raccordMatch=txt.match(/RACCORD\s*([\s\S]*?)$/i);
-          const analyse=analyseMatch?analyseMatch[1].trim():"";
-          const raccord=raccordMatch?raccordMatch[1].trim():"pas de raccord possible";
-          setPvArticleData(p=>({...p,[id]:{...(p[id]||{}),analyse,raccord}}));
+        let resultText="";
+        if(pvApiKey){
+          // Appel direct Anthropic API avec la clé
+          const resp=await fetch("https://api.anthropic.com/v1/messages",{
+            method:"POST",
+            headers:{
+              "content-type":"application/json",
+              "x-api-key":pvApiKey,
+              "anthropic-version":"2023-06-01",
+              "anthropic-dangerous-direct-browser-access":"true"
+            },
+            body:JSON.stringify({
+              model:"claude-sonnet-4-20250514",
+              max_tokens:1000,
+              messages:[{role:"user",content:prompt}]
+            })
+          });
+          if(!resp.ok){const err=await resp.text();throw new Error(err);}
+          const data=await resp.json();
+          resultText=data.content?.[0]?.text||"";
+        } else {
+          // Fallback Apps Script
+          resultText=await callClaude(prompt);
         }
-      }catch(e){console.error(e);}
+        const analyseMatch=resultText.match(/ANALYSE\s*([\s\S]*?)(?:RACCORD|$)/i);
+        const raccordMatch=resultText.match(/RACCORD\s*([\s\S]*?)$/i);
+        const analyse=analyseMatch?analyseMatch[1].trim():"";
+        const raccord=raccordMatch?raccordMatch[1].trim():"pas de raccord possible";
+        setPvArticleData(p=>({...p,[id]:{...(p[id]||{}),analyse,raccord}}));
+      }catch(e){
+        console.error("pvGenerateAnalyse error:",e);
+        showToast("Erreur génération : "+e.message);
+      }
       setPvGenerating(p=>{const n=new Set(p);n.delete(id);return n;});
     }
 
@@ -1254,6 +1276,19 @@ ul.bullets li{margin-bottom:5px;font-size:10pt;line-height:1.6;color:#2a2a2a}
               </label>
             ))}
           </div>
+          <div style={{background:PV.paper,border:`1px solid ${PV.border}`,padding:10}}>
+            <div style={{...scPV,marginBottom:6}}>clé API Anthropic</div>
+            <input
+              type="password"
+              value={pvApiKey}
+              onChange={e=>{setPvApiKey(e.target.value);localStorage.setItem("pv_api_key",e.target.value);}}
+              placeholder="sk-ant-..."
+              style={{width:"100%",fontFamily:sans,fontSize:11,padding:"5px 8px",border:`1px solid ${PV.border}`,background:PV.soft,color:C.ink,outline:"none",borderRadius:2}}
+            />
+            <div style={{fontSize:9,color:pvApiKey?C.green:C.muted,marginTop:4,fontFamily:sans}}>
+              {pvApiKey?"✓ clé enregistrée":"requis pour générer les analyses"}
+            </div>
+          </div>
           <button
             onClick={async()=>{
               const allIds=Object.values(pvAssigned).flat();
@@ -1386,20 +1421,33 @@ ul.bullets li{margin-bottom:5px;font-size:10pt;line-height:1.6;color:#2a2a2a}
                                 <div style={{...scPV,marginBottom:5}}>résumé <span style={{color:C.accent,fontSize:8}}>· éditable</span></div>
                                 <textarea value={d.resume||String(a.summary||"")} onChange={e=>pvUpdateData(a.id,"resume",e.target.value)} rows={6}
                                   style={taS({marginBottom:10,background:C.white,border:`1px solid ${C.border}`,fontStyle:"normal",fontSize:12,color:C.ink,lineHeight:1.75,padding:"8px 10px"})}/>
-                                <div style={{background:C.white,border:`1px solid ${C.border}`,borderLeft:`3px solid ${C.accent}`,padding:"12px 14px",marginBottom:8}}>
+                                <div style={{background:d.analyse?C.white:"#fef8f5",border:`1px solid ${d.analyse?C.border:"#f0c8b0"}`,borderLeft:`3px solid ${d.analyse?C.accent:"#e0a080"}`,padding:"12px 14px",marginBottom:8}}>
                                   <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:8}}>
                                     <div style={{...scPV,color:C.accent}}>analyse & enjeux pour le ministère</div>
                                     <span style={{...scPV,color:C.accent,fontSize:8}}>· éditable</span>
-                                    {isGen&&<span style={{fontSize:10,color:C.muted,fontStyle:"italic",marginLeft:"auto"}}>génération en cours…</span>}
+                                    {isGen
+                                      ?<span style={{fontSize:10,color:C.accent,fontStyle:"italic",marginLeft:"auto"}}>⟳ génération en cours…</span>
+                                      :!d.analyse&&<span style={{fontSize:9,color:"#c07050",marginLeft:"auto",fontFamily:sans}}>non généré</span>
+                                    }
                                   </div>
-                                  <textarea value={d.analyse||""} onChange={e=>pvUpdateData(a.id,"analyse",e.target.value)} rows={5}
-                                    placeholder="Généré par Claude au dépôt — modifiable"
-                                    style={taS({background:"transparent",border:"none",fontStyle:"italic",fontSize:12,lineHeight:1.75,padding:0})}/>
+                                  {!d.analyse&&!isGen
+                                    ?<div style={{fontSize:11,color:"#c07050",fontStyle:"italic",padding:"4px 0"}}>Cliquer sur ✦ générer dans la barre de gauche</div>
+                                    :<textarea value={d.analyse||""} onChange={e=>pvUpdateData(a.id,"analyse",e.target.value)} rows={5}
+                                      placeholder=""
+                                      style={taS({background:"transparent",border:"none",fontStyle:"italic",fontSize:12,lineHeight:1.75,padding:0})}/>
+                                  }
                                 </div>
-                                <div style={{background:d.raccord&&d.raccord!=="pas de raccord possible"?"#fef9c3":C.panelSoft,border:`1px solid ${d.raccord&&d.raccord!=="pas de raccord possible"?"#fde68a":C.border}`,borderLeft:`3px solid ${d.raccord&&d.raccord!=="pas de raccord possible"?"#d97706":C.border}`,padding:"9px 12px",marginBottom:8}}>
-                                  <div style={{...scPV,color:d.raccord&&d.raccord!=="pas de raccord possible"?"#92400e":C.muted,marginBottom:5}}>↔ raccord agenda <span style={{fontSize:8}}>· éditable</span></div>
-                                  <textarea value={d.raccord||""} onChange={e=>pvUpdateData(a.id,"raccord",e.target.value)} rows={2}
-                                    placeholder="…" style={taS({background:"transparent",border:"none",fontSize:12,fontStyle:"normal",color:d.raccord&&d.raccord!=="pas de raccord possible"?"#451a03":C.muted,lineHeight:1.6,padding:0})}/>
+                                <div style={{background:d.raccord&&d.raccord!=="pas de raccord possible"?"#fef9c3":d.raccord==="pas de raccord possible"?"#f8f8f5":C.panelSoft,border:`1px solid ${d.raccord&&d.raccord!=="pas de raccord possible"?"#fde68a":C.border}`,borderLeft:`3px solid ${d.raccord&&d.raccord!=="pas de raccord possible"?"#d97706":d.raccord==="pas de raccord possible"?"#bbb":C.border}`,padding:"9px 12px",marginBottom:8}}>
+                                  <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5}}>
+                                    <div style={{...scPV,color:d.raccord&&d.raccord!=="pas de raccord possible"?"#92400e":C.muted}}>↔ raccord agenda <span style={{fontSize:8}}>· éditable</span></div>
+                                    {!d.raccord&&!isGen&&<span style={{fontSize:9,color:"#c07050",marginLeft:"auto",fontFamily:sans}}>non généré</span>}
+                                    {d.raccord==="pas de raccord possible"&&<span style={{fontSize:9,color:"#bbb",marginLeft:"auto",fontFamily:sans}}>aucun raccord</span>}
+                                  </div>
+                                  {!d.raccord&&!isGen
+                                    ?<div style={{fontSize:11,color:"#c07050",fontStyle:"italic"}}>Cliquer sur ✦ générer</div>
+                                    :<textarea value={d.raccord||""} onChange={e=>pvUpdateData(a.id,"raccord",e.target.value)} rows={2}
+                                      placeholder="" style={taS({background:"transparent",border:"none",fontSize:12,fontStyle:"normal",color:d.raccord&&d.raccord!=="pas de raccord possible"?"#451a03":"#888",lineHeight:1.6,padding:0})}/>
+                                  }
                                 </div>
                                 <div style={{background:C.white,border:`1px solid ${C.border}`,borderLeft:`3px solid ${C.ink}`,padding:"12px 14px"}}>
                                   <div style={{...scPV,marginBottom:8}}>pourquoi actionnable ? <span style={{color:C.accent,fontSize:8}}>· éditable</span></div>
