@@ -1048,8 +1048,7 @@ export default function VeilleDigestReader() {
                   return art?`• ${art.title.slice(0,60)}… → ${d.raccord}`:null;
                 })
                 .filter(Boolean);
-              if(allRaccords.length>0) setPvRaccordText(allRaccords.join("
-"));
+              if(allRaccords.length>0) setPvRaccordText(allRaccords.join("\n"));
             }
             return next;
           });
