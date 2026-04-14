@@ -1165,97 +1165,126 @@ export default function VeilleDigestReader() {
 
     function pvExport(){
       const wc=pvWordColor;
-      const wcLight=wc+"22";
+      const BLUE="#1a3a6b";
+      const md=t=>(t||"").replace(/\*\*(.+?)\*\*/g,"<strong>$1</strong>").replace(/\*(.+?)\*/g,"<em>$1</em>");
       let html=`<!DOCTYPE html><html><head><meta charset="utf-8"><style>
-@page{margin:2cm 2.5cm}
-body{font-family:'Georgia',serif;color:#1a1a1a;background:white;font-size:10.5pt;line-height:1.6}
-/* HEADER */
-.pv-header{background:${wc};padding:28px 32px;margin-bottom:0;page-break-inside:avoid}
-.pv-header-inner{display:flex;justify-content:space-between;align-items:flex-end}
-.pv-titre{font-size:28pt;font-weight:900;letter-spacing:-1px;margin:0;color:white;font-family:Georgia,serif;line-height:1}
-.pv-subtitle{font-size:13pt;color:rgba(255,255,255,.75);margin:4px 0 0;font-style:italic}
-.pv-meta-right{text-align:right}
-.pv-num{font-size:20pt;font-weight:700;color:white;margin:0;font-family:Georgia,serif}
-.pv-date{font-size:9pt;color:rgba(255,255,255,.7);letter-spacing:.08em;text-transform:uppercase;margin:0}
+@page{margin:2.2cm 2.8cm}
+body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;line-height:1.8}
+/* HEADER BLEU */
+.hdr{background:${BLUE};padding:30px 36px;display:flex;justify-content:space-between;align-items:center}
+.hdr-title{font-size:26pt;font-weight:900;color:white;margin:0;letter-spacing:-1px;line-height:1;font-family:Georgia,serif}
+.hdr-sub{font-size:11pt;color:rgba(255,255,255,.72);margin:5px 0 0;font-style:italic;font-family:Georgia,serif}
+.hdr-right{text-align:right}
+.hdr-num{font-size:17pt;font-weight:700;color:white;margin:0;font-family:Georgia,serif}
+.hdr-date{font-size:8pt;color:rgba(255,255,255,.65);letter-spacing:.1em;text-transform:uppercase;margin:5px 0 0;font-family:Arial,sans-serif}
 /* BANDE */
-.pv-band{background:#f2efe8;border-top:3px solid rgba(255,255,255,.3);padding:10px 32px;margin-bottom:24px}
-.raccord-top{background:#fef9ed;border-left:4px solid ${wc};border-right:1px solid #e8c87a;border-top:1px solid #e8c87a;border-bottom:1px solid #e8c87a;padding:12px 16px;margin-bottom:24px;border-radius:0 4px 4px 0}
+.band{background:#eef2f8;padding:9px 36px;border-bottom:1px solid #d0d8e8;font-size:8pt;color:#4a5a7a;letter-spacing:.08em;text-transform:uppercase;font-family:Arial,sans-serif}
+/* BODY */
+.body{padding:28px 36px 36px}
+/* RACCORDS */
+.raccord-global{background:#fffbf0;border-left:4px solid #d97706;border:1px solid #fde68a;border-left:4px solid #d97706;padding:16px 20px;margin-bottom:30px}
+.raccord-lbl{font-size:7pt;text-transform:uppercase;letter-spacing:.18em;color:#92400e;margin:0 0 9px;font-family:Arial,sans-serif}
+.raccord-body{font-size:11pt;line-height:1.85;margin:0;color:#4a2a08;font-style:italic}
 /* SECTION */
-.section-header{display:flex;align-items:center;gap:12px;margin:28px 0 14px;padding-bottom:8px;border-bottom:2px solid ${wc}}
-.section-num{font-size:18pt;font-weight:900;color:${wc}22;font-family:Georgia,serif;line-height:1}
-.section-title{font-size:14pt;font-weight:700;color:${wc};font-family:Georgia,serif;margin:0}
+.sec-hdr{display:flex;align-items:baseline;gap:14px;margin:32px 0 18px;padding-bottom:10px;border-bottom:2px solid ${BLUE}}
+.sec-num{font-size:22pt;font-weight:900;color:${BLUE};opacity:.2;font-family:Georgia,serif;line-height:1}
+.sec-title{font-size:13pt;font-weight:700;color:${BLUE};font-family:Georgia,serif;margin:0}
 /* ARTICLE */
-.art{margin-bottom:18px;page-break-inside:avoid}
-.art-inner{border:1px solid #ddd;border-radius:4px;overflow:hidden}
-.art-titlebar{background:${wc}11;padding:14px 18px;border-bottom:1px solid #ddd}
-.art-title{font-size:12pt;font-weight:700;color:${wc};margin:0 0 4px;font-family:Georgia,serif;line-height:1.3}
-.art-title a{color:${wc};text-decoration:none}
-.art-meta{font-size:8pt;text-transform:uppercase;letter-spacing:.08em;color:#888;margin:0}
-.art-body{padding:14px 18px;background:white}
-.bloc-label{font-size:7.5pt;text-transform:uppercase;letter-spacing:.14em;color:#888;margin:0 0 5px;font-family:Arial,sans-serif}
-.bloc-text{font-size:10pt;line-height:1.7;margin:0 0 14px;color:#2a2a2a}
-.bloc-analyse{background:${wc}0a;border-left:3px solid ${wc};padding:10px 14px;margin-bottom:12px;border-radius:0 3px 3px 0}
-.bloc-raccord{background:#fffbf0;border-left:3px solid #d97706;padding:10px 14px;margin-bottom:12px;border-radius:0 3px 3px 0}
-.bloc-action{background:#f0f8f0;border-left:3px solid #2d7d46;padding:10px 14px;margin-bottom:12px;border-radius:0 3px 3px 0}
-ul.bullets{margin:4px 0;padding-left:16px}
-ul.bullets li{margin-bottom:5px;font-size:10pt;line-height:1.6;color:#2a2a2a}
-.ext-tag{font-size:7.5pt;background:#fef3c7;color:#92400e;padding:1px 7px;border:1px solid #fde68a;border-radius:2px;font-family:Arial,sans-serif}
-.footer{border-top:2px solid ${wc};margin-top:32px;padding-top:10px;display:flex;justify-content:space-between;font-size:8pt;color:#888;font-family:Arial,sans-serif}
-.info-line{background:#f8f5f0;border:1px solid #e0d8c8;padding:8px 16px;margin-bottom:20px;font-size:9pt;color:#7a6f5c;font-style:italic;font-family:Arial,sans-serif;border-radius:3px}
+.art{margin-bottom:24px;page-break-inside:avoid}
+.art-hdr{background:${BLUE}12;border:1px solid ${BLUE}22;border-bottom:none;padding:14px 20px 12px}
+.art-title{font-size:12pt;font-weight:700;color:${BLUE};font-family:Georgia,serif;line-height:1.35;margin:0 0 6px;text-decoration:underline}
+.art-title a{color:${BLUE};text-decoration:underline}
+.art-source{font-size:7.5pt;text-transform:uppercase;letter-spacing:.1em;color:#888;margin:0;font-family:Arial,sans-serif}
+.art-body{border:1px solid ${BLUE}22;border-top:none;padding:18px 20px 20px;background:white}
+.divider{height:1px;background:#e8e0d5;margin:16px 0}
+.lbl{font-size:7pt;text-transform:uppercase;letter-spacing:.18em;color:#aaa;margin:0 0 8px;font-family:Arial,sans-serif}
+.resume{font-size:11pt;line-height:1.85;color:#2a2a2a;margin:0;font-weight:500}
+.bloc-analyse{background:${BLUE}09;border-left:3px solid ${BLUE};padding:13px 17px;margin-bottom:14px}
+.bloc-analyse ul{margin:4px 0;padding-left:18px}
+.bloc-analyse li{font-size:11pt;line-height:1.8;margin-bottom:7px;color:#2a2a2a}
+.bloc-raccord{background:#fffbf0;border-left:3px solid #d97706;padding:13px 17px;margin-bottom:14px}
+.bloc-raccord p{font-size:11pt;line-height:1.8;margin:0;color:#5a3a10;font-weight:500}
+.bloc-raccord p.none{color:#aaa;font-weight:400;font-style:italic}
+.bloc-action{background:#f0f8f0;border-left:3px solid #2d7d46;padding:13px 17px;margin-bottom:0}
+.bloc-action p{font-size:11pt;line-height:1.8;margin:0;color:#1a4d2a;font-style:italic}
+.ext-badge{font-size:7pt;background:#fef3c7;color:#92400e;padding:1px 7px;border:1px solid #fde68a;font-family:Arial,sans-serif;vertical-align:middle;margin-left:6px}
+/* FOOTER */
+.footer{margin-top:32px;padding-top:10px;border-top:1px solid #ddd;display:flex;justify-content:space-between;font-size:7.5pt;color:#bbb;letter-spacing:.06em;text-transform:uppercase;font-family:Arial,sans-serif}
 </style></head><body>`;
-      // HEADER
-      html+=`<div class="pv-header"><div class="pv-header-inner"><div><p class="pv-titre">${pvTitre}</p></div><div class="pv-meta-right"><p class="pv-num">${pvNumero}</p><p class="pv-date">${pvSemaine}</p></div></div></div>`;
-      html+=`<div class="pv-band"><p style="font-size:9pt;color:#7a6f5c;margin:0;font-family:Arial,sans-serif">Département de l'influence · Ministère de l'Intérieur · Usage interne</p></div>`;
-      html+=`<p class="info-line">Les titres des articles sont cliquables et renvoient vers la source originale.</p>`;
-      if(pvShowRaccord&&pvRaccordText) html+=`<div class="raccord-top"><p class="bloc-label">↔ Raccords agenda détectés</p><p style="font-style:italic;margin:0;font-size:10.5pt;color:#5a3a10">${pvRaccordText}</p></div>`;
+
+      html+=`<div class="hdr"><div><p class="hdr-title">${pvTitre}</p><p class="hdr-sub">Bulletin de veille éditorialisée</p></div><div class="hdr-right"><p class="hdr-num">${pvNumero}</p><p class="hdr-date">${pvSemaine}</p></div></div>`;
+      html+=`<div class="band">Département de l'influence &nbsp;·&nbsp; Ministère de l'Intérieur &nbsp;·&nbsp; Usage interne</div>`;
+      html+=`<div class="body">`;
+
+      if(pvShowRaccord&&pvRaccordText){
+        const raccordHtml=pvRaccordText.split("\n").filter(Boolean).map(l=>md(l)).join("<br><br>");
+        html+=`<div class="raccord-global"><p class="raccord-lbl">↔ Raccords agenda détectés</p><p class="raccord-body">${raccordHtml}</p></div>`;
+      }
+
       pvSections.forEach((sec,si)=>{
         const arts=pvAssigned[sec.id].map(id=>items.find(i=>i.id===id)).filter(Boolean);
         const exts=pvExternals[sec.id]||[];
         if(arts.length===0&&exts.length===0) return;
-        html+=`<div class="section-header"><span class="section-num">0${si+1}</span><h2 class="section-title" style="margin:0">${sec.label}</h2></div>`;
+        html+=`<div class="sec-hdr"><span class="sec-num">0${si+1}</span><h2 class="sec-title" style="margin:0">${sec.label}</h2></div>`;
+
         arts.forEach(a=>{
           const d=pvArticleData[a.id]||{};
-          const resumeText=d.resume||String(a.summary||"");
+          const resumeText=md(d.resume||String(a.summary||""));
           const titleUsed=d.title||a.title;
+          const titleHtml=a.url
+            ?`<p class="art-title"><a href="${a.url}">${titleUsed}</a></p>`
+            :`<p class="art-title">${titleUsed}</p>`;
           const bullets=(d.analyse||"").split("\n").filter(l=>l.trim().startsWith("•")).map(l=>l.trim().replace(/^•\s*/,""));
-          const analyseHtml=bullets.length>0?`<ul class="bullets">${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>`:`<p style="font-style:italic;margin:4px 0 0;font-size:10pt;color:#2a2a2a">${d.analyse||""}</p>`;
-          const titleHtml=a.url?`<a href="${a.url}" class="art-title" style="color:${wc};font-weight:700;text-decoration:none;font-family:Georgia,serif;font-size:12pt">${titleUsed}</a>`:`<span style="font-weight:700;font-family:Georgia,serif;font-size:12pt;color:${wc}">${titleUsed}</span>`;
+          const analyseHtml=bullets.length>0
+            ?`<ul>${bullets.map(b=>`<li>${md(b)}</li>`).join("")}</ul>`
+            :`<p style="margin:0;font-style:italic;font-size:11pt">${md(d.analyse||"")}</p>`;
           const raccord=d.raccord||"pas de raccord possible";
           const isRacc=raccord!=="pas de raccord possible";
-          const imgHtml=d.imageData?`<p style="margin:10px 0 0"><img src="${d.imageData}" style="max-width:100%;max-height:180px;display:block"></p>`:"";
-          html+=`<div class="art"><div class="art-inner">
-            <div class="art-titlebar"><p style="margin:0 0 4px">${titleHtml}</p><p class="art-meta">${a.source||""} · ${a.date||""}</p></div>
+          const imgHtml=d.imageData?`<p style="margin:14px 0 0"><img src="${d.imageData}" style="max-width:100%;max-height:200px;display:block"></p>`:"";
+
+          html+=`<div class="art">
+            <div class="art-hdr">${titleHtml}<p class="art-source">${a.source||""}&nbsp;·&nbsp;${a.date||""}</p></div>
             <div class="art-body">
-              <p class="bloc-label">Résumé</p><p class="bloc-text">${resumeText}</p>
-              ${d.analyse?`<div class="bloc-analyse"><p class="bloc-label">Analyse &amp; enjeux pour le ministère</p>${analyseHtml}</div>`:""}
-              <div class="bloc-raccord"><p class="bloc-label">↔ Raccord agenda</p><p style="margin:0;font-size:10pt;color:${isRacc?"#5a3a10":"#888"};${isRacc?"font-weight:600":"font-style:italic"}">${raccord}</p></div>
-              ${d.actionnable?`<div class="bloc-action"><p class="bloc-label">Pourquoi actionnable ?</p><p style="margin:0;font-size:10pt;color:#1a4d2a;font-weight:500">${d.actionnable}</p></div>`:""}
+              <p class="lbl">Résumé</p>
+              <p class="resume">${resumeText}</p>
+              ${d.analyse?`<div class="divider"></div><p class="lbl">Analyse &amp; enjeux pour le ministère</p><div class="bloc-analyse">${analyseHtml}</div>`:""}
+              <div class="bloc-raccord"><p class="lbl" style="color:#92400e">↔ Raccord agenda</p><p class="${isRacc?"":"none"}">${md(raccord)}</p></div>
+              ${d.actionnable?`<div class="bloc-action"><p class="lbl" style="color:#285c3a">Pourquoi actionnable ?</p><p>${md(d.actionnable)}</p></div>`:""}
               ${imgHtml}
             </div>
-          </div></div>`;
+          </div>`;
         });
+
         exts.forEach(e=>{
           const d=pvArticleData[e.id]||{};
           const titleUsed=d.title||e.title||"Article externe";
+          const titleHtml=e.url
+            ?`<p class="art-title"><a href="${e.url}">${titleUsed}</a> <span class="ext-badge">externe</span></p>`
+            :`<p class="art-title">${titleUsed} <span class="ext-badge">externe</span></p>`;
           const bullets=(d.analyse||"").split("\n").filter(l=>l.trim().startsWith("•")).map(l=>l.trim().replace(/^•\s*/,""));
-          const analyseHtml=bullets.length>0?`<ul class="bullets">${bullets.map(b=>`<li>${b}</li>`).join("")}</ul>`:`<p style="font-style:italic;margin:4px 0 0;font-size:10pt">${d.analyse||""}</p>`;
-          const titleHtml=e.url?`<a href="${e.url}" style="color:${wc};font-weight:700;text-decoration:none;font-family:Georgia,serif;font-size:12pt">${titleUsed}</a>`:`<span style="font-weight:700;font-family:Georgia,serif;font-size:12pt;color:${wc}">${titleUsed}</span>`;
-          const isRacc=(d.raccord||"")&&d.raccord!=="pas de raccord possible";
-          const imgHtml=d.imageData?`<p style="margin:10px 0 0"><img src="${d.imageData}" style="max-width:100%;max-height:180px;display:block"></p>`:"";
-          html+=`<div class="art"><div class="art-inner">
-            <div class="art-titlebar"><p style="margin:0 0 4px">${titleHtml} <span class="ext-tag">externe</span></p><p class="art-meta">${e.source||""} · ${e.date||""}</p></div>
+          const analyseHtml=bullets.length>0
+            ?`<ul>${bullets.map(b=>`<li>${md(b)}</li>`).join("")}</ul>`
+            :`<p style="margin:0;font-style:italic;font-size:11pt">${md(d.analyse||"")}</p>`;
+          const raccord=d.raccord||"pas de raccord possible";
+          const isRacc=raccord!=="pas de raccord possible";
+          const resumeText=md(d.resume||e.summary||"");
+          const imgHtml=d.imageData?`<p style="margin:14px 0 0"><img src="${d.imageData}" style="max-width:100%;max-height:200px;display:block"></p>`:"";
+
+          html+=`<div class="art">
+            <div class="art-hdr">${titleHtml}<p class="art-source">${e.source||""}&nbsp;·&nbsp;${e.date||""}</p></div>
             <div class="art-body">
-              ${d.resume||e.summary?`<p class="bloc-label">Résumé</p><p class="bloc-text">${d.resume||e.summary}</p>`:""} 
-              ${d.analyse?`<div class="bloc-analyse"><p class="bloc-label">Analyse &amp; enjeux pour le ministère</p>${analyseHtml}</div>`:""}
-              <div class="bloc-raccord"><p class="bloc-label">↔ Raccord agenda</p><p style="margin:0;font-size:10pt;color:${isRacc?"#5a3a10":"#888"};${isRacc?"font-weight:600":"font-style:italic"}">${d.raccord||"pas de raccord possible"}</p></div>
-              ${d.actionnable?`<div class="bloc-action"><p class="bloc-label">Pourquoi actionnable ?</p><p style="margin:0;font-size:10pt;color:#1a4d2a;font-weight:500">${d.actionnable}</p></div>`:""}
+              ${resumeText?`<p class="lbl">Résumé</p><p class="resume">${resumeText}</p>`:""}
+              ${d.analyse?`<div class="divider"></div><p class="lbl">Analyse &amp; enjeux pour le ministère</p><div class="bloc-analyse">${analyseHtml}</div>`:""}
+              <div class="bloc-raccord"><p class="lbl" style="color:#92400e">↔ Raccord agenda</p><p class="${isRacc?"":"none"}">${md(raccord)}</p></div>
+              ${d.actionnable?`<div class="bloc-action"><p class="lbl" style="color:#285c3a">Pourquoi actionnable ?</p><p>${md(d.actionnable)}</p></div>`:""}
               ${imgHtml}
             </div>
-          </div></div>`;
+          </div>`;
         });
       });
-      html+=`<div class="footer"><span>${pvTitre} · Usage interne</span><span>${pvNumero} · ${pvSemaine}</span></div></body></html>`;
-      const blob=new Blob(['﻿',html],{type:'application/msword'});
+
+      html+=`</div><div class="footer"><span>${pvTitre} &nbsp;·&nbsp; Usage interne</span><span>${pvNumero} &nbsp;·&nbsp; ${pvSemaine}</span></div></body></html>`;
+      const blob=new Blob(['\ufeff',html],{type:'application/msword'});
       const url=URL.createObjectURL(blob);
       const a=document.createElement('a');
       a.href=url;a.download=`point-veille-${pvNumero.replace(/[^\w]/g,'-')}.doc`;
