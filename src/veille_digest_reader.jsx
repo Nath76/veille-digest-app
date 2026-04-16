@@ -393,16 +393,16 @@ export default function VeilleDigestReader() {
     const acc=[];
     items.forEach(item=>norm(item.actors).forEach(actor=>{
       if(!actor)return;
-      const already=experts.some(e=>e.name.toLowerCase()===actor.toLowerCase());
+      const already=experts.some(e=>(e.name||"").toLowerCase()===(actor||"").toLowerCase());
       if(already)return;
-      const ex=acc.find(a=>a.actor.toLowerCase()===actor.toLowerCase());
+      const ex=acc.find(a=>(a.actor||"").toLowerCase()===(actor||"").toLowerCase());
       if(ex)ex.items.push(item); else acc.push({actor,items:[item]});
     }));
     return acc.slice(0,5);
   },[items,experts]);
   const filteredEx = useMemo(()=>{
     const q=exSearch.trim().toLowerCase();
-    return experts.filter(e=>exFilter==="tous"||e.domains.includes(exFilter)).filter(e=>!q||e.name.toLowerCase().includes(q)||e.role.toLowerCase().includes(q)).sort((a,b)=>b.mentions-a.mentions);
+    return experts.filter(e=>exFilter==="tous"||e.domains.includes(exFilter)).filter(e=>!q||(e.name||"").toLowerCase().includes(q)||(e.role||"").toLowerCase().includes(q)).sort((a,b)=>b.mentions-a.mentions);
   },[experts,exFilter,exSearch]);
 
   const prevM = ()=>{if(calM===0){setCalY(y=>y-1);setCalM(11);}else setCalM(m=>m-1);};
@@ -455,7 +455,7 @@ export default function VeilleDigestReader() {
   };
   const delExpert = async id=>{setExperts(p=>p.filter(e=>e.id!==id));await api.del("Experts",id);};
   const importExpert = async(actor,item)=>{
-    const existing=experts.find(e=>e.name.toLowerCase()===actor.toLowerCase());
+    const existing=experts.find(e=>(e.name||"").toLowerCase()===(actor||"").toLowerCase());
     if(existing){
       const updated={...existing,mentions:existing.mentions+1,dateLastSeen:today(),sourceIds:[...existing.sourceIds,item.id]};
       setExperts(p=>p.map(e=>e.id===existing.id?updated:e));
@@ -1765,21 +1765,7 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
           </main>
         </div>
 
-        {noteIds.size>0&&!["agenda","signaux faibles","experts","produire","point veille"].includes(tab)&&(
-          <div style={{marginTop:18,background:C.panelSoft,border:`1px solid ${C.border}`,padding:22}}>
-            <div style={{...sc(),marginBottom:14}}>préparer une note — {noteIds.size} article{noteIds.size>1?"s":""}</div>
-            <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))",gap:12}}>
-              {items.filter(i=>noteIds.has(i.id)).map(item=>(
-                <div key={item.id} style={{background:C.white,border:`1px solid ${C.border}`,padding:16}}>
-                  <span style={{display:"inline-block",borderRadius:2,padding:"3px 8px",fontSize:10,fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",marginBottom:8,...sp(item.relevanceScore)}}>pertinence {Math.round((item.relevanceScore||0)/20)||0}/5</span>
-                  <div style={{fontFamily:serif,fontSize:16,lineHeight:1.2,marginBottom:8}}>{item.title}</div>
-                  <div style={{fontSize:12,lineHeight:1.7,color:C.muted,marginBottom:8,fontFamily:sans}}>{String(item.summary||"").slice(0,200)}…</div>
-                  {item.exploitationAngle&&<div style={{fontSize:12,color:C.accent,lineHeight:1.7,fontFamily:sans}}><strong>angle :</strong> {item.exploitationAngle}</div>}
-                </div>
-              ))}
-            </div>
-          </div>
-        )}
+
       </div>
 
       <style>{`
@@ -1801,3 +1787,4 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
     </div>
   );
 }
+
