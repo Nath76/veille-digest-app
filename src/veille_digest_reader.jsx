@@ -793,7 +793,7 @@ export default function VeilleDigestReader() {
               <div key={ex.id} style={{background:C.white,border:`1px solid ${C.border}`,padding:"16px",marginBottom:10,position:"relative",display:"flex",gap:14,alignItems:"flex-start"}}>
                 <button onClick={()=>delExpert(ex.id)} style={{position:"absolute",top:10,right:12,background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:14,opacity:.3,padding:0}} onMouseEnter={e=>(e.currentTarget.style.opacity=1)} onMouseLeave={e=>(e.currentTarget.style.opacity=.3)}>×</button>
                 <div style={{width:42,height:42,borderRadius:2,background:C.dark,color:C.white,display:"flex",alignItems:"center",justifyContent:"center",fontFamily:serif,fontSize:16,fontWeight:700,flexShrink:0}}>
-                  {ex.name.split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}
+                  {(ex.name||"?").split(" ").map(w=>w[0]).slice(0,2).join("").toUpperCase()}
                 </div>
                 <div style={{flex:1}}>
                   <div style={{fontFamily:serif,fontSize:17,fontWeight:700,color:C.ink,marginBottom:2}}>{ex.name}</div>
@@ -1787,4 +1787,5 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
     </div>
   );
 }
+
 
