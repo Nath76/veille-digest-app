@@ -258,6 +258,61 @@ export default function VeilleDigestReader() {
     toastTmr.current = setTimeout(()=>setToast(null), 4000);
   };
 
+  // ── NETTOYAGE DES DONNÉES À LA SOURCE ──────────────────────
+  const cleanItem = item => ({
+    ...item,
+    id:     String(item.id||item.url||item.title||Math.random()),
+    title:  String(item.title||""),
+    summary:String(item.summary||""),
+    source: String(item.source||""),
+    date:   String(item.date||""),
+    url:    String(item.url||""),
+    actors:     norm(item.actors),
+    keywords:   norm(item.keywords),
+    innovations:norm(item.innovations),
+    themes:     norm(item.themes),
+    relevanceScore: Number(item.relevanceScore||0),
+    weakSignal:     String(item.weakSignal||""),
+    exploitationAngle: String(item.exploitationAngle||""),
+    strategicImpact:   String(item.strategicImpact||""),
+    documentType:      String(item.documentType||""),
+  });
+
+  const cleanEvent = r => ({
+    id:    String(r.id||Date.now()),
+    title: String(r.title||""),
+    date:  String(r.date||""),
+    note:  String(r.note||""),
+    tag:   String(r.tag||"veille"),
+    importedId: String(r.importedId||""),
+    source:     String(r.source||""),
+  });
+
+  const cleanSignal = r => ({
+    id:            String(r.id||Date.now()),
+    text:          String(r.text||""),
+    dateDetected:  String(r.dateDetected||""),
+    dateConfirmed: String(r.dateConfirmed||""),
+    confirmedNote: String(r.confirmedNote||""),
+    status:        String(r.status||"émergent"),
+    source:        String(r.source||""),
+    sourceId:      String(r.sourceId||""),
+    tags:          pArr(r.tags),
+  });
+
+  const cleanExpert = r => ({
+    id:           String(r.id||Date.now()),
+    name:         String(r.name||""),
+    role:         String(r.role||""),
+    context:      String(r.context||""),
+    note:         String(r.note||""),
+    dateFirstSeen:String(r.dateFirstSeen||""),
+    dateLastSeen: String(r.dateLastSeen||""),
+    domains:      pArr(r.domains),
+    sourceIds:    pArr(r.sourceIds),
+    mentions:     parseInt(r.mentions)||0,
+  });
+
   const loadDigest = useCallback(()=>{
     setIsRefreshing(true);
     fetch(`${SCRIPT_URL}?t=${Date.now()}`)
@@ -265,13 +320,13 @@ export default function VeilleDigestReader() {
       .then(data=>{
         const seen=new Set();
         const deduped=data.filter(i=>{const k=i.url||i.title;if(!k||seen.has(k))return false;seen.add(k);return true;});
-        const normalized=deduped.filter(i=>i.title&&cHtml(i.title).trim()).map((item,idx)=>({
-          ...item,
-          id:String(item.id&&item.id!=="NONE"&&item.id!=="none"?item.id:item.url||item.title||idx),
-          title:cHtml(item.title),
-          actors:norm(item.actors),keywords:norm(item.keywords),
-          innovations:norm(item.innovations),themes:norm(item.themes),
-        }));
+        const normalized=deduped
+          .filter(i=>i.title&&cHtml(i.title).trim())
+          .map((item,idx)=>cleanItem({
+            ...item,
+            id:item.id&&item.id!=="NONE"&&item.id!=="none"?item.id:item.url||item.title||idx,
+            title:cHtml(item.title),
+          }));
         const nids=new Set(normalized.map(i=>i.id));
         const added=[...nids].filter(id=>!prevIds.current.has(id)).length;
         prevIds.current=nids;
@@ -290,9 +345,9 @@ export default function VeilleDigestReader() {
   const loadUserData = useCallback(async()=>{
     setUserDataLoading(true);
     const [ag,si,ex] = await Promise.all([api.read("Agenda"),api.read("Signaux"),api.read("Experts")]);
-    setEvents((ag||[]).map(r=>({...r})));
-    setSignals((si||[]).map(r=>({...r,tags:pArr(r.tags)})));
-    setExperts((ex||[]).map(r=>({...r,domains:pArr(r.domains),sourceIds:pArr(r.sourceIds),mentions:parseInt(r.mentions)||0})));
+    setEvents((ag||[]).filter(r=>r&&r.id).map(cleanEvent));
+    setSignals((si||[]).filter(r=>r&&r.id).map(cleanSignal));
+    setExperts((ex||[]).filter(r=>r&&r.id).map(cleanExpert));
     setUserDataLoading(false);
   },[]);
 
@@ -1787,5 +1842,3 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
     </div>
   );
 }
-
-
