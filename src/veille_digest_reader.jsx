@@ -247,7 +247,6 @@ export default function VeilleDigestReader() {
   const [pvDirectAssign,  setPvDirectAssign]  = useState({});
   const [pvAssignedTop,   setPvAssignedTop]   = useState({s1:[],s2:[],s3:[],s4:[]});
   const [pvExternalsTop,  setPvExternalsTop]  = useState({s1:[],s2:[],s3:[],s4:[]});
-  const [pvApiKey,        setPvApiKey]        = useState(localStorage.getItem("pv_api_key")||"");
 
   const prevIds  = useRef(new Set());
   const toastTmr = useRef(null);
@@ -1105,30 +1104,8 @@ export default function VeilleDigestReader() {
         const td=today();
         const prochains=CALENDRIER_2026.filter(e=>e.date&&e.date>=td).sort((a,b)=>a.date.localeCompare(b.date)).slice(0,10).map(e=>`- ${fsFR(e.date)} : ${e.title} (${e.type})`).join("\n");
         const prompt=`Tu es analyste pour le département de l'influence du ministère de l'Intérieur français.\n\nPour cet article de veille, produis deux choses :\n\n1. ANALYSE : 3 à 5 points clés sur les enjeux pour le ministère. Format strict : une liste de points courts commençant par "• ".\n\n2. RACCORD AGENDA : examine si cet article peut être mis en lien avec une des prochaines échéances ci-dessous. Si oui, cite l'échéance et explique le lien en une phrase. Si non, réponds exactement "pas de raccord possible".\n\nTitre : ${item.title}\nRésumé : ${String(item.summary||"").slice(0,400)}\nThèmes : ${norm(item.themes).join(", ")}\nAngle d'exploitation : ${item.exploitationAngle||""}\n\nProchaines échéances :\n${prochains}\n\nFormat de réponse :\nANALYSE\n• point 1\n• point 2\n...\nRACCORD\n[raccord ou "pas de raccord possible"]`;
-        let resultText="";
-        if(pvApiKey){
-          // Appel direct Anthropic API avec la clé
-          const resp=await fetch("https://api.anthropic.com/v1/messages",{
-            method:"POST",
-            headers:{
-              "content-type":"application/json",
-              "x-api-key":pvApiKey,
-              "anthropic-version":"2023-06-01",
-              "anthropic-dangerous-direct-browser-access":"true"
-            },
-            body:JSON.stringify({
-              model:"claude-sonnet-4-20250514",
-              max_tokens:1000,
-              messages:[{role:"user",content:prompt}]
-            })
-          });
-          if(!resp.ok){const err=await resp.text();throw new Error(err);}
-          const data=await resp.json();
-          resultText=data.content?.[0]?.text||"";
-        } else {
-          // Fallback Apps Script
-          resultText=await callClaude(prompt);
-        }
+        // Appel via Apps Script (gère la clé côté serveur, évite les blocages CORS)
+        const resultText=await callClaude(prompt);
         const analyseMatch=resultText.match(/ANALYSE\s*([\s\S]*?)(?:RACCORD|$)/i);
         const raccordMatch=resultText.match(/RACCORD\s*([\s\S]*?)$/i);
         const analyse=analyseMatch?analyseMatch[1].trim():"";
@@ -1360,19 +1337,7 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
               </label>
             ))}
           </div>
-          <div style={{background:PV.paper,border:`1px solid ${PV.border}`,padding:10}}>
-            <div style={{...scPV,marginBottom:6}}>clé API Anthropic</div>
-            <input
-              type="password"
-              value={pvApiKey}
-              onChange={e=>{setPvApiKey(e.target.value);localStorage.setItem("pv_api_key",e.target.value);}}
-              placeholder="sk-ant-..."
-              style={{width:"100%",fontFamily:sans,fontSize:11,padding:"5px 8px",border:`1px solid ${PV.border}`,background:PV.soft,color:C.ink,outline:"none",borderRadius:2}}
-            />
-            <div style={{fontSize:9,color:pvApiKey?C.green:C.muted,marginTop:4,fontFamily:sans}}>
-              {pvApiKey?"✓ clé enregistrée":"requis pour générer les analyses"}
-            </div>
-          </div>
+
           <button
             onClick={async()=>{
               const allIds=Object.values(pvAssigned).flat();
