@@ -259,24 +259,69 @@ const [pvWordColor,     setPvWordColor]     = useState("#18180f");
   };
 
   // ── NETTOYAGE DES DONNÉES À LA SOURCE ──────────────────────
-  const cleanItem = item => ({
-    ...item,
-    id:     String(item.id||item.url||item.title||Math.random()),
-    title:  String(item.title||""),
-    summary:String(item.summary||""),
-    source: String(item.source||""),
-    date:   String(item.date||""),
-    url:    String(item.url||""),
-    actors:     norm(item.actors),
-    keywords:   norm(item.keywords),
-    innovations:norm(item.innovations),
-    themes:     norm(item.themes),
-    relevanceScore: Number(item.relevanceScore||0),
-    weakSignal:     String(item.weakSignal||""),
-    exploitationAngle: String(item.exploitationAngle||""),
-    strategicImpact:   String(item.strategicImpact||""),
-    documentType:      String(item.documentType||""),
-  });
+const pick = (item, keys, fallback = "") => {
+  for (const key of keys) {
+    if (item[key] !== undefined && item[key] !== null && String(item[key]).trim() !== "") {
+      return item[key];
+    }
+  }
+  return fallback;
+};
+
+// ── NETTOYAGE DES DONNÉES À LA SOURCE ──────────────────────
+const cleanItem = item => ({
+  ...item,
+
+  id: String(pick(item, ["id", "ID", "Id", "url", "URL", "title", "Titre"], Math.random())),
+  title: String(pick(item, ["title", "Titre", "titre"], "")),
+  summary: String(pick(item, ["summary", "Résumé", "resume", "résumé", "outputSummary"], "")),
+  source: String(pick(item, ["source", "Source"], "")),
+  date: String(pick(item, ["date", "Date", "Date de publication du document"], "")),
+  url: String(pick(item, ["url", "URL", "Lien"], "")),
+
+  component: String(pick(item, ["component", "Composante", "composante"], "")),
+  institution: String(pick(item, ["institution", "Institution émettrice", "institution_normalisée"], "")),
+  documentType: String(pick(item, ["documentType", "Type de document", "Type de source"], "")),
+
+  actors: norm(pick(item, [
+    "actors",
+    "Acteurs cités",
+    "Acteurs mentionnés",
+    "acteurs_cités_normalisés",
+    "acteurs"
+  ], "")),
+
+  keywords: norm(pick(item, [
+    "keywords",
+    "Concepts clés",
+    "Concepts - clés",
+    "Concepts-clés",
+    "Concepts",
+    "concepts_normalisés",
+    "concepts"
+  ], "")),
+
+  themes: norm(pick(item, [
+    "themes",
+    "Thèmes",
+    "Thèmes normalisés",
+    "thèmes_normalisés",
+    "themes_normalisés"
+  ], "")),
+
+  innovations: norm(pick(item, [
+    "innovations",
+    "Innovations technologiques",
+    "Innovation technologique",
+    "innovation_technologique_normalisée",
+    "lien techno"
+  ], "")),
+
+  relevanceScore: Number(pick(item, ["relevanceScore", "stratégie de pertinence / score", "score", "pertinence"], 0)),
+  weakSignal: String(pick(item, ["weakSignal", "Signal faible", "Signal faible ?", "signal_faible_normalisé"], "")),
+  exploitationAngle: String(pick(item, ["exploitationAngle", "Angle d’exploitation", "Angle d'exploitation"], "")),
+  strategicImpact: String(pick(item, ["strategicImpact", "Impact stratégique estimé (1-3)"], "")),
+});
 
   const cleanEvent = r => ({
     id:    String(r.id||Date.now()),
@@ -899,7 +944,6 @@ const [pvWordColor,     setPvWordColor]     = useState("#18180f");
 function GrapheView(){
   const graphItems = items.filter(i => graphSelectedIds.has(i.id) && !dismissed.has(i.id) && !isEv(i));
   const count = graphItems.length;
-  console.log("ARTICLE GRAPHE TEST", graphItems[0]);
 
   const graphStats = useMemo(() => {
     const institutions = new Set();
