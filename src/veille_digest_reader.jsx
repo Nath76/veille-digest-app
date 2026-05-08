@@ -1963,11 +1963,13 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
 </div>
 
             {tab==="agenda"        ? <AgendaView/>
-            :tab==="signaux faibles"? <SignauxView/>
-            :tab==="experts"       ? <ExpertsView/>
-            :tab==="produire"      ? <ProduireView/>
-            :tab==="point veille"  ? <PointVeilleView/>
-            :(
+:tab==="signaux faibles"? <SignauxView/>
+:tab==="experts"       ? <ExpertsView/>
+:tab==="produire"      ? <ProduireView/>
+:tab==="point veille"  ? <PointVeilleView/>
+:tab==="graphe"       ? <GrapheView/>
+:(
+            
               <>
                 {tab==="productions"&&(
   <div style={{padding:"8px 22px",display:"flex",alignItems:"center",gap:10,borderBottom:`1px solid ${C.border}`,background:C.panelSoft,flexWrap:"wrap"}}>
