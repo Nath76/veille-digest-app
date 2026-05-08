@@ -1889,16 +1889,78 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
               </button>
             </div>
 
-            <div style={{display:"flex",alignItems:"center",borderBottom:`1px solid ${C.border}`,padding:"0 22px"}}>
-          {!["agenda","signaux faibles","experts","produire","point veille","graphe"].includes(tab)&&(
-                <button key={key} onClick={()=>setTab(key)} style={{padding:"10px 11px",background:"none",border:"none",borderBottom:tab===key?`2px solid ${C.ink}`:"2px solid transparent",marginBottom:-1,color:tab===key?C.ink:C.muted,cursor:"pointer",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",fontFamily:sans,fontWeight:tab===key?500:400,display:"flex",alignItems:"center",gap:6}}>
-                  {key}{count!==""&&<span style={{background:C.chip,color:C.chipText,borderRadius:2,padding:"1px 6px",fontSize:10,textTransform:"none",letterSpacing:0,fontWeight:400}}>{count}</span>}
-                </button>
-              ))}
-              {!["agenda","signaux faibles","experts","produire","point veille"].includes(tab)&&(
-                <input value={query} onChange={e=>setQuery(e.target.value)} placeholder="rechercher dans le digest…" style={{marginLeft:"auto",border:"none",background:"transparent",outline:"none",color:C.accent,fontSize:12,fontFamily:serif,fontStyle:"italic",padding:"10px 0",width:190}}/>
-              )}
-            </div>
+         <div style={{display:"flex",alignItems:"center",borderBottom:`1px solid ${C.border}`,padding:"0 22px"}}>
+  {[
+    ["productions", pubCount],
+    ["événements", evtCount],
+    ["agenda", events.length],
+    ["signaux faibles", signals.filter(s => s.status !== "confirmé").length],
+    ["experts", experts.length],
+    ["produire", ""],
+    ["point veille", ""],
+    ["graphe", graphSelectedIds.size],
+  ].map(([key, count]) => (
+    <button
+      key={key}
+      onClick={() => setTab(key)}
+      style={{
+        padding: "10px 11px",
+        background: "none",
+        border: "none",
+        borderBottom: tab === key ? `2px solid ${C.ink}` : "2px solid transparent",
+        marginBottom: -1,
+        color: tab === key ? C.ink : C.muted,
+        cursor: "pointer",
+        fontSize: 12,
+        letterSpacing: ".08em",
+        textTransform: "uppercase",
+        fontFamily: sans,
+        fontWeight: tab === key ? 500 : 400,
+        display: "flex",
+        alignItems: "center",
+        gap: 6,
+      }}
+    >
+      {key}
+      {count !== "" && (
+        <span
+          style={{
+            background: C.chip,
+            color: C.chipText,
+            borderRadius: 2,
+            padding: "1px 6px",
+            fontSize: 10,
+            textTransform: "none",
+            letterSpacing: 0,
+            fontWeight: 400,
+          }}
+        >
+          {count}
+        </span>
+      )}
+    </button>
+  ))}
+
+  {!["agenda", "signaux faibles", "experts", "produire", "point veille", "graphe"].includes(tab) && (
+    <input
+      value={query}
+      onChange={e => setQuery(e.target.value)}
+      placeholder="rechercher dans le digest…"
+      style={{
+        marginLeft: "auto",
+        border: "none",
+        background: "transparent",
+        outline: "none",
+        color: C.accent,
+        fontSize: 12,
+        fontFamily: serif,
+        fontStyle: "italic",
+        padding: "10px 0",
+        width: 190,
+      }}
+    />
+  )}
+</div>
 
             {tab==="agenda"        ? <AgendaView/>
             :tab==="signaux faibles"? <SignauxView/>
