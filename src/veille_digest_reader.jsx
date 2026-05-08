@@ -243,7 +243,8 @@ export default function VeilleDigestReader() {
   const [prodCommItem, setProdCommItem] = useState(null);
 
   const [pvSelectedForPV, setPvSelectedForPV] = useState(new Set());
-  const [pvWordColor,     setPvWordColor]     = useState("#18180f");
+const [graphSelectedIds, setGraphSelectedIds] = useState(new Set());
+const [pvWordColor,     setPvWordColor]     = useState("#18180f");
   const [pvDirectAssign,  setPvDirectAssign]  = useState({});
   const [pvAssignedTop,   setPvAssignedTop]   = useState({s1:[],s2:[],s3:[],s4:[]});
   const [pvExternalsTop,  setPvExternalsTop]  = useState({s1:[],s2:[],s3:[],s4:[]});
@@ -535,10 +536,29 @@ export default function VeilleDigestReader() {
 
   const PV_SECTIONS_LABELS = [{id:"s1",label:"Actionnable"},{id:"s2",label:"Possiblement à préparer"},{id:"s3",label:"Centre de documentation"},{id:"s4",label:"Actualité de l'ATE"}];
 
-  function Card({item}){
-    const isFav=favoriteIds.has(item.id),scoreN=Math.round((item.relevanceScore||0)/20)||0;
-    const isSelPV=pvSelectedForPV.has(item.id);
-    const togPV=(e)=>{e.stopPropagation();setPvSelectedForPV(p=>{const n=new Set(p);n.has(item.id)?n.delete(item.id):n.add(item.id);return n;});};
+ function Card({item}){
+  const isFav=favoriteIds.has(item.id),scoreN=Math.round((item.relevanceScore||0)/20)||0;
+
+  const isSelPV = pvSelectedForPV.has(item.id);
+  const isSelGraph = graphSelectedIds.has(item.id);
+
+  const togPV = (e) => {
+    e.stopPropagation();
+    setPvSelectedForPV(p => {
+      const n = new Set(p);
+      n.has(item.id) ? n.delete(item.id) : n.add(item.id);
+      return n;
+    });
+  };
+
+  const togGraph = (e) => {
+    e.stopPropagation();
+    setGraphSelectedIds(p => {
+      const n = new Set(p);
+      n.has(item.id) ? n.delete(item.id) : n.add(item.id);
+      return n;
+    });
+  };
     const assignDirect=(e,secId)=>{
       e.stopPropagation();
       setPvSelectedForPV(p=>{const n=new Set(p);n.add(item.id);return n;});
@@ -557,10 +577,18 @@ export default function VeilleDigestReader() {
         onMouseEnter={e=>(e.currentTarget.style.boxShadow="0 4px 20px rgba(0,0,0,.1)")} onMouseLeave={e=>(e.currentTarget.style.boxShadow="none")}>
         <button onClick={e=>dismiss(item.id,e)} style={{position:"absolute",top:8,right:9,background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:15,lineHeight:1,opacity:.3,padding:0}} onMouseEnter={e=>(e.currentTarget.style.opacity=1)} onMouseLeave={e=>(e.currentTarget.style.opacity=.3)}>×</button>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <div onClick={togPV} style={{width:16,height:16,borderRadius:2,border:`1.5px solid ${isSelPV?C.accent:C.border}`,background:isSelPV?C.accent:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all .15s"}} title="Sélectionner pour le Point Veille">
-            {isSelPV&&<span style={{color:C.white,fontSize:10,lineHeight:1,fontWeight:700}}>✓</span>}
-          </div>
-          {item.date&&<div style={{...sc(),fontSize:9}}>{item.date}</div>}
+  <div onClick={togPV} style={{width:16,height:16,borderRadius:2,border:`1.5px solid ${isSelPV?C.accent:C.border}`,background:isSelPV?C.accent:"transparent",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"center",cursor:"pointer",transition:"all .15s"}} title="Sélectionner pour le Point Veille">
+    {isSelPV&&<span style={{color:C.white,fontSize:10,lineHeight:1,fontWeight:700}}>✓</span>}
+  </div>
+
+  <div onClick={togGraph} style={{display:"flex",alignItems:"center",gap:4,padding:"2px 6px",border:`1px solid ${isSelGraph?C.green:C.border}`,background:isSelGraph?"#f0faf4":C.white,color:isSelGraph?C.green:C.muted,borderRadius:2,cursor:"pointer",fontSize:9,fontFamily:sans,letterSpacing:".06em",textTransform:"uppercase",flexShrink:0}} title="Sélectionner pour le graphe">
+    <span style={{width:12,height:12,borderRadius:2,border:`1.3px solid ${isSelGraph?C.green:C.border}`,background:isSelGraph?C.green:"transparent",display:"flex",alignItems:"center",justifyContent:"center",color:C.white,fontSize:8,lineHeight:1}}>
+      {isSelGraph ? "✓" : ""}
+    </span>
+    Graphe
+  </div>
+
+  {item.date&&<div style={{...sc(),fontSize:9}}>{item.date}</div>}
           <div style={{marginLeft:"auto"}}><span style={{borderRadius:2,padding:"2px 8px",fontSize:9,fontWeight:600,letterSpacing:".06em",textTransform:"uppercase",...sp(item.relevanceScore)}}>pertinence {scoreN}/5</span></div>
         </div>
         {(item.keywords||[]).length>0&&<div style={{display:"flex",flexWrap:"wrap",gap:4}}>{(item.keywords||[]).slice(0,4).map(k=><span key={k} style={{background:C.chip,color:C.chipText,borderRadius:2,padding:"2px 8px",fontSize:10,fontFamily:sans}}>{k}</span>)}</div>}
@@ -868,7 +896,134 @@ export default function VeilleDigestReader() {
       </div>
     );
   }
+function GrapheView(){
+  const graphItems = items.filter(i => graphSelectedIds.has(i.id) && !dismissed.has(i.id) && !isEv(i));
+  const count = graphItems.length;
 
+  const status =
+    count === 0 ? "empty" :
+    count < 5 ? "too-small" :
+    count > 25 ? "too-large" :
+    "ok";
+
+  return(
+    <div style={{flex:1,padding:"24px 28px",overflowY:"auto",display:"flex",flexDirection:"column",gap:18}}>
+      <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"20px 22px"}}>
+        <div style={{...sc(),marginBottom:8}}>module graphe</div>
+        <div style={{fontFamily:serif,fontSize:26,fontWeight:900,color:C.ink,lineHeight:1.05,marginBottom:8}}>
+          Graphes relationnels
+        </div>
+        <div style={{fontSize:13,color:C.muted,fontFamily:sans,lineHeight:1.7,maxWidth:760}}>
+          Explorez les relations entre articles, institutions, acteurs, thèmes et concepts à partir des articles sélectionnés dans le digest.
+        </div>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4, 1fr)",gap:10}}>
+        <div style={{background:C.white,border:`1px solid ${C.border}`,padding:14}}>
+          <div style={{fontFamily:serif,fontSize:28,fontWeight:700,color:C.ink}}>{count}</div>
+          <div style={{...sc(),fontSize:9}}>articles sélectionnés</div>
+        </div>
+        <div style={{background:C.white,border:`1px solid ${C.border}`,padding:14}}>
+          <div style={{fontFamily:serif,fontSize:28,fontWeight:700,color:C.ink}}>5</div>
+          <div style={{...sc(),fontSize:9}}>minimum recommandé</div>
+        </div>
+        <div style={{background:C.white,border:`1px solid ${C.border}`,padding:14}}>
+          <div style={{fontFamily:serif,fontSize:28,fontWeight:700,color:C.ink}}>25</div>
+          <div style={{...sc(),fontSize:9}}>maximum conseillé</div>
+        </div>
+        <div style={{background:C.white,border:`1px solid ${C.border}`,padding:14}}>
+          <div style={{fontFamily:serif,fontSize:28,fontWeight:700,color:status==="ok"?C.green:C.accent}}>
+            {status==="ok" ? "OK" : "!"}
+          </div>
+          <div style={{...sc(),fontSize:9}}>état de la sélection</div>
+        </div>
+      </div>
+
+      {status==="empty" && (
+        <div style={{background:C.white,border:`1px solid ${C.border}`,borderLeft:`4px solid ${C.accent}`,padding:"18px 20px"}}>
+          <div style={{fontFamily:serif,fontSize:18,fontWeight:700,color:C.ink,marginBottom:6}}>
+            Aucun article sélectionné pour le graphe.
+          </div>
+          <div style={{fontSize:13,color:C.muted,fontFamily:sans,lineHeight:1.7}}>
+            Retournez dans l’onglet Productions et cochez “Graphe” sur plusieurs articles. Le module fonctionne idéalement avec une sélection de 5 à 25 articles.
+          </div>
+          <button onClick={()=>setTab("productions")} style={{marginTop:14,fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"9px 18px",background:C.ink,color:C.white,border:"none",cursor:"pointer"}}>
+            Retour aux productions
+          </button>
+        </div>
+      )}
+
+      {status==="too-small" && (
+        <div style={{background:C.white,border:`1px solid ${C.border}`,borderLeft:`4px solid ${C.accent}`,padding:"18px 20px"}}>
+          <div style={{fontFamily:serif,fontSize:18,fontWeight:700,color:C.ink,marginBottom:6}}>
+            Sélection insuffisante.
+          </div>
+          <div style={{fontSize:13,color:C.muted,fontFamily:sans,lineHeight:1.7}}>
+            Vous avez sélectionné {count} article{count>1?"s":""}. Sélectionnez au moins 5 articles pour produire un graphe relationnel exploitable.
+          </div>
+          <button onClick={()=>setTab("productions")} style={{marginTop:14,fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"9px 18px",background:C.ink,color:C.white,border:"none",cursor:"pointer"}}>
+            Ajouter des articles
+          </button>
+        </div>
+      )}
+
+      {status==="too-large" && (
+        <div style={{background:C.white,border:`1px solid ${C.border}`,borderLeft:`4px solid #9a3412`,padding:"18px 20px"}}>
+          <div style={{fontFamily:serif,fontSize:18,fontWeight:700,color:C.ink,marginBottom:6}}>
+            Sélection trop large.
+          </div>
+          <div style={{fontSize:13,color:C.muted,fontFamily:sans,lineHeight:1.7}}>
+            Vous avez sélectionné {count} articles. Réduisez la sélection à 25 articles maximum pour conserver un graphe lisible.
+          </div>
+          <button onClick={()=>setTab("productions")} style={{marginTop:14,fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"9px 18px",background:C.ink,color:C.white,border:"none",cursor:"pointer"}}>
+            Modifier la sélection
+          </button>
+        </div>
+      )}
+
+      {status==="ok" && (
+        <>
+          <div style={{background:"#f0faf4",border:"1px solid #9FE1CB",padding:"14px 18px"}}>
+            <div style={{fontFamily:serif,fontSize:18,fontWeight:700,color:C.ink,marginBottom:6}}>
+              Sélection correcte.
+            </div>
+            <div style={{fontSize:13,color:"#085041",fontFamily:sans,lineHeight:1.7}}>
+              {count} articles sont prêts pour construire le graphe relationnel.
+            </div>
+          </div>
+
+          <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"18px 20px"}}>
+            <div style={{...sc(),marginBottom:12}}>articles sélectionnés pour le graphe</div>
+            <div style={{display:"flex",flexDirection:"column",gap:6}}>
+              {graphItems.map(item=>(
+                <div key={item.id} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"9px 10px",background:C.panelSoft,border:`1px solid ${C.border}`}}>
+                  <div style={{width:18,height:18,borderRadius:2,background:C.green,color:C.white,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,flexShrink:0}}>✓</div>
+                  <div style={{flex:1}}>
+                    <div style={{fontFamily:serif,fontSize:14,fontWeight:700,color:C.ink,lineHeight:1.3}}>{item.title}</div>
+                    <div style={{fontSize:10,color:C.muted,fontFamily:sans,marginTop:2}}>
+                      {item.source||""}{item.institution?` · ${item.institution}`:""}{item.date?` · ${item.date}`:""}
+                    </div>
+                  </div>
+                  <button onClick={()=>setGraphSelectedIds(p=>{const n=new Set(p);n.delete(item.id);return n;})}
+                    style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:16,padding:0,opacity:.45}}>
+                    ×
+                  </button>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"18px 20px"}}>
+            <div style={{...sc(),marginBottom:8}}>prochaine étape</div>
+            <div style={{fontSize:13,color:C.muted,fontFamily:sans,lineHeight:1.7}}>
+              Le branchement de la sélection fonctionne. La prochaine étape sera de calculer automatiquement les nœuds, les relations et les indicateurs du module graphe à partir de ces articles.
+            </div>
+          </div>
+        </>
+      )}
+    </div>
+  );
+}
   function ProduireView(){
     const allThemesList = Array.from(new Set([
       "tous",
@@ -1735,7 +1890,7 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
             </div>
 
             <div style={{display:"flex",alignItems:"center",borderBottom:`1px solid ${C.border}`,padding:"0 22px"}}>
-              {[["productions",pubCount],["événements",evtCount],["agenda",events.length],["signaux faibles",signals.filter(s=>s.status!=="confirmé").length],["experts",experts.length],["produire",""],["point veille",""]].map(([key,count])=>(
+          {!["agenda","signaux faibles","experts","produire","point veille","graphe"].includes(tab)&&(
                 <button key={key} onClick={()=>setTab(key)} style={{padding:"10px 11px",background:"none",border:"none",borderBottom:tab===key?`2px solid ${C.ink}`:"2px solid transparent",marginBottom:-1,color:tab===key?C.ink:C.muted,cursor:"pointer",fontSize:12,letterSpacing:".08em",textTransform:"uppercase",fontFamily:sans,fontWeight:tab===key?500:400,display:"flex",alignItems:"center",gap:6}}>
                   {key}{count!==""&&<span style={{background:C.chip,color:C.chipText,borderRadius:2,padding:"1px 6px",fontSize:10,textTransform:"none",letterSpacing:0,fontWeight:400}}>{count}</span>}
                 </button>
