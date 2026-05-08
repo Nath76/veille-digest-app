@@ -1970,23 +1970,68 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
             :(
               <>
                 {tab==="productions"&&(
-                  <div style={{padding:"8px 22px",display:"flex",alignItems:"center",gap:10,borderBottom:`1px solid ${C.border}`,background:C.panelSoft}}>
-                    <span style={{fontFamily:serif,fontStyle:"italic",fontSize:12,color:pvSelectedForPV.size>0?C.accent:C.muted}}>
-                      {pvSelectedForPV.size>0?`${pvSelectedForPV.size} article${pvSelectedForPV.size>1?"s":""} sélectionné${pvSelectedForPV.size>1?"s":""} pour le Point Veille`:"Cocher les articles à inclure dans le Point Veille"}
-                    </span>
-                    <div style={{marginLeft:"auto",display:"flex",gap:6}}>
-                      <button onClick={()=>setPvSelectedForPV(new Set(visibleItems.map(i=>i.id)))} style={{fontSize:9,letterSpacing:".08em",textTransform:"uppercase",padding:"3px 10px",border:`1px solid ${C.border}`,background:C.white,color:C.muted,cursor:"pointer",borderRadius:2,fontFamily:sans}}>tout cocher</button>
-                      {pvSelectedForPV.size>0&&<button onClick={()=>setPvSelectedForPV(new Set())} style={{fontSize:9,letterSpacing:".08em",textTransform:"uppercase",padding:"3px 10px",border:`1px solid ${C.border}`,background:C.white,color:C.muted,cursor:"pointer",borderRadius:2,fontFamily:sans}}>tout décocher</button>}
-                      {pvSelectedForPV.size>0&&<button onClick={()=>setTab("point veille")} style={{fontSize:9,letterSpacing:".08em",textTransform:"uppercase",padding:"3px 14px",border:"none",background:C.accent,color:C.white,cursor:"pointer",borderRadius:2,fontFamily:sans,fontWeight:500}}>→ Point Veille ({pvSelectedForPV.size})</button>}
-                    </div>
-                  </div>
-                )}
-                <div style={{flex:1,padding:"20px 22px",overflowY:"auto"}}>
-                  {items.length===0
-                    ?<div style={{textAlign:"center",padding:60,...sc()}}>chargement en cours…</div>
-                    :visibleItems.length===0
-                      ?<div style={{textAlign:"center",padding:60,...sc()}}>aucune production correspondante</div>
-                      :<div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))",gap:0}}>{visibleItems.map(item=><Card key={item.id} item={item}/>)}</div>
+  <div style={{padding:"8px 22px",display:"flex",alignItems:"center",gap:10,borderBottom:`1px solid ${C.border}`,background:C.panelSoft,flexWrap:"wrap"}}>
+    <span style={{fontFamily:serif,fontStyle:"italic",fontSize:12,color:pvSelectedForPV.size>0?C.accent:C.muted}}>
+      {pvSelectedForPV.size>0?`${pvSelectedForPV.size} article${pvSelectedForPV.size>1?"s":""} sélectionné${pvSelectedForPV.size>1?"s":""} pour le Point Veille`:"Cocher les articles à inclure dans le Point Veille"}
+    </span>
+
+    <span style={{fontFamily:serif,fontStyle:"italic",fontSize:12,color:graphSelectedIds.size>0?C.green:C.muted,borderLeft:`1px solid ${C.border}`,paddingLeft:10}}>
+      {graphSelectedIds.size>0?`${graphSelectedIds.size} article${graphSelectedIds.size>1?"s":""} sélectionné${graphSelectedIds.size>1?"s":""} pour le Graphe`:"Cocher “Graphe” pour préparer un graphe"}
+    </span>
+
+    <div style={{marginLeft:"auto",display:"flex",gap:6,flexWrap:"wrap"}}>
+      <button
+        onClick={()=>setPvSelectedForPV(new Set(visibleItems.map(i=>i.id)))}
+        style={{fontSize:9,letterSpacing:".08em",textTransform:"uppercase",padding:"3px 10px",border:`1px solid ${C.border}`,background:C.white,color:C.muted,cursor:"pointer",borderRadius:2,fontFamily:sans}}
+      >
+        tout cocher PV
+      </button>
+
+      {pvSelectedForPV.size>0&&(
+        <button
+          onClick={()=>setPvSelectedForPV(new Set())}
+          style={{fontSize:9,letterSpacing:".08em",textTransform:"uppercase",padding:"3px 10px",border:`1px solid ${C.border}`,background:C.white,color:C.muted,cursor:"pointer",borderRadius:2,fontFamily:sans}}
+        >
+          décocher PV
+        </button>
+      )}
+
+      <button
+        onClick={()=>setGraphSelectedIds(new Set(visibleItems.filter(i=>!isEv(i)).map(i=>i.id)))}
+        style={{fontSize:9,letterSpacing:".08em",textTransform:"uppercase",padding:"3px 10px",border:`1px solid ${C.border}`,background:C.white,color:C.muted,cursor:"pointer",borderRadius:2,fontFamily:sans}}
+      >
+        tout cocher Graphe
+      </button>
+
+      {graphSelectedIds.size>0&&(
+        <button
+          onClick={()=>setGraphSelectedIds(new Set())}
+          style={{fontSize:9,letterSpacing:".08em",textTransform:"uppercase",padding:"3px 10px",border:`1px solid ${C.border}`,background:C.white,color:C.muted,cursor:"pointer",borderRadius:2,fontFamily:sans}}
+        >
+          décocher Graphe
+        </button>
+      )}
+
+      {pvSelectedForPV.size>0&&(
+        <button
+          onClick={()=>setTab("point veille")}
+          style={{fontSize:9,letterSpacing:".08em",textTransform:"uppercase",padding:"3px 14px",border:"none",background:C.accent,color:C.white,cursor:"pointer",borderRadius:2,fontFamily:sans,fontWeight:500}}
+        >
+          → Point Veille ({pvSelectedForPV.size})
+        </button>
+      )}
+
+      {graphSelectedIds.size>0&&(
+        <button
+          onClick={()=>setTab("graphe")}
+          style={{fontSize:9,letterSpacing:".08em",textTransform:"uppercase",padding:"3px 14px",border:"none",background:C.green,color:C.white,cursor:"pointer",borderRadius:2,fontFamily:sans,fontWeight:500}}
+        >
+          → Graphe ({graphSelectedIds.size})
+        </button>
+      )}
+    </div>
+  </div>
+)}
                   }
                 </div>
                 <div style={{borderTop:`3px double ${C.ink}`,display:"grid",gridTemplateColumns:"repeat(4, 1fr)",textAlign:"center",padding:"12px 10px",background:C.panel}}>
