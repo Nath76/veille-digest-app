@@ -900,6 +900,48 @@ function GrapheView(){
   const graphItems = items.filter(i => graphSelectedIds.has(i.id) && !dismissed.has(i.id) && !isEv(i));
   const count = graphItems.length;
 
+  const graphStats = useMemo(() => {
+    const institutions = new Set();
+    const acteurs = new Set();
+    const concepts = new Set();
+    const themes = new Set();
+    const innovations = new Set();
+
+    graphItems.forEach(item => {
+      if (item.institution && String(item.institution).trim()) {
+        institutions.add(String(item.institution).trim());
+      }
+
+      norm(item.actors).forEach(v => {
+        if (v && String(v).trim()) acteurs.add(String(v).trim());
+      });
+
+      norm(item.keywords).forEach(v => {
+        if (v && String(v).trim()) concepts.add(String(v).trim());
+      });
+
+      norm(item.themes).forEach(v => {
+        if (v && String(v).trim()) themes.add(String(v).trim());
+      });
+
+      norm(item.innovations).forEach(v => {
+        const clean = v && String(v).trim();
+        if (clean && clean !== "Aucune" && clean !== "Aucun") {
+          innovations.add(clean);
+        }
+      });
+    });
+
+    return {
+      articles: graphItems.length,
+      institutions: institutions.size,
+      acteurs: acteurs.size,
+      concepts: concepts.size,
+      themes: themes.size,
+      innovations: innovations.size,
+    };
+  }, [graphItems]);
+
   const status =
     count === 0 ? "empty" :
     count < 5 ? "too-small" :
@@ -918,21 +960,37 @@ function GrapheView(){
         </div>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4, 1fr)",gap:10}}>
+      <div style={{display:"grid",gridTemplateColumns:"repeat(6, 1fr)",gap:10}}>
+        {[
+          [graphStats.articles, "articles"],
+          [graphStats.institutions, "institutions"],
+          [graphStats.acteurs, "acteurs"],
+          [graphStats.concepts, "concepts"],
+          [graphStats.themes, "thèmes"],
+          [graphStats.innovations, "innovations"],
+        ].map(([n, label]) => (
+          <div key={label} style={{background:C.white,border:`1px solid ${C.border}`,padding:14}}>
+            <div style={{fontFamily:serif,fontSize:28,fontWeight:700,color:C.ink}}>
+              {n}
+            </div>
+            <div style={{...sc(),fontSize:9}}>
+              {label}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:10}}>
         <div style={{background:C.white,border:`1px solid ${C.border}`,padding:14}}>
-          <div style={{fontFamily:serif,fontSize:28,fontWeight:700,color:C.ink}}>{count}</div>
-          <div style={{...sc(),fontSize:9}}>articles sélectionnés</div>
-        </div>
-        <div style={{background:C.white,border:`1px solid ${C.border}`,padding:14}}>
-          <div style={{fontFamily:serif,fontSize:28,fontWeight:700,color:C.ink}}>5</div>
+          <div style={{fontFamily:serif,fontSize:24,fontWeight:700,color:C.ink}}>5</div>
           <div style={{...sc(),fontSize:9}}>minimum recommandé</div>
         </div>
         <div style={{background:C.white,border:`1px solid ${C.border}`,padding:14}}>
-          <div style={{fontFamily:serif,fontSize:28,fontWeight:700,color:C.ink}}>25</div>
+          <div style={{fontFamily:serif,fontSize:24,fontWeight:700,color:C.ink}}>25</div>
           <div style={{...sc(),fontSize:9}}>maximum conseillé</div>
         </div>
         <div style={{background:C.white,border:`1px solid ${C.border}`,padding:14}}>
-          <div style={{fontFamily:serif,fontSize:28,fontWeight:700,color:status==="ok"?C.green:C.accent}}>
+          <div style={{fontFamily:serif,fontSize:24,fontWeight:700,color:status==="ok"?C.green:C.accent}}>
             {status==="ok" ? "OK" : "!"}
           </div>
           <div style={{...sc(),fontSize:9}}>état de la sélection</div>
@@ -1016,7 +1074,7 @@ function GrapheView(){
           <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"18px 20px"}}>
             <div style={{...sc(),marginBottom:8}}>prochaine étape</div>
             <div style={{fontSize:13,color:C.muted,fontFamily:sans,lineHeight:1.7}}>
-              Le branchement de la sélection fonctionne. La prochaine étape sera de calculer automatiquement les nœuds, les relations et les indicateurs du module graphe à partir de ces articles.
+              La sélection produit maintenant les premiers compteurs du module graphe. La prochaine étape sera de calculer les relations transversales : Institution → Thème, Institution → Concept, Acteur → Thème et Acteur → Concept.
             </div>
           </div>
         </>
