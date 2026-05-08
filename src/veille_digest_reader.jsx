@@ -899,6 +899,7 @@ const [pvWordColor,     setPvWordColor]     = useState("#18180f");
 function GrapheView(){
   const graphItems = items.filter(i => graphSelectedIds.has(i.id) && !dismissed.has(i.id) && !isEv(i));
   const count = graphItems.length;
+  console.log("ARTICLE GRAPHE TEST", graphItems[0]);
 
   const graphStats = useMemo(() => {
     const institutions = new Set();
