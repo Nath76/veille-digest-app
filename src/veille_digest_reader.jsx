@@ -2026,27 +2026,39 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
           onClick={()=>setTab("graphe")}
           style={{fontSize:9,letterSpacing:".08em",textTransform:"uppercase",padding:"3px 14px",border:"none",background:C.green,color:C.white,cursor:"pointer",borderRadius:2,fontFamily:sans,fontWeight:500}}
         >
-          → Graphe ({graphSelectedIds.size})
+         → Graphe ({graphSelectedIds.size})
         </button>
       )}
     </div>
   </div>
 )}
-                  }
-                </div>
-                <div style={{borderTop:`3px double ${C.ink}`,display:"grid",gridTemplateColumns:"repeat(4, 1fr)",textAlign:"center",padding:"12px 10px",background:C.panel}}>
-                  {[[items.filter(i=>!dismissed.has(i.id)).length,"productions"],[favoriteIds.size,"favoris"],[rss.length,"sources"],[noteIds.size,"en note"]].map(([n,l])=>(
-                    <div key={l}>
-                      <div style={{fontFamily:serif,fontSize:22,color:C.ink}}>{n}</div>
-                      <div style={{...sc(),fontSize:9}}>{l}</div>
-                    </div>
-                  ))}
-                </div>
-              </>
-            )}
-          </main>
-        </div>
 
+<div style={{flex:1,padding:"20px 22px",overflowY:"auto"}}>
+  {items.length===0
+    ? <div style={{textAlign:"center",padding:60,...sc()}}>chargement en cours…</div>
+    : visibleItems.length===0
+      ? <div style={{textAlign:"center",padding:60,...sc()}}>aucune production correspondante</div>
+      : <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fill, minmax(260px, 1fr))",gap:0}}>
+          {visibleItems.map(item=><Card key={item.id} item={item}/>)}
+        </div>
+  }
+</div>
+
+<div style={{borderTop:`3px double ${C.ink}`,display:"grid",gridTemplateColumns:"repeat(4, 1fr)",textAlign:"center",padding:"12px 10px",background:C.panel}}>
+  {[
+    [items.filter(i=>!dismissed.has(i.id)).length,"productions"],
+    [favoriteIds.size,"favoris"],
+    [rss.length,"sources"],
+    [noteIds.size,"en note"]
+  ].map(([n,l])=>(
+    <div key={l}>
+      <div style={{fontFamily:serif,fontSize:22,color:C.ink}}>{n}</div>
+      <div style={{...sc(),fontSize:9}}>{l}</div>
+    </div>
+  ))}
+</div>
+</>
+)}
 
       </div>
 
