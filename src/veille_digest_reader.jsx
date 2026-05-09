@@ -945,6 +945,18 @@ function GrapheView(){
   const graphItems = items.filter(i => graphSelectedIds.has(i.id) && !dismissed.has(i.id) && !isEv(i));
   const count = graphItems.length;
 
+  const [activeGraphView, setActiveGraphView] = useState("institutionThemes");
+  const [filterInstitution, setFilterInstitution] = useState("");
+  const [filterTheme, setFilterTheme] = useState("");
+  const [filterActor, setFilterActor] = useState("");
+  const [filterConcept, setFilterConcept] = useState("");
+  const [showTopOnly, setShowTopOnly] = useState(false);
+  const [hideIsolated, setHideIsolated] = useState(false);
+
+  const [mergeNodeType, setMergeNodeType] = useState("actors");
+  const [mergeSearch, setMergeSearch] = useState("");
+  const [mergeTarget, setMergeTarget] = useState("");
+
   const graphStats = useMemo(() => {
     const institutions = new Set();
     const acteurs = new Set();
@@ -1051,45 +1063,26 @@ function GrapheView(){
         institutions.add(institution);
       }
 
-      itemActors.forEach(actor => {
-        acteurs.add(actor);
-      });
+      itemActors.forEach(actor => acteurs.add(actor));
+      itemConcepts.forEach(concept => concepts.add(concept));
+      itemThemes.forEach(theme => themes.add(theme));
+      itemInnovations.forEach(innovation => innovations.add(innovation));
 
-      itemConcepts.forEach(concept => {
-        concepts.add(concept);
-      });
-
-      itemThemes.forEach(theme => {
-        themes.add(theme);
-      });
-
-      itemInnovations.forEach(innovation => {
-        innovations.add(innovation);
-      });
-
-      // Institution → Thèmes
       if (institution) {
         itemThemes.forEach(theme => {
           addToMapSet(institutionThemes, institution, theme);
         });
-      }
 
-      // Institution → Concepts
-      if (institution) {
         itemConcepts.forEach(concept => {
           addToMapSet(institutionConcepts, institution, concept);
         });
       }
 
-      // Acteur → Thèmes
       itemActors.forEach(actor => {
         itemThemes.forEach(theme => {
           addToMapSet(actorThemes, actor, theme);
         });
-      });
 
-      // Acteur → Concepts
-      itemActors.forEach(actor => {
         itemConcepts.forEach(concept => {
           addToMapSet(actorConcepts, actor, concept);
         });
@@ -1104,6 +1097,11 @@ function GrapheView(){
       themes: themes.size,
       innovations: innovations.size,
 
+      institutionList: Array.from(institutions).sort((a, b) => a.localeCompare(b, "fr")),
+      actorList: Array.from(acteurs).sort((a, b) => a.localeCompare(b, "fr")),
+      conceptList: Array.from(concepts).sort((a, b) => a.localeCompare(b, "fr")),
+      themeList: Array.from(themes).sort((a, b) => a.localeCompare(b, "fr")),
+
       institutionThemes: mapSetToArray(institutionThemes),
       institutionConcepts: mapSetToArray(institutionConcepts),
       actorThemes: mapSetToArray(actorThemes),
@@ -1117,48 +1115,216 @@ function GrapheView(){
     count > 25 ? "too-large" :
     "ok";
 
+  const resetFilters = () => {
+    setFilterInstitution("");
+    setFilterTheme("");
+    setFilterActor("");
+    setFilterConcept("");
+    setShowTopOnly(false);
+    setHideIsolated(false);
+  };
+
+  const filterRows = (rows, type) => {
+    let filtered = [...rows];
+
+    if (hideIsolated) {
+      filtered = filtered.filter(row => row.count > 1);
+    }
+
+    if (type === "institutionThemes" && filterInstitution) {
+      filtered = filtered.filter(row => row.name === filterInstitution);
+    }
+
+    if (type === "institutionConcepts" && filterInstitution) {
+      filtered = filtered.filter(row => row.name === filterInstitution);
+    }
+
+    if (type === "actorThemes" && filterActor) {
+      filtered = filtered.filter(row => row.name === filterActor);
+    }
+
+    if (type === "actorConcepts" && filterActor) {
+      filtered = filtered.filter(row => row.name === filterActor);
+    }
+
+    if ((type === "institutionThemes" || type === "actorThemes") && filterTheme) {
+      filtered = filtered
+        .map(row => ({
+          ...row,
+          values: row.values.filter(v => v === filterTheme),
+        }))
+        .filter(row => row.values.length > 0)
+        .map(row => ({
+          ...row,
+          count: row.values.length,
+        }));
+    }
+
+    if ((type === "institutionConcepts" || type === "actorConcepts") && filterConcept) {
+      filtered = filtered
+        .map(row => ({
+          ...row,
+          values: row.values.filter(v => v === filterConcept),
+        }))
+        .filter(row => row.values.length > 0)
+        .map(row => ({
+          ...row,
+          count: row.values.length,
+        }));
+    }
+
+    if (showTopOnly) {
+      filtered = filtered.slice(0, 10);
+    }
+
+    return filtered;
+  };
+
+  const graphViews = {
+    institutionThemes: {
+      title: "Institutions → Thèmes",
+      short: "Institutions / Thèmes",
+      subtitle: "Surface thématique des institutions présentes dans la sélection.",
+      rows: filterRows(graphStats.institutionThemes, "institutionThemes"),
+      emptyText: "Aucune relation Institution → Thème détectée.",
+    },
+    institutionConcepts: {
+      title: "Institutions → Concepts",
+      short: "Institutions / Concepts",
+      subtitle: "Surface conceptuelle des institutions présentes dans la sélection.",
+      rows: filterRows(graphStats.institutionConcepts, "institutionConcepts"),
+      emptyText: "Aucune relation Institution → Concept détectée.",
+    },
+    actorThemes: {
+      title: "Acteurs → Thèmes",
+      short: "Acteurs / Thèmes",
+      subtitle: "Thèmes associés aux acteurs cités par les articles.",
+      rows: filterRows(graphStats.actorThemes, "actorThemes"),
+      emptyText: "Aucune relation Acteur → Thème détectée.",
+    },
+    actorConcepts: {
+      title: "Acteurs → Concepts",
+      short: "Acteurs / Concepts",
+      subtitle: "Concepts associés aux acteurs cités par les articles.",
+      rows: filterRows(graphStats.actorConcepts, "actorConcepts"),
+      emptyText: "Aucune relation Acteur → Concept détectée.",
+    },
+  };
+
+  const activeView = graphViews[activeGraphView];
+
+  const mergeValues = useMemo(() => {
+    if (mergeNodeType === "institutions") return graphStats.institutionList;
+    if (mergeNodeType === "actors") return graphStats.actorList;
+    if (mergeNodeType === "themes") return graphStats.themeList;
+    if (mergeNodeType === "concepts") return graphStats.conceptList;
+    return [];
+  }, [mergeNodeType, graphStats]);
+
+  const mergeSuggestions = mergeValues.filter(value => {
+    if (!mergeSearch.trim()) return true;
+
+    const a = value
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+
+    const b = mergeSearch
+      .toLowerCase()
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "");
+
+    return a.includes(b);
+  }).slice(0, 20);
+
+  const pageStyle = {
+    padding: 24,
+    background: "#f7f3ee",
+    minHeight: "100vh",
+    color: "#1f2933",
+  };
+
+  const panelStyle = {
+    background: "rgba(255,255,255,0.86)",
+    border: "1px solid rgba(75, 55, 35, 0.12)",
+    borderRadius: 24,
+    padding: 22,
+    boxShadow: "0 12px 32px rgba(48, 35, 20, 0.06)",
+  };
+
+  const eyebrowStyle = {
+    margin: "0 0 8px",
+    textTransform: "uppercase",
+    letterSpacing: "0.08em",
+    fontSize: 12,
+    color: "#8a5a44",
+    fontWeight: 700,
+  };
+
+  const titleStyle = {
+    margin: 0,
+    fontSize: 30,
+    lineHeight: 1.15,
+    color: "#243044",
+    fontWeight: 800,
+  };
+
+  const textStyle = {
+    margin: "10px 0 0",
+    maxWidth: 820,
+    color: "#5f6673",
+    lineHeight: 1.6,
+    fontSize: 15,
+  };
+
   const statCardStyle = {
     background: "#fff",
-    border: "1px solid rgba(15, 23, 42, 0.08)",
+    border: "1px solid rgba(75, 55, 35, 0.10)",
     borderRadius: 18,
     padding: 16,
-    boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+    boxShadow: "0 8px 22px rgba(48, 35, 20, 0.045)",
   };
 
   const statNumberStyle = {
-    fontSize: 28,
+    fontSize: 26,
     fontWeight: 800,
-    color: "#111827",
+    color: "#243044",
     lineHeight: 1,
     marginBottom: 6,
   };
 
   const statLabelStyle = {
     fontSize: 13,
-    color: "#6b7280",
+    color: "#7a6f66",
   };
 
-  const relationSectionStyle = {
-    marginTop: 24,
+  const inputStyle = {
+    width: "100%",
+    border: "1px solid rgba(75, 55, 35, 0.16)",
+    borderRadius: 14,
+    padding: "10px 12px",
     background: "#fff",
-    border: "1px solid rgba(15, 23, 42, 0.08)",
-    borderRadius: 22,
-    padding: 20,
-    boxShadow: "0 10px 30px rgba(15, 23, 42, 0.05)",
+    color: "#243044",
+    fontSize: 14,
+    outline: "none",
   };
 
-  const relationGridStyle = {
-    display: "grid",
-    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-    gap: 14,
-    marginTop: 14,
+  const buttonStyle = {
+    border: "1px solid rgba(122, 78, 58, 0.25)",
+    background: "#fff",
+    color: "#6f3f33",
+    borderRadius: 999,
+    padding: "9px 13px",
+    fontSize: 13,
+    fontWeight: 700,
+    cursor: "pointer",
   };
 
-  const relationCardStyle = {
-    border: "1px solid rgba(15, 23, 42, 0.08)",
-    borderRadius: 18,
-    padding: 14,
-    background: "#f9fafb",
+  const activeButtonStyle = {
+    ...buttonStyle,
+    background: "#7a4e3a",
+    color: "#fff",
+    borderColor: "#7a4e3a",
   };
 
   const tagStyle = {
@@ -1166,125 +1332,252 @@ function GrapheView(){
     alignItems: "center",
     padding: "5px 9px",
     borderRadius: 999,
-    background: "#eef2ff",
-    color: "#3730a3",
+    background: "#f2e7dd",
+    color: "#6f3f33",
     fontSize: 12,
     marginRight: 6,
     marginBottom: 6,
   };
 
-  const renderRelationSection = (title, subtitle, rows, emptyText) => {
+  const renderRelationCards = () => {
+    if (!activeView) return null;
+
+    if (activeView.rows.length === 0) {
+      return (
+        <p style={{ marginTop: 16, color: "#8b8078", fontSize: 14 }}>
+          {activeView.emptyText}
+        </p>
+      );
+    }
+
     return (
-      <section style={relationSectionStyle}>
-        <div>
-          <h3 style={{ margin: 0, fontSize: 20, color: "#111827" }}>
-            {title}
-          </h3>
-          <p style={{ margin: "6px 0 0", color: "#6b7280", fontSize: 14 }}>
-            {subtitle}
-          </p>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+        gap: 14,
+        marginTop: 18,
+      }}>
+        {activeView.rows.map(row => (
+          <article key={row.name} style={{
+            background: "#fff",
+            border: "1px solid rgba(75, 55, 35, 0.10)",
+            borderRadius: 20,
+            padding: 16,
+            boxShadow: "0 8px 22px rgba(48, 35, 20, 0.04)",
+          }}>
+            <div style={{
+              display: "flex",
+              justifyContent: "space-between",
+              gap: 12,
+              alignItems: "flex-start",
+            }}>
+              <strong style={{
+                color: "#243044",
+                fontSize: 15,
+                lineHeight: 1.35,
+              }}>
+                {row.name}
+              </strong>
+
+              <span style={{
+                minWidth: 34,
+                height: 34,
+                borderRadius: 999,
+                background: "#f2e7dd",
+                color: "#6f3f33",
+                display: "inline-flex",
+                alignItems: "center",
+                justifyContent: "center",
+                fontWeight: 800,
+                fontSize: 13,
+              }}>
+                {row.count}
+              </span>
+            </div>
+
+            <div style={{ marginTop: 13 }}>
+              {row.values.slice(0, 10).map(value => (
+                <span key={value} style={tagStyle}>
+                  {value}
+                </span>
+              ))}
+
+              {row.values.length > 10 && (
+                <span style={{
+                  display: "inline-flex",
+                  alignItems: "center",
+                  padding: "5px 9px",
+                  borderRadius: 999,
+                  background: "#eee8df",
+                  color: "#6b625a",
+                  fontSize: 12,
+                  marginBottom: 6,
+                }}>
+                  +{row.values.length - 10}
+                </span>
+              )}
+            </div>
+          </article>
+        ))}
+      </div>
+    );
+  };
+
+  const renderFusionView = () => {
+    return (
+      <section style={panelStyle}>
+        <p style={eyebrowStyle}>Consolidation</p>
+
+        <h2 style={{ margin: 0, fontSize: 22, color: "#243044" }}>
+          Fusion des nœuds
+        </h2>
+
+        <p style={textStyle}>
+          Ce sous-module prépare le rapprochement des variantes d’un même nœud.
+          En V1, il sert de zone de contrôle visuel : la fusion n’écrit pas encore
+          dans la Google Sheet.
+        </p>
+
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: 14,
+          marginTop: 18,
+        }}>
+          <label style={{ fontSize: 13, color: "#6b625a", fontWeight: 700 }}>
+            Type de nœud
+            <select
+              value={mergeNodeType}
+              onChange={e => setMergeNodeType(e.target.value)}
+              style={{ ...inputStyle, marginTop: 7 }}
+            >
+              <option value="actors">Acteurs</option>
+              <option value="institutions">Institutions</option>
+              <option value="themes">Thèmes</option>
+              <option value="concepts">Concepts</option>
+            </select>
+          </label>
+
+          <label style={{ fontSize: 13, color: "#6b625a", fontWeight: 700 }}>
+            Rechercher une valeur
+            <input
+              value={mergeSearch}
+              onChange={e => setMergeSearch(e.target.value)}
+              placeholder="Ex. gendarmerie nationale"
+              style={{ ...inputStyle, marginTop: 7 }}
+            />
+          </label>
+
+          <label style={{ fontSize: 13, color: "#6b625a", fontWeight: 700 }}>
+            Valeur cible
+            <input
+              value={mergeTarget}
+              onChange={e => setMergeTarget(e.target.value)}
+              placeholder="Ex. Gendarmerie nationale"
+              style={{ ...inputStyle, marginTop: 7 }}
+            />
+          </label>
         </div>
 
-        {rows.length === 0 ? (
-          <p style={{ marginTop: 14, color: "#9ca3af", fontSize: 14 }}>
-            {emptyText}
-          </p>
-        ) : (
-          <div style={relationGridStyle}>
-            {rows.slice(0, 12).map(row => (
-              <article key={row.name} style={relationCardStyle}>
-                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
-                  <strong style={{ color: "#111827", fontSize: 15 }}>
-                    {row.name}
-                  </strong>
+        <div style={{
+          marginTop: 18,
+          border: "1px solid rgba(75, 55, 35, 0.10)",
+          borderRadius: 18,
+          background: "#fff",
+          padding: 14,
+        }}>
+          <div style={{
+            display: "flex",
+            justifyContent: "space-between",
+            gap: 12,
+            alignItems: "center",
+            marginBottom: 12,
+          }}>
+            <strong style={{ color: "#243044" }}>
+              Suggestions de rapprochement
+            </strong>
 
-                  <span style={{
-                    minWidth: 32,
-                    height: 32,
-                    borderRadius: 999,
-                    background: "#111827",
-                    color: "#fff",
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    fontWeight: 700,
-                    fontSize: 13,
-                  }}>
-                    {row.count}
-                  </span>
-                </div>
-
-                <div style={{ marginTop: 12 }}>
-                  {row.values.slice(0, 10).map(value => (
-                    <span key={value} style={tagStyle}>
-                      {value}
-                    </span>
-                  ))}
-
-                  {row.values.length > 10 && (
-                    <span style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      padding: "5px 9px",
-                      borderRadius: 999,
-                      background: "#e5e7eb",
-                      color: "#4b5563",
-                      fontSize: 12,
-                      marginBottom: 6,
-                    }}>
-                      +{row.values.length - 10}
-                    </span>
-                  )}
-                </div>
-              </article>
-            ))}
+            <span style={{ color: "#8b8078", fontSize: 12 }}>
+              {mergeSuggestions.length} valeur{mergeSuggestions.length > 1 ? "s" : ""}
+            </span>
           </div>
-        )}
+
+          {mergeSuggestions.length === 0 ? (
+            <p style={{ color: "#8b8078", fontSize: 14, margin: 0 }}>
+              Aucune valeur trouvée.
+            </p>
+          ) : (
+            <div style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 8,
+            }}>
+              {mergeSuggestions.map(value => (
+                <button
+                  key={value}
+                  onClick={() => {
+                    setMergeSearch(value);
+                    if (!mergeTarget) setMergeTarget(value);
+                  }}
+                  style={{
+                    border: "1px solid rgba(75, 55, 35, 0.12)",
+                    background: "#fbfaf8",
+                    color: "#243044",
+                    borderRadius: 999,
+                    padding: "7px 10px",
+                    fontSize: 12,
+                    cursor: "pointer",
+                  }}
+                >
+                  {value}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div style={{
+          marginTop: 16,
+          background: "#fbfaf8",
+          border: "1px dashed rgba(122, 78, 58, 0.28)",
+          borderRadius: 16,
+          padding: 14,
+          color: "#6b625a",
+          fontSize: 14,
+          lineHeight: 1.55,
+        }}>
+          Prochaine évolution possible : écrire les fusions validées dans une table
+          de normalisation, puis les appliquer automatiquement dans Apps Script.
+        </div>
       </section>
     );
   };
 
   return (
-    <main style={{ padding: 24 }}>
+    <main style={pageStyle}>
       <section style={{
-        background: "linear-gradient(135deg, #111827, #312e81)",
-        color: "#fff",
-        borderRadius: 28,
-        padding: 28,
-        marginBottom: 24,
-        boxShadow: "0 20px 50px rgba(15, 23, 42, 0.18)",
+        ...panelStyle,
+        marginBottom: 18,
+        background: "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(252,248,242,0.92))",
       }}>
-        <p style={{
-          margin: "0 0 8px",
-          textTransform: "uppercase",
-          letterSpacing: "0.08em",
-          fontSize: 12,
-          opacity: 0.8,
-        }}>
-          Module graphe
-        </p>
+        <p style={eyebrowStyle}>Module Graphe</p>
 
-        <h1 style={{ margin: 0, fontSize: 32 }}>
-          Transformer une sélection d’articles en lecture relationnelle
+        <h1 style={titleStyle}>
+          Lecture relationnelle d’une sélection d’articles
         </h1>
 
-        <p style={{
-          margin: "12px 0 0",
-          maxWidth: 760,
-          color: "rgba(255,255,255,0.82)",
-          lineHeight: 1.6,
-        }}>
-          Le graphe article-centré sert de socle de preuve. Les vues transversales
-          rendent ensuite visibles les associations entre institutions, acteurs,
-          thèmes et concepts.
+        <p style={textStyle}>
+          Les articles servent de socle documentaire. Les vues transversales
+          permettent d’observer les associations entre institutions, acteurs,
+          thèmes et concepts, à partir d’un corpus limité et maîtrisé.
         </p>
       </section>
 
       <section style={{
         display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
-        gap: 14,
-        marginBottom: 24,
+        gridTemplateColumns: "repeat(auto-fit, minmax(135px, 1fr))",
+        gap: 12,
+        marginBottom: 18,
       }}>
         <div style={statCardStyle}>
           <div style={statNumberStyle}>{graphStats.articles}</div>
@@ -1317,88 +1610,228 @@ function GrapheView(){
         </div>
       </section>
 
-      <section style={{
-        background: "#fff",
-        border: "1px solid rgba(15, 23, 42, 0.08)",
-        borderRadius: 22,
-        padding: 20,
-        marginBottom: 24,
-      }}>
-        <h2 style={{ margin: 0, fontSize: 20 }}>
-          État de la sélection
-        </h2>
+      <section style={{ ...panelStyle, marginBottom: 18 }}>
+        <div style={{
+          display: "flex",
+          justifyContent: "space-between",
+          gap: 18,
+          flexWrap: "wrap",
+          alignItems: "flex-start",
+        }}>
+          <div>
+            <p style={eyebrowStyle}>Corpus sélectionné</p>
 
-        {graphStatus === "empty" && (
-          <p style={{ color: "#6b7280" }}>
-            Aucun article n’est encore sélectionné pour le graphe.
-          </p>
-        )}
+            <h2 style={{ margin: 0, fontSize: 22, color: "#243044" }}>
+              État de la sélection
+            </h2>
 
-        {graphStatus === "too-small" && (
-          <p style={{ color: "#b45309" }}>
-            La sélection contient {count} article{count > 1 ? "s" : ""}. Pour une première lecture relationnelle, sélectionne au moins 5 articles.
-          </p>
-        )}
+            {graphStatus === "empty" && (
+              <p style={{ ...textStyle, marginTop: 8 }}>
+                Aucun article n’est encore sélectionné pour le graphe.
+              </p>
+            )}
 
-        {graphStatus === "too-large" && (
-          <p style={{ color: "#b91c1c" }}>
-            La sélection contient {count} articles. Pour cette V1, limite la sélection à 25 articles maximum.
-          </p>
-        )}
+            {graphStatus === "too-small" && (
+              <p style={{ ...textStyle, marginTop: 8, color: "#9a5b16" }}>
+                La sélection contient {count} article{count > 1 ? "s" : ""}.
+                Pour une première lecture relationnelle, sélectionne au moins 5 articles.
+              </p>
+            )}
 
-        {graphStatus === "ok" && (
-          <p style={{ color: "#047857" }}>
-            La sélection est prête pour l’analyse relationnelle.
-          </p>
-        )}
+            {graphStatus === "too-large" && (
+              <p style={{ ...textStyle, marginTop: 8, color: "#9f2d2d" }}>
+                La sélection contient {count} articles. Pour cette V1, limite la sélection
+                à 25 articles maximum.
+              </p>
+            )}
 
-        {graphItems.length > 0 && (
-          <div style={{ marginTop: 14 }}>
-            {graphItems.map(item => (
-              <article key={item.id} style={{
-                padding: "12px 0",
-                borderTop: "1px solid rgba(15, 23, 42, 0.08)",
-              }}>
-                <strong>{item.title || item.titre || "Article sans titre"}</strong>
-                <div style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>
-                  {item.institution || "Institution non renseignée"}
-                </div>
-              </article>
-            ))}
+            {graphStatus === "ok" && (
+              <p style={{ ...textStyle, marginTop: 8, color: "#4d6b3c" }}>
+                La sélection est prête pour l’analyse relationnelle.
+              </p>
+            )}
           </div>
-        )}
+        </div>
       </section>
 
       {graphStatus === "ok" && (
         <>
-          {renderRelationSection(
-            "Institutions → Thèmes",
-            "Cette vue montre la surface thématique des institutions présentes dans la sélection.",
-            graphStats.institutionThemes,
-            "Aucune relation Institution → Thème détectée."
-          )}
+          <section style={{ ...panelStyle, marginBottom: 18 }}>
+            <p style={eyebrowStyle}>Filtres d’analyse</p>
 
-          {renderRelationSection(
-            "Institutions → Concepts",
-            "Cette vue montre la surface conceptuelle des institutions présentes dans la sélection.",
-            graphStats.institutionConcepts,
-            "Aucune relation Institution → Concept détectée."
-          )}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
+              gap: 12,
+            }}>
+              <label style={{ fontSize: 13, color: "#6b625a", fontWeight: 700 }}>
+                Institution
+                <select
+                  value={filterInstitution}
+                  onChange={e => setFilterInstitution(e.target.value)}
+                  style={{ ...inputStyle, marginTop: 7 }}
+                >
+                  <option value="">Toutes les institutions</option>
+                  {graphStats.institutionList.map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </label>
 
-          {renderRelationSection(
-            "Acteurs → Thèmes",
-            "Cette vue montre les thèmes auxquels les acteurs cités sont associés par les articles.",
-            graphStats.actorThemes,
-            "Aucune relation Acteur → Thème détectée."
-          )}
+              <label style={{ fontSize: 13, color: "#6b625a", fontWeight: 700 }}>
+                Thème
+                <select
+                  value={filterTheme}
+                  onChange={e => setFilterTheme(e.target.value)}
+                  style={{ ...inputStyle, marginTop: 7 }}
+                >
+                  <option value="">Tous les thèmes</option>
+                  {graphStats.themeList.map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </label>
 
-          {renderRelationSection(
-            "Acteurs → Concepts",
-            "Cette vue montre les concepts auxquels les acteurs cités sont associés par les articles.",
-            graphStats.actorConcepts,
-            "Aucune relation Acteur → Concept détectée."
-          )}
+              <label style={{ fontSize: 13, color: "#6b625a", fontWeight: 700 }}>
+                Acteur
+                <select
+                  value={filterActor}
+                  onChange={e => setFilterActor(e.target.value)}
+                  style={{ ...inputStyle, marginTop: 7 }}
+                >
+                  <option value="">Tous les acteurs</option>
+                  {graphStats.actorList.map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </label>
+
+              <label style={{ fontSize: 13, color: "#6b625a", fontWeight: 700 }}>
+                Concept
+                <select
+                  value={filterConcept}
+                  onChange={e => setFilterConcept(e.target.value)}
+                  style={{ ...inputStyle, marginTop: 7 }}
+                >
+                  <option value="">Tous les concepts</option>
+                  {graphStats.conceptList.map(v => (
+                    <option key={v} value={v}>{v}</option>
+                  ))}
+                </select>
+              </label>
+            </div>
+
+            <div style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 10,
+              marginTop: 16,
+            }}>
+              <button
+                onClick={() => setHideIsolated(v => !v)}
+                style={hideIsolated ? activeButtonStyle : buttonStyle}
+              >
+                Masquer les valeurs isolées
+              </button>
+
+              <button
+                onClick={() => setShowTopOnly(v => !v)}
+                style={showTopOnly ? activeButtonStyle : buttonStyle}
+              >
+                Afficher seulement le top 10
+              </button>
+
+              <button
+                onClick={resetFilters}
+                style={buttonStyle}
+              >
+                Réinitialiser les filtres
+              </button>
+            </div>
+          </section>
+
+          <section style={{ ...panelStyle, marginBottom: 18 }}>
+            <p style={eyebrowStyle}>Lecture relationnelle</p>
+
+            <div style={{
+              display: "flex",
+              flexWrap: "wrap",
+              gap: 10,
+              marginBottom: activeGraphView === "fusion" ? 0 : 18,
+            }}>
+              {Object.entries(graphViews).map(([key, view]) => (
+                <button
+                  key={key}
+                  onClick={() => setActiveGraphView(key)}
+                  style={activeGraphView === key ? activeButtonStyle : buttonStyle}
+                >
+                  {view.short}
+                </button>
+              ))}
+
+              <button
+                onClick={() => setActiveGraphView("fusion")}
+                style={activeGraphView === "fusion" ? activeButtonStyle : buttonStyle}
+              >
+                Fusion des nœuds
+              </button>
+            </div>
+
+            {activeGraphView !== "fusion" && activeView && (
+              <>
+                <h2 style={{ margin: 0, fontSize: 22, color: "#243044" }}>
+                  {activeView.title}
+                </h2>
+
+                <p style={{ ...textStyle, marginTop: 8 }}>
+                  {activeView.subtitle}
+                </p>
+
+                {renderRelationCards()}
+              </>
+            )}
+          </section>
+
+          {activeGraphView === "fusion" && renderFusionView()}
         </>
+      )}
+
+      {graphItems.length > 0 && (
+        <section style={{ ...panelStyle, marginTop: 18 }}>
+          <p style={eyebrowStyle}>Socle documentaire</p>
+
+          <h2 style={{ margin: 0, fontSize: 22, color: "#243044" }}>
+            Articles mobilisés
+          </h2>
+
+          <p style={textStyle}>
+            Les relations affichées dans le module sont déduites des articles sélectionnés.
+          </p>
+
+          <div style={{ marginTop: 12 }}>
+            {graphItems.map(item => (
+              <article key={item.id} style={{
+                padding: "13px 0",
+                borderTop: "1px solid rgba(75, 55, 35, 0.10)",
+              }}>
+                <strong style={{ color: "#243044" }}>
+                  {item.title || item.titre || "Article sans titre"}
+                </strong>
+
+                <div style={{
+                  color: "#7a6f66",
+                  fontSize: 13,
+                  marginTop: 5,
+                  lineHeight: 1.45,
+                }}>
+                  {item.institution || "Institution non renseignée"}
+                  {item.source ? ` · Source : ${item.source}` : ""}
+                  {item.date ? ` · ${item.date}` : ""}
+                </div>
+              </article>
+            ))}
+          </div>
+        </section>
       )}
     </main>
   );
