@@ -952,6 +952,36 @@ function GrapheView(){
     const themes = new Set();
     const innovations = new Set();
 
+    const institutionThemes = new Map();
+    const institutionConcepts = new Map();
+    const actorThemes = new Map();
+    const actorConcepts = new Map();
+
+    const addToMapSet = (map, key, value) => {
+      if (!key || !value) return;
+
+      const cleanKey = String(key).trim();
+      const cleanValue = String(value).trim();
+
+      if (!cleanKey || !cleanValue) return;
+
+      if (!map.has(cleanKey)) {
+        map.set(cleanKey, new Set());
+      }
+
+      map.get(cleanKey).add(cleanValue);
+    };
+
+    const mapSetToArray = (map) => {
+      return Array.from(map.entries())
+        .map(([name, values]) => ({
+          name,
+          values: Array.from(values).sort((a, b) => a.localeCompare(b, "fr")),
+          count: values.size,
+        }))
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "fr"));
+    };
+
     const getActorsFromItem = (item) => {
       const direct =
         item.actors ||
@@ -999,32 +1029,70 @@ function GrapheView(){
     };
 
     graphItems.forEach(item => {
-      if (item.institution && String(item.institution).trim()) {
-        institutions.add(String(item.institution).trim());
+      const institution = item.institution ? String(item.institution).trim() : "";
+
+      const itemActors = norm(getActorsFromItem(item))
+        .map(v => String(v).trim())
+        .filter(Boolean);
+
+      const itemConcepts = norm(item.keywords)
+        .map(v => String(v).trim())
+        .filter(Boolean);
+
+      const itemThemes = norm(item.themes)
+        .map(v => String(v).trim())
+        .filter(Boolean);
+
+      const itemInnovations = norm(item.innovations)
+        .map(v => String(v).trim())
+        .filter(v => v && v !== "Aucune" && v !== "Aucun");
+
+      if (institution) {
+        institutions.add(institution);
       }
 
-      const acteursBruts = getActorsFromItem(item);
-
-      norm(acteursBruts).forEach(v => {
-        const clean = v && String(v).trim();
-        if (clean) acteurs.add(clean);
+      itemActors.forEach(actor => {
+        acteurs.add(actor);
       });
 
-      norm(item.keywords).forEach(v => {
-        const clean = v && String(v).trim();
-        if (clean) concepts.add(clean);
+      itemConcepts.forEach(concept => {
+        concepts.add(concept);
       });
 
-      norm(item.themes).forEach(v => {
-        const clean = v && String(v).trim();
-        if (clean) themes.add(clean);
+      itemThemes.forEach(theme => {
+        themes.add(theme);
       });
 
-      norm(item.innovations).forEach(v => {
-        const clean = v && String(v).trim();
-        if (clean && clean !== "Aucune" && clean !== "Aucun") {
-          innovations.add(clean);
-        }
+      itemInnovations.forEach(innovation => {
+        innovations.add(innovation);
+      });
+
+      // Institution → Thèmes
+      if (institution) {
+        itemThemes.forEach(theme => {
+          addToMapSet(institutionThemes, institution, theme);
+        });
+      }
+
+      // Institution → Concepts
+      if (institution) {
+        itemConcepts.forEach(concept => {
+          addToMapSet(institutionConcepts, institution, concept);
+        });
+      }
+
+      // Acteur → Thèmes
+      itemActors.forEach(actor => {
+        itemThemes.forEach(theme => {
+          addToMapSet(actorThemes, actor, theme);
+        });
+      });
+
+      // Acteur → Concepts
+      itemActors.forEach(actor => {
+        itemConcepts.forEach(concept => {
+          addToMapSet(actorConcepts, actor, concept);
+        });
       });
     });
 
@@ -1035,178 +1103,304 @@ function GrapheView(){
       concepts: concepts.size,
       themes: themes.size,
       innovations: innovations.size,
+
+      institutionThemes: mapSetToArray(institutionThemes),
+      institutionConcepts: mapSetToArray(institutionConcepts),
+      actorThemes: mapSetToArray(actorThemes),
+      actorConcepts: mapSetToArray(actorConcepts),
     };
   }, [graphItems]);
 
-  const status =
+  const graphStatus =
     count === 0 ? "empty" :
     count < 5 ? "too-small" :
     count > 25 ? "too-large" :
     "ok";
 
-  return(
-    <div style={{flex:1,padding:"24px 28px",overflowY:"auto",display:"flex",flexDirection:"column",gap:18}}>
-      <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"20px 22px"}}>
-        <div style={{...sc(),marginBottom:8}}>module graphe</div>
+  const statCardStyle = {
+    background: "#fff",
+    border: "1px solid rgba(15, 23, 42, 0.08)",
+    borderRadius: 18,
+    padding: 16,
+    boxShadow: "0 10px 30px rgba(15, 23, 42, 0.06)",
+  };
 
-        <div style={{fontFamily:serif,fontSize:26,fontWeight:900,color:C.ink,lineHeight:1.05,marginBottom:8}}>
-          Graphes relationnels
+  const statNumberStyle = {
+    fontSize: 28,
+    fontWeight: 800,
+    color: "#111827",
+    lineHeight: 1,
+    marginBottom: 6,
+  };
+
+  const statLabelStyle = {
+    fontSize: 13,
+    color: "#6b7280",
+  };
+
+  const relationSectionStyle = {
+    marginTop: 24,
+    background: "#fff",
+    border: "1px solid rgba(15, 23, 42, 0.08)",
+    borderRadius: 22,
+    padding: 20,
+    boxShadow: "0 10px 30px rgba(15, 23, 42, 0.05)",
+  };
+
+  const relationGridStyle = {
+    display: "grid",
+    gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
+    gap: 14,
+    marginTop: 14,
+  };
+
+  const relationCardStyle = {
+    border: "1px solid rgba(15, 23, 42, 0.08)",
+    borderRadius: 18,
+    padding: 14,
+    background: "#f9fafb",
+  };
+
+  const tagStyle = {
+    display: "inline-flex",
+    alignItems: "center",
+    padding: "5px 9px",
+    borderRadius: 999,
+    background: "#eef2ff",
+    color: "#3730a3",
+    fontSize: 12,
+    marginRight: 6,
+    marginBottom: 6,
+  };
+
+  const renderRelationSection = (title, subtitle, rows, emptyText) => {
+    return (
+      <section style={relationSectionStyle}>
+        <div>
+          <h3 style={{ margin: 0, fontSize: 20, color: "#111827" }}>
+            {title}
+          </h3>
+          <p style={{ margin: "6px 0 0", color: "#6b7280", fontSize: 14 }}>
+            {subtitle}
+          </p>
         </div>
 
-        <div style={{fontSize:13,color:C.muted,fontFamily:sans,lineHeight:1.7,maxWidth:760}}>
-          Explorez les relations entre articles, institutions, acteurs, thèmes et concepts à partir des articles sélectionnés dans le digest.
-        </div>
-      </div>
+        {rows.length === 0 ? (
+          <p style={{ marginTop: 14, color: "#9ca3af", fontSize: 14 }}>
+            {emptyText}
+          </p>
+        ) : (
+          <div style={relationGridStyle}>
+            {rows.slice(0, 12).map(row => (
+              <article key={row.name} style={relationCardStyle}>
+                <div style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <strong style={{ color: "#111827", fontSize: 15 }}>
+                    {row.name}
+                  </strong>
 
-      <div style={{display:"grid",gridTemplateColumns:"repeat(6, 1fr)",gap:10}}>
-        {[
-          [graphStats.articles, "articles"],
-          [graphStats.institutions, "institutions"],
-          [graphStats.acteurs, "acteurs"],
-          [graphStats.concepts, "concepts"],
-          [graphStats.themes, "thèmes"],
-          [graphStats.innovations, "innovations"],
-        ].map(([n, label]) => (
-          <div key={label} style={{background:C.white,border:`1px solid ${C.border}`,padding:14}}>
-            <div style={{fontFamily:serif,fontSize:28,fontWeight:700,color:C.ink}}>
-              {n}
-            </div>
-            <div style={{...sc(),fontSize:9}}>
-              {label}
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div style={{display:"grid",gridTemplateColumns:"repeat(3, 1fr)",gap:10}}>
-        <div style={{background:C.white,border:`1px solid ${C.border}`,padding:14}}>
-          <div style={{fontFamily:serif,fontSize:24,fontWeight:700,color:C.ink}}>5</div>
-          <div style={{...sc(),fontSize:9}}>minimum recommandé</div>
-        </div>
-
-        <div style={{background:C.white,border:`1px solid ${C.border}`,padding:14}}>
-          <div style={{fontFamily:serif,fontSize:24,fontWeight:700,color:C.ink}}>25</div>
-          <div style={{...sc(),fontSize:9}}>maximum conseillé</div>
-        </div>
-
-        <div style={{background:C.white,border:`1px solid ${C.border}`,padding:14}}>
-          <div style={{fontFamily:serif,fontSize:24,fontWeight:700,color:status==="ok"?C.green:C.accent}}>
-            {status==="ok" ? "OK" : "!"}
-          </div>
-          <div style={{...sc(),fontSize:9}}>état de la sélection</div>
-        </div>
-      </div>
-
-      {status==="empty" && (
-        <div style={{background:C.white,border:`1px solid ${C.border}`,borderLeft:`4px solid ${C.accent}`,padding:"18px 20px"}}>
-          <div style={{fontFamily:serif,fontSize:18,fontWeight:700,color:C.ink,marginBottom:6}}>
-            Aucun article sélectionné pour le graphe.
-          </div>
-
-          <div style={{fontSize:13,color:C.muted,fontFamily:sans,lineHeight:1.7}}>
-            Retournez dans l’onglet Productions et cochez “Graphe” sur plusieurs articles. Le module fonctionne idéalement avec une sélection de 5 à 25 articles.
-          </div>
-
-          <button
-            onClick={()=>setTab("productions")}
-            style={{marginTop:14,fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"9px 18px",background:C.ink,color:C.white,border:"none",cursor:"pointer"}}
-          >
-            Retour aux productions
-          </button>
-        </div>
-      )}
-
-      {status==="too-small" && (
-        <div style={{background:C.white,border:`1px solid ${C.border}`,borderLeft:`4px solid ${C.accent}`,padding:"18px 20px"}}>
-          <div style={{fontFamily:serif,fontSize:18,fontWeight:700,color:C.ink,marginBottom:6}}>
-            Sélection insuffisante.
-          </div>
-
-          <div style={{fontSize:13,color:C.muted,fontFamily:sans,lineHeight:1.7}}>
-            Vous avez sélectionné {count} article{count>1?"s":""}. Sélectionnez au moins 5 articles pour produire un graphe relationnel exploitable.
-          </div>
-
-          <button
-            onClick={()=>setTab("productions")}
-            style={{marginTop:14,fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"9px 18px",background:C.ink,color:C.white,border:"none",cursor:"pointer"}}
-          >
-            Ajouter des articles
-          </button>
-        </div>
-      )}
-
-      {status==="too-large" && (
-        <div style={{background:C.white,border:`1px solid ${C.border}`,borderLeft:`4px solid #9a3412`,padding:"18px 20px"}}>
-          <div style={{fontFamily:serif,fontSize:18,fontWeight:700,color:C.ink,marginBottom:6}}>
-            Sélection trop large.
-          </div>
-
-          <div style={{fontSize:13,color:C.muted,fontFamily:sans,lineHeight:1.7}}>
-            Vous avez sélectionné {count} articles. Réduisez la sélection à 25 articles maximum pour conserver un graphe lisible.
-          </div>
-
-          <button
-            onClick={()=>setTab("productions")}
-            style={{marginTop:14,fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"9px 18px",background:C.ink,color:C.white,border:"none",cursor:"pointer"}}
-          >
-            Modifier la sélection
-          </button>
-        </div>
-      )}
-
-      {status==="ok" && (
-        <>
-          <div style={{background:"#f0faf4",border:"1px solid #9FE1CB",padding:"14px 18px"}}>
-            <div style={{fontFamily:serif,fontSize:18,fontWeight:700,color:C.ink,marginBottom:6}}>
-              Sélection correcte.
-            </div>
-
-            <div style={{fontSize:13,color:"#085041",fontFamily:sans,lineHeight:1.7}}>
-              {count} articles sont prêts pour construire le graphe relationnel.
-            </div>
-          </div>
-
-          <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"18px 20px"}}>
-            <div style={{...sc(),marginBottom:12}}>articles sélectionnés pour le graphe</div>
-
-            <div style={{display:"flex",flexDirection:"column",gap:6}}>
-              {graphItems.map(item=>(
-                <div key={item.id} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"9px 10px",background:C.panelSoft,border:`1px solid ${C.border}`}}>
-                  <div style={{width:18,height:18,borderRadius:2,background:C.green,color:C.white,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,flexShrink:0}}>
-                    ✓
-                  </div>
-
-                  <div style={{flex:1}}>
-                    <div style={{fontFamily:serif,fontSize:14,fontWeight:700,color:C.ink,lineHeight:1.3}}>
-                      {item.title}
-                    </div>
-
-                    <div style={{fontSize:10,color:C.muted,fontFamily:sans,marginTop:2}}>
-                      {item.source||""}{item.institution?` · ${item.institution}`:""}{item.date?` · ${item.date}`:""}
-                    </div>
-                  </div>
-
-                  <button
-                    onClick={()=>setGraphSelectedIds(p=>{const n=new Set(p);n.delete(item.id);return n;})}
-                    style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:16,padding:0,opacity:.45}}
-                  >
-                    ×
-                  </button>
+                  <span style={{
+                    minWidth: 32,
+                    height: 32,
+                    borderRadius: 999,
+                    background: "#111827",
+                    color: "#fff",
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    fontWeight: 700,
+                    fontSize: 13,
+                  }}>
+                    {row.count}
+                  </span>
                 </div>
-              ))}
-            </div>
-          </div>
 
-          <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"18px 20px"}}>
-            <div style={{...sc(),marginBottom:8}}>prochaine étape</div>
+                <div style={{ marginTop: 12 }}>
+                  {row.values.slice(0, 10).map(value => (
+                    <span key={value} style={tagStyle}>
+                      {value}
+                    </span>
+                  ))}
 
-            <div style={{fontSize:13,color:C.muted,fontFamily:sans,lineHeight:1.7}}>
-              La sélection produit maintenant les premiers compteurs du module graphe. La prochaine étape sera de calculer les relations transversales : Institution → Thème, Institution → Concept, Acteur → Thème et Acteur → Concept.
-            </div>
+                  {row.values.length > 10 && (
+                    <span style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      padding: "5px 9px",
+                      borderRadius: 999,
+                      background: "#e5e7eb",
+                      color: "#4b5563",
+                      fontSize: 12,
+                      marginBottom: 6,
+                    }}>
+                      +{row.values.length - 10}
+                    </span>
+                  )}
+                </div>
+              </article>
+            ))}
           </div>
+        )}
+      </section>
+    );
+  };
+
+  return (
+    <main style={{ padding: 24 }}>
+      <section style={{
+        background: "linear-gradient(135deg, #111827, #312e81)",
+        color: "#fff",
+        borderRadius: 28,
+        padding: 28,
+        marginBottom: 24,
+        boxShadow: "0 20px 50px rgba(15, 23, 42, 0.18)",
+      }}>
+        <p style={{
+          margin: "0 0 8px",
+          textTransform: "uppercase",
+          letterSpacing: "0.08em",
+          fontSize: 12,
+          opacity: 0.8,
+        }}>
+          Module graphe
+        </p>
+
+        <h1 style={{ margin: 0, fontSize: 32 }}>
+          Transformer une sélection d’articles en lecture relationnelle
+        </h1>
+
+        <p style={{
+          margin: "12px 0 0",
+          maxWidth: 760,
+          color: "rgba(255,255,255,0.82)",
+          lineHeight: 1.6,
+        }}>
+          Le graphe article-centré sert de socle de preuve. Les vues transversales
+          rendent ensuite visibles les associations entre institutions, acteurs,
+          thèmes et concepts.
+        </p>
+      </section>
+
+      <section style={{
+        display: "grid",
+        gridTemplateColumns: "repeat(auto-fit, minmax(140px, 1fr))",
+        gap: 14,
+        marginBottom: 24,
+      }}>
+        <div style={statCardStyle}>
+          <div style={statNumberStyle}>{graphStats.articles}</div>
+          <div style={statLabelStyle}>articles</div>
+        </div>
+
+        <div style={statCardStyle}>
+          <div style={statNumberStyle}>{graphStats.institutions}</div>
+          <div style={statLabelStyle}>institutions</div>
+        </div>
+
+        <div style={statCardStyle}>
+          <div style={statNumberStyle}>{graphStats.acteurs}</div>
+          <div style={statLabelStyle}>acteurs</div>
+        </div>
+
+        <div style={statCardStyle}>
+          <div style={statNumberStyle}>{graphStats.concepts}</div>
+          <div style={statLabelStyle}>concepts</div>
+        </div>
+
+        <div style={statCardStyle}>
+          <div style={statNumberStyle}>{graphStats.themes}</div>
+          <div style={statLabelStyle}>thèmes</div>
+        </div>
+
+        <div style={statCardStyle}>
+          <div style={statNumberStyle}>{graphStats.innovations}</div>
+          <div style={statLabelStyle}>innovations</div>
+        </div>
+      </section>
+
+      <section style={{
+        background: "#fff",
+        border: "1px solid rgba(15, 23, 42, 0.08)",
+        borderRadius: 22,
+        padding: 20,
+        marginBottom: 24,
+      }}>
+        <h2 style={{ margin: 0, fontSize: 20 }}>
+          État de la sélection
+        </h2>
+
+        {graphStatus === "empty" && (
+          <p style={{ color: "#6b7280" }}>
+            Aucun article n’est encore sélectionné pour le graphe.
+          </p>
+        )}
+
+        {graphStatus === "too-small" && (
+          <p style={{ color: "#b45309" }}>
+            La sélection contient {count} article{count > 1 ? "s" : ""}. Pour une première lecture relationnelle, sélectionne au moins 5 articles.
+          </p>
+        )}
+
+        {graphStatus === "too-large" && (
+          <p style={{ color: "#b91c1c" }}>
+            La sélection contient {count} articles. Pour cette V1, limite la sélection à 25 articles maximum.
+          </p>
+        )}
+
+        {graphStatus === "ok" && (
+          <p style={{ color: "#047857" }}>
+            La sélection est prête pour l’analyse relationnelle.
+          </p>
+        )}
+
+        {graphItems.length > 0 && (
+          <div style={{ marginTop: 14 }}>
+            {graphItems.map(item => (
+              <article key={item.id} style={{
+                padding: "12px 0",
+                borderTop: "1px solid rgba(15, 23, 42, 0.08)",
+              }}>
+                <strong>{item.title || item.titre || "Article sans titre"}</strong>
+                <div style={{ color: "#6b7280", fontSize: 13, marginTop: 4 }}>
+                  {item.institution || "Institution non renseignée"}
+                </div>
+              </article>
+            ))}
+          </div>
+        )}
+      </section>
+
+      {graphStatus === "ok" && (
+        <>
+          {renderRelationSection(
+            "Institutions → Thèmes",
+            "Cette vue montre la surface thématique des institutions présentes dans la sélection.",
+            graphStats.institutionThemes,
+            "Aucune relation Institution → Thème détectée."
+          )}
+
+          {renderRelationSection(
+            "Institutions → Concepts",
+            "Cette vue montre la surface conceptuelle des institutions présentes dans la sélection.",
+            graphStats.institutionConcepts,
+            "Aucune relation Institution → Concept détectée."
+          )}
+
+          {renderRelationSection(
+            "Acteurs → Thèmes",
+            "Cette vue montre les thèmes auxquels les acteurs cités sont associés par les articles.",
+            graphStats.actorThemes,
+            "Aucune relation Acteur → Thème détectée."
+          )}
+
+          {renderRelationSection(
+            "Acteurs → Concepts",
+            "Cette vue montre les concepts auxquels les acteurs cités sont associés par les articles.",
+            graphStats.actorConcepts,
+            "Aucune relation Acteur → Concept détectée."
+          )}
         </>
       )}
-    </div>
+    </main>
   );
 }
   function ProduireView(){
