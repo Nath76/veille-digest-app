@@ -957,16 +957,32 @@ function GrapheView(){
         institutions.add(String(item.institution).trim());
       }
 
-      norm(item.actors).forEach(v => {
-        if (v && String(v).trim()) acteurs.add(String(v).trim());
+      const acteursBruts =
+        item.actors ||
+        item.acteurs ||
+        item.acteursCites ||
+        item.acteurs_cites ||
+        item.acteurs_cités ||
+        item.acteurs_cités_normalisés ||
+        item.acteurs_cites_normalises ||
+        item["Acteurs cités"] ||
+        item["Acteurs mentionnés"] ||
+        item["acteurs cités"] ||
+        item["acteurs mentionnés"];
+
+      norm(acteursBruts).forEach(v => {
+        const clean = v && String(v).trim();
+        if (clean) acteurs.add(clean);
       });
 
       norm(item.keywords).forEach(v => {
-        if (v && String(v).trim()) concepts.add(String(v).trim());
+        const clean = v && String(v).trim();
+        if (clean) concepts.add(clean);
       });
 
       norm(item.themes).forEach(v => {
-        if (v && String(v).trim()) themes.add(String(v).trim());
+        const clean = v && String(v).trim();
+        if (clean) themes.add(clean);
       });
 
       norm(item.innovations).forEach(v => {
@@ -1030,10 +1046,12 @@ function GrapheView(){
           <div style={{fontFamily:serif,fontSize:24,fontWeight:700,color:C.ink}}>5</div>
           <div style={{...sc(),fontSize:9}}>minimum recommandé</div>
         </div>
+
         <div style={{background:C.white,border:`1px solid ${C.border}`,padding:14}}>
           <div style={{fontFamily:serif,fontSize:24,fontWeight:700,color:C.ink}}>25</div>
           <div style={{...sc(),fontSize:9}}>maximum conseillé</div>
         </div>
+
         <div style={{background:C.white,border:`1px solid ${C.border}`,padding:14}}>
           <div style={{fontFamily:serif,fontSize:24,fontWeight:700,color:status==="ok"?C.green:C.accent}}>
             {status==="ok" ? "OK" : "!"}
@@ -1102,13 +1120,17 @@ function GrapheView(){
                 <div key={item.id} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"9px 10px",background:C.panelSoft,border:`1px solid ${C.border}`}}>
                   <div style={{width:18,height:18,borderRadius:2,background:C.green,color:C.white,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,flexShrink:0}}>✓</div>
                   <div style={{flex:1}}>
-                    <div style={{fontFamily:serif,fontSize:14,fontWeight:700,color:C.ink,lineHeight:1.3}}>{item.title}</div>
+                    <div style={{fontFamily:serif,fontSize:14,fontWeight:700,color:C.ink,lineHeight:1.3}}>
+                      {item.title}
+                    </div>
                     <div style={{fontSize:10,color:C.muted,fontFamily:sans,marginTop:2}}>
                       {item.source||""}{item.institution?` · ${item.institution}`:""}{item.date?` · ${item.date}`:""}
                     </div>
                   </div>
-                  <button onClick={()=>setGraphSelectedIds(p=>{const n=new Set(p);n.delete(item.id);return n;})}
-                    style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:16,padding:0,opacity:.45}}>
+                  <button
+                    onClick={()=>setGraphSelectedIds(p=>{const n=new Set(p);n.delete(item.id);return n;})}
+                    style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:16,padding:0,opacity:.45}}
+                  >
                     ×
                   </button>
                 </div>
