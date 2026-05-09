@@ -977,10 +977,7 @@ function GrapheView(){
 
       if (!cleanKey || !cleanValue) return;
 
-      if (!map.has(cleanKey)) {
-        map.set(cleanKey, new Set());
-      }
-
+      if (!map.has(cleanKey)) map.set(cleanKey, new Set());
       map.get(cleanKey).add(cleanValue);
     };
 
@@ -1017,9 +1014,7 @@ function GrapheView(){
         item["Acteurs cités"] ||
         item["Acteurs mentionnés"] ||
         item["acteurs cités"] ||
-        item["acteurs mentionnés"] ||
-        item["acteurs_cités_normalisés"] ||
-        item["acteurs_cites_normalises"];
+        item["acteurs mentionnés"];
 
       if (direct) return direct;
 
@@ -1029,12 +1024,7 @@ function GrapheView(){
           .normalize("NFD")
           .replace(/[\u0300-\u036f]/g, "");
 
-        return (
-          cleanKey.includes("acteur") ||
-          cleanKey.includes("acteurs") ||
-          cleanKey.includes("actor") ||
-          cleanKey.includes("actors")
-        );
+        return cleanKey.includes("acteur") || cleanKey.includes("actor");
       });
 
       return actorKey ? item[actorKey] : "";
@@ -1059,33 +1049,20 @@ function GrapheView(){
         .map(v => String(v).trim())
         .filter(v => v && v !== "Aucune" && v !== "Aucun");
 
-      if (institution) {
-        institutions.add(institution);
-      }
-
+      if (institution) institutions.add(institution);
       itemActors.forEach(actor => acteurs.add(actor));
       itemConcepts.forEach(concept => concepts.add(concept));
       itemThemes.forEach(theme => themes.add(theme));
       itemInnovations.forEach(innovation => innovations.add(innovation));
 
       if (institution) {
-        itemThemes.forEach(theme => {
-          addToMapSet(institutionThemes, institution, theme);
-        });
-
-        itemConcepts.forEach(concept => {
-          addToMapSet(institutionConcepts, institution, concept);
-        });
+        itemThemes.forEach(theme => addToMapSet(institutionThemes, institution, theme));
+        itemConcepts.forEach(concept => addToMapSet(institutionConcepts, institution, concept));
       }
 
       itemActors.forEach(actor => {
-        itemThemes.forEach(theme => {
-          addToMapSet(actorThemes, actor, theme);
-        });
-
-        itemConcepts.forEach(concept => {
-          addToMapSet(actorConcepts, actor, concept);
-        });
+        itemThemes.forEach(theme => addToMapSet(actorThemes, actor, theme));
+        itemConcepts.forEach(concept => addToMapSet(actorConcepts, actor, concept));
       });
     });
 
@@ -1127,23 +1104,13 @@ function GrapheView(){
   const filterRows = (rows, type) => {
     let filtered = [...rows];
 
-    if (hideIsolated) {
-      filtered = filtered.filter(row => row.count > 1);
-    }
+    if (hideIsolated) filtered = filtered.filter(row => row.count > 1);
 
-    if (type === "institutionThemes" && filterInstitution) {
+    if ((type === "institutionThemes" || type === "institutionConcepts") && filterInstitution) {
       filtered = filtered.filter(row => row.name === filterInstitution);
     }
 
-    if (type === "institutionConcepts" && filterInstitution) {
-      filtered = filtered.filter(row => row.name === filterInstitution);
-    }
-
-    if (type === "actorThemes" && filterActor) {
-      filtered = filtered.filter(row => row.name === filterActor);
-    }
-
-    if (type === "actorConcepts" && filterActor) {
+    if ((type === "actorThemes" || type === "actorConcepts") && filterActor) {
       filtered = filtered.filter(row => row.name === filterActor);
     }
 
@@ -1173,9 +1140,7 @@ function GrapheView(){
         }));
     }
 
-    if (showTopOnly) {
-      filtered = filtered.slice(0, 10);
-    }
+    if (showTopOnly) filtered = filtered.slice(0, 10);
 
     return filtered;
   };
@@ -1183,30 +1148,46 @@ function GrapheView(){
   const graphViews = {
     institutionThemes: {
       title: "Institutions → Thèmes",
-      short: "Institutions / Thèmes",
-      subtitle: "Surface thématique des institutions présentes dans la sélection.",
+      short: "Institutions → Thèmes",
+      sourceLabel: "Institutions",
+      targetLabel: "Thèmes",
+      subtitle: "Visualiser la surface thématique des institutions présentes dans la sélection.",
       rows: filterRows(graphStats.institutionThemes, "institutionThemes"),
+      sourceColor: "#5b3758",
+      targetColor: "#b8653b",
       emptyText: "Aucune relation Institution → Thème détectée.",
     },
     institutionConcepts: {
       title: "Institutions → Concepts",
-      short: "Institutions / Concepts",
-      subtitle: "Surface conceptuelle des institutions présentes dans la sélection.",
+      short: "Institutions → Concepts",
+      sourceLabel: "Institutions",
+      targetLabel: "Concepts",
+      subtitle: "Visualiser la surface conceptuelle des institutions présentes dans la sélection.",
       rows: filterRows(graphStats.institutionConcepts, "institutionConcepts"),
+      sourceColor: "#5b3758",
+      targetColor: "#8a6a38",
       emptyText: "Aucune relation Institution → Concept détectée.",
     },
     actorThemes: {
       title: "Acteurs → Thèmes",
-      short: "Acteurs / Thèmes",
-      subtitle: "Thèmes associés aux acteurs cités par les articles.",
+      short: "Acteurs → Thèmes",
+      sourceLabel: "Acteurs",
+      targetLabel: "Thèmes",
+      subtitle: "Observer les thèmes associés aux acteurs cités par les articles.",
       rows: filterRows(graphStats.actorThemes, "actorThemes"),
+      sourceColor: "#60724d",
+      targetColor: "#b8653b",
       emptyText: "Aucune relation Acteur → Thème détectée.",
     },
     actorConcepts: {
       title: "Acteurs → Concepts",
-      short: "Acteurs / Concepts",
-      subtitle: "Concepts associés aux acteurs cités par les articles.",
+      short: "Acteurs → Concepts",
+      sourceLabel: "Acteurs",
+      targetLabel: "Concepts",
+      subtitle: "Observer les concepts associés aux acteurs cités par les articles.",
       rows: filterRows(graphStats.actorConcepts, "actorConcepts"),
+      sourceColor: "#60724d",
+      targetColor: "#8a6a38",
       emptyText: "Aucune relation Acteur → Concept détectée.",
     },
   };
@@ -1224,614 +1205,754 @@ function GrapheView(){
   const mergeSuggestions = mergeValues.filter(value => {
     if (!mergeSearch.trim()) return true;
 
-    const a = value
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
-
-    const b = mergeSearch
-      .toLowerCase()
-      .normalize("NFD")
-      .replace(/[\u0300-\u036f]/g, "");
+    const a = value.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+    const b = mergeSearch.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
 
     return a.includes(b);
-  }).slice(0, 20);
+  }).slice(0, 18);
 
   const pageStyle = {
-    padding: 24,
-    background: "#f7f3ee",
+    padding: 18,
+    background: C.page,
     minHeight: "100vh",
-    color: "#1f2933",
+    color: C.text,
   };
 
   const panelStyle = {
-    background: "rgba(255,255,255,0.86)",
-    border: "1px solid rgba(75, 55, 35, 0.12)",
-    borderRadius: 24,
-    padding: 22,
-    boxShadow: "0 12px 32px rgba(48, 35, 20, 0.06)",
+    background: C.white,
+    border: `1px solid ${C.border}`,
+    borderRadius: 2,
+    boxShadow: "0 10px 26px rgba(43,42,36,.06)",
+  };
+
+  const panelPad = {
+    padding: 18,
   };
 
   const eyebrowStyle = {
-    margin: "0 0 8px",
-    textTransform: "uppercase",
-    letterSpacing: "0.08em",
-    fontSize: 12,
-    color: "#8a5a44",
-    fontWeight: 700,
+    ...sc(),
+    color: C.accent,
+    marginBottom: 8,
   };
 
-  const titleStyle = {
-    margin: 0,
-    fontSize: 30,
-    lineHeight: 1.15,
-    color: "#243044",
-    fontWeight: 800,
-  };
-
-  const textStyle = {
-    margin: "10px 0 0",
-    maxWidth: 820,
-    color: "#5f6673",
-    lineHeight: 1.6,
-    fontSize: 15,
-  };
-
-  const statCardStyle = {
-    background: "#fff",
-    border: "1px solid rgba(75, 55, 35, 0.10)",
-    borderRadius: 18,
-    padding: 16,
-    boxShadow: "0 8px 22px rgba(48, 35, 20, 0.045)",
-  };
-
-  const statNumberStyle = {
-    fontSize: 26,
-    fontWeight: 800,
-    color: "#243044",
-    lineHeight: 1,
-    marginBottom: 6,
-  };
-
-  const statLabelStyle = {
-    fontSize: 13,
-    color: "#7a6f66",
-  };
-
-  const inputStyle = {
-    width: "100%",
-    border: "1px solid rgba(75, 55, 35, 0.16)",
-    borderRadius: 14,
-    padding: "10px 12px",
-    background: "#fff",
-    color: "#243044",
-    fontSize: 14,
-    outline: "none",
-  };
-
-  const buttonStyle = {
-    border: "1px solid rgba(122, 78, 58, 0.25)",
-    background: "#fff",
-    color: "#6f3f33",
-    borderRadius: 999,
-    padding: "9px 13px",
-    fontSize: 13,
-    fontWeight: 700,
+  const softButton = (active = false) => ({
+    border: `1px solid ${active ? C.accent : C.border}`,
+    background: active ? C.accent : C.white,
+    color: active ? C.white : C.muted,
+    padding: "7px 10px",
+    borderRadius: 2,
     cursor: "pointer",
+    fontSize: 10,
+    letterSpacing: ".08em",
+    textTransform: "uppercase",
+    fontFamily: sans,
+  });
+
+  const fieldStyle = {
+    width: "100%",
+    border: `1px solid ${C.border}`,
+    background: C.white,
+    color: C.ink,
+    padding: "8px 9px",
+    fontSize: 11,
+    fontFamily: sans,
+    outline: "none",
+    borderRadius: 2,
   };
 
-  const activeButtonStyle = {
-    ...buttonStyle,
-    background: "#7a4e3a",
-    color: "#fff",
-    borderColor: "#7a4e3a",
-  };
+  const statBox = (value, label) => (
+    <div style={{
+      background: C.panelSoft,
+      border: `1px solid ${C.border}`,
+      padding: "10px 12px",
+      minWidth: 105,
+    }}>
+      <div style={{fontFamily: serif, fontSize: 25, fontWeight: 700, color: C.ink, lineHeight: 1}}>
+        {value}
+      </div>
+      <div style={{...sc(), fontSize: 8, marginTop: 4}}>
+        {label}
+      </div>
+    </div>
+  );
 
   const tagStyle = {
     display: "inline-flex",
     alignItems: "center",
-    padding: "5px 9px",
-    borderRadius: 999,
-    background: "#f2e7dd",
-    color: "#6f3f33",
-    fontSize: 12,
-    marginRight: 6,
-    marginBottom: 6,
+    padding: "3px 7px",
+    borderRadius: 2,
+    background: C.chip,
+    color: C.chipText,
+    fontSize: 10,
+    fontFamily: sans,
+    marginRight: 5,
+    marginBottom: 5,
   };
 
-  const renderRelationCards = () => {
-    if (!activeView) return null;
+  const graphRowsForDrawing = activeView ? activeView.rows.slice(0, showTopOnly ? 8 : 10) : [];
 
-    if (activeView.rows.length === 0) {
+  const renderGraphSvg = () => {
+    if (!activeView || graphRowsForDrawing.length === 0) {
       return (
-        <p style={{ marginTop: 16, color: "#8b8078", fontSize: 14 }}>
-          {activeView.emptyText}
-        </p>
+        <div style={{
+          minHeight: 420,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#fbfaf6",
+          border: `1px dashed ${C.border}`,
+          color: C.muted,
+          fontFamily: serif,
+          fontStyle: "italic",
+        }}>
+          {activeView?.emptyText || "Aucune vue active."}
+        </div>
       );
     }
 
+    const leftNodes = graphRowsForDrawing.slice(0, 6);
+    const targetSet = new Set();
+    leftNodes.forEach(row => row.values.slice(0, 5).forEach(v => targetSet.add(v)));
+    const rightNodes = Array.from(targetSet).slice(0, 10);
+
+    const W = 780;
+    const H = 500;
+    const leftX = 170;
+    const rightX = 610;
+
+    const leftY = leftNodes.map((_, i) => 80 + i * (Math.min(360, H - 150) / Math.max(1, leftNodes.length - 1 || 1)));
+    const rightY = rightNodes.map((_, i) => 55 + i * (Math.min(410, H - 100) / Math.max(1, rightNodes.length - 1 || 1)));
+
+    const rightIndex = {};
+    rightNodes.forEach((n, i) => { rightIndex[n] = i; });
+
+    const shortLabel = (txt, max = 25) => {
+      const s = String(txt || "");
+      return s.length > max ? s.slice(0, max - 1) + "…" : s;
+    };
+
     return (
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(260px, 1fr))",
-        gap: 14,
-        marginTop: 18,
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="500" role="img" style={{
+        display: "block",
+        background: "#fbfaf6",
+        border: `1px solid ${C.border}`,
       }}>
-        {activeView.rows.map(row => (
-          <article key={row.name} style={{
-            background: "#fff",
-            border: "1px solid rgba(75, 55, 35, 0.10)",
-            borderRadius: 20,
-            padding: 16,
-            boxShadow: "0 8px 22px rgba(48, 35, 20, 0.04)",
-          }}>
-            <div style={{
-              display: "flex",
-              justifyContent: "space-between",
-              gap: 12,
-              alignItems: "flex-start",
-            }}>
-              <strong style={{
-                color: "#243044",
-                fontSize: 15,
-                lineHeight: 1.35,
-              }}>
-                {row.name}
-              </strong>
+        <defs>
+          <filter id="softShadowGraph" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#2b2a24" floodOpacity="0.12" />
+          </filter>
+        </defs>
 
-              <span style={{
-                minWidth: 34,
-                height: 34,
-                borderRadius: 999,
-                background: "#f2e7dd",
-                color: "#6f3f33",
-                display: "inline-flex",
-                alignItems: "center",
-                justifyContent: "center",
-                fontWeight: 800,
-                fontSize: 13,
-              }}>
+        <rect x="0" y="0" width={W} height={H} fill="#fbfaf6" />
+
+        {leftNodes.map((row, i) => {
+          const y1 = leftY[i];
+
+          return row.values.slice(0, 5).map(target => {
+            const j = rightIndex[target];
+            if (j === undefined) return null;
+
+            const y2 = rightY[j];
+            const strength = Math.min(4, Math.max(1.2, row.count / 2));
+
+            return (
+              <path
+                key={`${row.name}-${target}`}
+                d={`M ${leftX + 36} ${y1} C ${leftX + 190} ${y1}, ${rightX - 190} ${y2}, ${rightX - 36} ${y2}`}
+                fill="none"
+                stroke="#b89b7a"
+                strokeWidth={strength}
+                opacity="0.38"
+              />
+            );
+          });
+        })}
+
+        {leftNodes.map((row, i) => {
+          const y = leftY[i];
+          const r = 23 + Math.min(12, row.count * 2);
+
+          return (
+            <g key={row.name} filter="url(#softShadowGraph)">
+              <circle cx={leftX} cy={y} r={r} fill={activeView.sourceColor} />
+              <text
+                x={leftX}
+                y={y + 4}
+                textAnchor="middle"
+                fontFamily={sans}
+                fontSize="10"
+                fontWeight="700"
+                fill="#fffdf8"
+              >
                 {row.count}
-              </span>
-            </div>
+              </text>
+              <text
+                x={leftX - r - 10}
+                y={y + 4}
+                textAnchor="end"
+                fontFamily={sans}
+                fontSize="11"
+                fill={C.ink}
+              >
+                {shortLabel(row.name, 26)}
+              </text>
+            </g>
+          );
+        })}
 
-            <div style={{ marginTop: 13 }}>
-              {row.values.slice(0, 10).map(value => (
-                <span key={value} style={tagStyle}>
-                  {value}
-                </span>
-              ))}
+        {rightNodes.map((name, i) => {
+          const y = rightY[i];
 
-              {row.values.length > 10 && (
-                <span style={{
-                  display: "inline-flex",
-                  alignItems: "center",
-                  padding: "5px 9px",
-                  borderRadius: 999,
-                  background: "#eee8df",
-                  color: "#6b625a",
-                  fontSize: 12,
-                  marginBottom: 6,
-                }}>
-                  +{row.values.length - 10}
-                </span>
-              )}
-            </div>
-          </article>
-        ))}
+          return (
+            <g key={name} filter="url(#softShadowGraph)">
+              <circle cx={rightX} cy={y} r="20" fill={activeView.targetColor} />
+              <text
+                x={rightX + 28}
+                y={y + 4}
+                fontFamily={sans}
+                fontSize="11"
+                fill={C.ink}
+              >
+                {shortLabel(name, 30)}
+              </text>
+            </g>
+          );
+        })}
+
+        <g transform="translate(24 455)">
+          <circle cx="0" cy="0" r="7" fill={activeView.sourceColor} />
+          <text x="14" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>{activeView.sourceLabel}</text>
+
+          <circle cx="125" cy="0" r="7" fill={activeView.targetColor} />
+          <text x="139" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>{activeView.targetLabel}</text>
+
+          <line x1="270" y1="0" x2="320" y2="0" stroke="#b89b7a" strokeWidth="4" opacity="0.5" />
+          <text x="330" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>lien plus fréquent</text>
+        </g>
+      </svg>
+    );
+  };
+
+  const renderLeftControls = () => (
+    <aside style={{
+      ...panelStyle,
+      padding: 16,
+      minWidth: 0,
+    }}>
+      <div style={eyebrowStyle}>Affiner la vue</div>
+
+      <p style={{
+        fontSize: 12,
+        lineHeight: 1.55,
+        color: C.muted,
+        margin: "0 0 14px",
+      }}>
+        Ces options réduisent la vue affichée. Elles ne modifient pas les données du digest.
+      </p>
+
+      {(activeGraphView === "institutionThemes" || activeGraphView === "institutionConcepts") && (
+        <label style={{display:"block",marginBottom:12}}>
+          <div style={{...sc(),fontSize:8,marginBottom:5}}>Institution</div>
+          <select value={filterInstitution} onChange={e => setFilterInstitution(e.target.value)} style={fieldStyle}>
+            <option value="">Toutes les institutions</option>
+            {graphStats.institutionList.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </label>
+      )}
+
+      {(activeGraphView === "actorThemes" || activeGraphView === "actorConcepts") && (
+        <label style={{display:"block",marginBottom:12}}>
+          <div style={{...sc(),fontSize:8,marginBottom:5}}>Acteur</div>
+          <select value={filterActor} onChange={e => setFilterActor(e.target.value)} style={fieldStyle}>
+            <option value="">Tous les acteurs</option>
+            {graphStats.actorList.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </label>
+      )}
+
+      {(activeGraphView === "institutionThemes" || activeGraphView === "actorThemes") && (
+        <label style={{display:"block",marginBottom:12}}>
+          <div style={{...sc(),fontSize:8,marginBottom:5}}>Thème</div>
+          <select value={filterTheme} onChange={e => setFilterTheme(e.target.value)} style={fieldStyle}>
+            <option value="">Tous les thèmes</option>
+            {graphStats.themeList.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </label>
+      )}
+
+      {(activeGraphView === "institutionConcepts" || activeGraphView === "actorConcepts") && (
+        <label style={{display:"block",marginBottom:12}}>
+          <div style={{...sc(),fontSize:8,marginBottom:5}}>Concept</div>
+          <select value={filterConcept} onChange={e => setFilterConcept(e.target.value)} style={fieldStyle}>
+            <option value="">Tous les concepts</option>
+            {graphStats.conceptList.map(v => <option key={v} value={v}>{v}</option>)}
+          </select>
+        </label>
+      )}
+
+      <div style={{display:"flex",flexDirection:"column",gap:7,marginTop:14}}>
+        <button onClick={() => setHideIsolated(v => !v)} style={softButton(hideIsolated)}>
+          Masquer les isolés
+        </button>
+
+        <button onClick={() => setShowTopOnly(v => !v)} style={softButton(showTopOnly)}>
+          Top 10
+        </button>
+
+        <button onClick={resetFilters} style={softButton(false)}>
+          Réinitialiser
+        </button>
       </div>
-    );
-  };
+    </aside>
+  );
 
-  const renderFusionView = () => {
-    return (
-      <section style={panelStyle}>
-        <p style={eyebrowStyle}>Consolidation</p>
+  const renderRightPanel = () => (
+    <aside style={{
+      ...panelStyle,
+      padding: 16,
+      minWidth: 0,
+    }}>
+      <div style={eyebrowStyle}>Lecture relationnelle</div>
 
-        <h2 style={{ margin: 0, fontSize: 22, color: "#243044" }}>
-          Fusion des nœuds
-        </h2>
-
-        <p style={textStyle}>
-          Ce sous-module prépare le rapprochement des variantes d’un même nœud.
-          En V1, il sert de zone de contrôle visuel : la fusion n’écrit pas encore
-          dans la Google Sheet.
-        </p>
-
+      {activeView && (
         <div style={{
-          display: "grid",
-          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
-          gap: 14,
-          marginTop: 18,
+          background: C.panelSoft,
+          border: `1px solid ${C.border}`,
+          padding: 12,
+          marginBottom: 14,
         }}>
-          <label style={{ fontSize: 13, color: "#6b625a", fontWeight: 700 }}>
-            Type de nœud
-            <select
-              value={mergeNodeType}
-              onChange={e => setMergeNodeType(e.target.value)}
-              style={{ ...inputStyle, marginTop: 7 }}
-            >
-              <option value="actors">Acteurs</option>
-              <option value="institutions">Institutions</option>
-              <option value="themes">Thèmes</option>
-              <option value="concepts">Concepts</option>
-            </select>
-          </label>
-
-          <label style={{ fontSize: 13, color: "#6b625a", fontWeight: 700 }}>
-            Rechercher une valeur
-            <input
-              value={mergeSearch}
-              onChange={e => setMergeSearch(e.target.value)}
-              placeholder="Ex. gendarmerie nationale"
-              style={{ ...inputStyle, marginTop: 7 }}
-            />
-          </label>
-
-          <label style={{ fontSize: 13, color: "#6b625a", fontWeight: 700 }}>
-            Valeur cible
-            <input
-              value={mergeTarget}
-              onChange={e => setMergeTarget(e.target.value)}
-              placeholder="Ex. Gendarmerie nationale"
-              style={{ ...inputStyle, marginTop: 7 }}
-            />
-          </label>
-        </div>
-
-        <div style={{
-          marginTop: 18,
-          border: "1px solid rgba(75, 55, 35, 0.10)",
-          borderRadius: 18,
-          background: "#fff",
-          padding: 14,
-        }}>
-          <div style={{
-            display: "flex",
-            justifyContent: "space-between",
-            gap: 12,
-            alignItems: "center",
-            marginBottom: 12,
-          }}>
-            <strong style={{ color: "#243044" }}>
-              Suggestions de rapprochement
-            </strong>
-
-            <span style={{ color: "#8b8078", fontSize: 12 }}>
-              {mergeSuggestions.length} valeur{mergeSuggestions.length > 1 ? "s" : ""}
-            </span>
+          <div style={{...sc(),fontSize:8,marginBottom:6}}>Vue active</div>
+          <div style={{fontFamily:serif,fontSize:17,fontWeight:700,color:C.ink,marginBottom:5}}>
+            {activeView.title}
           </div>
+          <div style={{fontSize:12,lineHeight:1.55,color:C.muted}}>
+            {activeView.subtitle}
+          </div>
+        </div>
+      )}
 
-          {mergeSuggestions.length === 0 ? (
-            <p style={{ color: "#8b8078", fontSize: 14, margin: 0 }}>
-              Aucune valeur trouvée.
-            </p>
-          ) : (
-            <div style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 8,
-            }}>
-              {mergeSuggestions.map(value => (
-                <button
-                  key={value}
-                  onClick={() => {
-                    setMergeSearch(value);
-                    if (!mergeTarget) setMergeTarget(value);
-                  }}
-                  style={{
-                    border: "1px solid rgba(75, 55, 35, 0.12)",
-                    background: "#fbfaf8",
-                    color: "#243044",
-                    borderRadius: 999,
-                    padding: "7px 10px",
-                    fontSize: 12,
-                    cursor: "pointer",
-                  }}
-                >
-                  {value}
-                </button>
-              ))}
-            </div>
-          )}
+      <div style={{marginBottom:14}}>
+        <div style={{...sc(),fontSize:8,marginBottom:8}}>Comment lire ce graphe ?</div>
+
+        <div style={{fontSize:12,lineHeight:1.65,color:C.text,display:"grid",gap:8}}>
+          <div>● Les nœuds de gauche sont les entités de départ.</div>
+          <div>● Les nœuds de droite sont les thèmes ou concepts associés.</div>
+          <div>● Plus un nœud est gros, plus il porte d’associations.</div>
+          <div>● Les liens représentent les associations issues des articles sélectionnés.</div>
+        </div>
+      </div>
+
+      <div style={{
+        background: "#fffaf1",
+        border: `1px solid ${C.border}`,
+        borderLeft: `3px solid ${C.accent}`,
+        padding: 12,
+      }}>
+        <div style={{...sc(),fontSize:8,marginBottom:6,color:C.accent}}>Fusion des nœuds</div>
+        <div style={{fontSize:12,lineHeight:1.6,color:C.muted}}>
+          Le sous-module de fusion sert à repérer les variantes lexicales :
+          par exemple “Gendarmerie nationale”, “Gendarmerie Nationale” ou “Gendarmerie”.
         </div>
 
-        <div style={{
-          marginTop: 16,
-          background: "#fbfaf8",
-          border: "1px dashed rgba(122, 78, 58, 0.28)",
-          borderRadius: 16,
-          padding: 14,
-          color: "#6b625a",
-          fontSize: 14,
-          lineHeight: 1.55,
+        <button onClick={() => setActiveGraphView("fusion")} style={{
+          ...softButton(activeGraphView === "fusion"),
+          marginTop: 10,
+          width: "100%",
         }}>
-          Prochaine évolution possible : écrire les fusions validées dans une table
-          de normalisation, puis les appliquer automatiquement dans Apps Script.
+          Ouvrir la fusion
+        </button>
+      </div>
+    </aside>
+  );
+
+  const renderFusionCenter = () => (
+    <div style={{
+      ...panelStyle,
+      padding: 18,
+      minHeight: 500,
+    }}>
+      <div style={eyebrowStyle}>Consolidation</div>
+
+      <h2 style={{fontFamily:serif,fontSize:26,margin:"0 0 8px",color:C.ink}}>
+        Fusion des nœuds
+      </h2>
+
+      <p style={{fontSize:13,lineHeight:1.7,color:C.muted,margin:"0 0 18px",maxWidth:740}}>
+        Cette zone prépare le rapprochement des variantes d’un même acteur, concept, thème ou institution.
+        En V1, elle sert de contrôle visuel : elle n’écrit pas encore dans la Google Sheet.
+      </p>
+
+      <div style={{
+        display:"grid",
+        gridTemplateColumns:"repeat(auto-fit, minmax(210px, 1fr))",
+        gap:12,
+        marginBottom:16,
+      }}>
+        <label>
+          <div style={{...sc(),fontSize:8,marginBottom:5}}>Type de nœud</div>
+          <select value={mergeNodeType} onChange={e => setMergeNodeType(e.target.value)} style={fieldStyle}>
+            <option value="actors">Acteurs</option>
+            <option value="institutions">Institutions</option>
+            <option value="themes">Thèmes</option>
+            <option value="concepts">Concepts</option>
+          </select>
+        </label>
+
+        <label>
+          <div style={{...sc(),fontSize:8,marginBottom:5}}>Rechercher une valeur</div>
+          <input value={mergeSearch} onChange={e => setMergeSearch(e.target.value)} placeholder="ex. gendarmerie nationale" style={fieldStyle}/>
+        </label>
+
+        <label>
+          <div style={{...sc(),fontSize:8,marginBottom:5}}>Valeur cible</div>
+          <input value={mergeTarget} onChange={e => setMergeTarget(e.target.value)} placeholder="ex. Gendarmerie nationale" style={fieldStyle}/>
+        </label>
+      </div>
+
+      <div style={{
+        background:C.panelSoft,
+        border:`1px solid ${C.border}`,
+        padding:14,
+      }}>
+        <div style={{display:"flex",justifyContent:"space-between",gap:10,marginBottom:10}}>
+          <strong style={{fontFamily:serif,fontSize:16,color:C.ink}}>Suggestions de rapprochement</strong>
+          <span style={{...sc(),fontSize:8}}>{mergeSuggestions.length} valeur{mergeSuggestions.length > 1 ? "s" : ""}</span>
         </div>
-      </section>
-    );
-  };
+
+        {mergeSuggestions.length === 0 ? (
+          <div style={{fontFamily:serif,fontStyle:"italic",fontSize:13,color:C.muted}}>
+            Aucune valeur trouvée.
+          </div>
+        ) : (
+          <div style={{display:"flex",flexWrap:"wrap",gap:6}}>
+            {mergeSuggestions.map(value => (
+              <button
+                key={value}
+                onClick={() => {
+                  setMergeSearch(value);
+                  if (!mergeTarget) setMergeTarget(value);
+                }}
+                style={{
+                  border:`1px solid ${C.border}`,
+                  background:C.white,
+                  color:C.text,
+                  padding:"5px 8px",
+                  borderRadius:2,
+                  cursor:"pointer",
+                  fontSize:11,
+                  fontFamily:sans,
+                }}
+              >
+                {value}
+              </button>
+            ))}
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
   return (
     <main style={pageStyle}>
       <section style={{
         ...panelStyle,
-        marginBottom: 18,
-        background: "linear-gradient(180deg, rgba(255,255,255,0.92), rgba(252,248,242,0.92))",
+        ...panelPad,
+        marginBottom: 14,
+        borderLeft: `4px solid ${C.accent}`,
       }}>
-        <p style={eyebrowStyle}>Module Graphe</p>
+        <div style={{display:"flex",justifyContent:"space-between",gap:20,alignItems:"flex-start",flexWrap:"wrap"}}>
+          <div style={{minWidth:280,flex:"1 1 420px"}}>
+            <div style={eyebrowStyle}>Sélection active</div>
 
-        <h1 style={titleStyle}>
-          Lecture relationnelle d’une sélection d’articles
-        </h1>
+            <h1 style={{
+              fontFamily:serif,
+              fontSize:34,
+              lineHeight:1,
+              margin:"0 0 8px",
+              color:C.ink,
+              letterSpacing:-.5,
+            }}>
+              Corpus analysé
+            </h1>
 
-        <p style={textStyle}>
-          Les articles servent de socle documentaire. Les vues transversales
-          permettent d’observer les associations entre institutions, acteurs,
-          thèmes et concepts, à partir d’un corpus limité et maîtrisé.
-        </p>
-      </section>
+            <p style={{
+              fontSize:13,
+              lineHeight:1.65,
+              color:C.muted,
+              margin:0,
+              maxWidth:650,
+            }}>
+              Cette sélection constitue le socle documentaire de la lecture relationnelle.
+              Les liens affichés ci-dessous sont déduits des articles cochés pour le graphe.
+            </p>
+          </div>
 
-      <section style={{
-        display: "grid",
-        gridTemplateColumns: "repeat(auto-fit, minmax(135px, 1fr))",
-        gap: 12,
-        marginBottom: 18,
-      }}>
-        <div style={statCardStyle}>
-          <div style={statNumberStyle}>{graphStats.articles}</div>
-          <div style={statLabelStyle}>articles</div>
-        </div>
-
-        <div style={statCardStyle}>
-          <div style={statNumberStyle}>{graphStats.institutions}</div>
-          <div style={statLabelStyle}>institutions</div>
-        </div>
-
-        <div style={statCardStyle}>
-          <div style={statNumberStyle}>{graphStats.acteurs}</div>
-          <div style={statLabelStyle}>acteurs</div>
-        </div>
-
-        <div style={statCardStyle}>
-          <div style={statNumberStyle}>{graphStats.concepts}</div>
-          <div style={statLabelStyle}>concepts</div>
-        </div>
-
-        <div style={statCardStyle}>
-          <div style={statNumberStyle}>{graphStats.themes}</div>
-          <div style={statLabelStyle}>thèmes</div>
-        </div>
-
-        <div style={statCardStyle}>
-          <div style={statNumberStyle}>{graphStats.innovations}</div>
-          <div style={statLabelStyle}>innovations</div>
-        </div>
-      </section>
-
-      <section style={{ ...panelStyle, marginBottom: 18 }}>
-        <div style={{
-          display: "flex",
-          justifyContent: "space-between",
-          gap: 18,
-          flexWrap: "wrap",
-          alignItems: "flex-start",
-        }}>
-          <div>
-            <p style={eyebrowStyle}>Corpus sélectionné</p>
-
-            <h2 style={{ margin: 0, fontSize: 22, color: "#243044" }}>
-              État de la sélection
-            </h2>
-
-            {graphStatus === "empty" && (
-              <p style={{ ...textStyle, marginTop: 8 }}>
-                Aucun article n’est encore sélectionné pour le graphe.
-              </p>
-            )}
-
-            {graphStatus === "too-small" && (
-              <p style={{ ...textStyle, marginTop: 8, color: "#9a5b16" }}>
-                La sélection contient {count} article{count > 1 ? "s" : ""}.
-                Pour une première lecture relationnelle, sélectionne au moins 5 articles.
-              </p>
-            )}
-
-            {graphStatus === "too-large" && (
-              <p style={{ ...textStyle, marginTop: 8, color: "#9f2d2d" }}>
-                La sélection contient {count} articles. Pour cette V1, limite la sélection
-                à 25 articles maximum.
-              </p>
-            )}
-
-            {graphStatus === "ok" && (
-              <p style={{ ...textStyle, marginTop: 8, color: "#4d6b3c" }}>
-                La sélection est prête pour l’analyse relationnelle.
-              </p>
-            )}
+          <div style={{display:"flex",gap:8,flexWrap:"wrap",justifyContent:"flex-end"}}>
+            {statBox(graphStats.articles, "articles")}
+            {statBox(graphStats.institutions, "institutions")}
+            {statBox(graphStats.acteurs, "acteurs")}
+            {statBox(graphStats.concepts, "concepts")}
+            {statBox(graphStats.themes, "thèmes")}
+            {statBox(graphStats.innovations, "innovations")}
           </div>
         </div>
+
+        {graphItems.length > 0 && (
+          <div style={{
+            display:"flex",
+            gap:8,
+            marginTop:14,
+            overflowX:"auto",
+            paddingBottom:2,
+          }}>
+            {graphItems.slice(0, 4).map(item => (
+              <div key={item.id} style={{
+                flex:"0 0 auto",
+                maxWidth:260,
+                background:C.panelSoft,
+                border:`1px solid ${C.border}`,
+                padding:"8px 10px",
+                fontSize:11,
+                lineHeight:1.35,
+                color:C.text,
+              }}>
+                {String(item.title || "Article sans titre").slice(0, 72)}
+                {String(item.title || "").length > 72 ? "…" : ""}
+              </div>
+            ))}
+
+            {graphItems.length > 4 && (
+              <div style={{
+                flex:"0 0 auto",
+                background:C.ink,
+                color:C.white,
+                padding:"8px 10px",
+                fontSize:11,
+                display:"flex",
+                alignItems:"center",
+              }}>
+                +{graphItems.length - 4} autres
+              </div>
+            )}
+          </div>
+        )}
       </section>
+
+      {graphStatus !== "ok" && (
+        <section style={{
+          ...panelStyle,
+          padding: 26,
+          textAlign: "center",
+        }}>
+          {graphStatus === "empty" && (
+            <>
+              <div style={{fontFamily:serif,fontSize:24,color:C.ink,marginBottom:8}}>
+                Aucun article sélectionné
+              </div>
+              <div style={{color:C.muted,fontSize:13}}>
+                Retourne dans l’onglet Productions et coche quelques articles avec le bouton “Graphe”.
+              </div>
+            </>
+          )}
+
+          {graphStatus === "too-small" && (
+            <>
+              <div style={{fontFamily:serif,fontSize:24,color:C.ink,marginBottom:8}}>
+                Sélection encore trop courte
+              </div>
+              <div style={{color:C.muted,fontSize:13}}>
+                La sélection contient {count} article{count > 1 ? "s" : ""}. Il faut au moins 5 articles pour produire une première lecture relationnelle.
+              </div>
+            </>
+          )}
+
+          {graphStatus === "too-large" && (
+            <>
+              <div style={{fontFamily:serif,fontSize:24,color:C.ink,marginBottom:8}}>
+                Sélection trop large pour la V1
+              </div>
+              <div style={{color:C.muted,fontSize:13}}>
+                La sélection contient {count} articles. Pour cette V1, limite la sélection à 25 articles.
+              </div>
+            </>
+          )}
+        </section>
+      )}
 
       {graphStatus === "ok" && (
         <>
-          <section style={{ ...panelStyle, marginBottom: 18 }}>
-            <p style={eyebrowStyle}>Filtres d’analyse</p>
+          <section style={{
+            display:"grid",
+            gridTemplateColumns:"250px minmax(0, 1fr) 280px",
+            gap:14,
+            alignItems:"stretch",
+            marginBottom:14,
+          }}>
+            {renderLeftControls()}
 
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: "repeat(auto-fit, minmax(210px, 1fr))",
-              gap: 12,
+            <section style={{
+              ...panelStyle,
+              padding: 16,
+              minWidth:0,
             }}>
-              <label style={{ fontSize: 13, color: "#6b625a", fontWeight: 700 }}>
-                Institution
-                <select
-                  value={filterInstitution}
-                  onChange={e => setFilterInstitution(e.target.value)}
-                  style={{ ...inputStyle, marginTop: 7 }}
-                >
-                  <option value="">Toutes les institutions</option>
-                  {graphStats.institutionList.map(v => (
-                    <option key={v} value={v}>{v}</option>
-                  ))}
-                </select>
-              </label>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"flex-start",gap:12,marginBottom:12}}>
+                <div>
+                  <div style={eyebrowStyle}>Graphe relationnel</div>
 
-              <label style={{ fontSize: 13, color: "#6b625a", fontWeight: 700 }}>
-                Thème
-                <select
-                  value={filterTheme}
-                  onChange={e => setFilterTheme(e.target.value)}
-                  style={{ ...inputStyle, marginTop: 7 }}
-                >
-                  <option value="">Tous les thèmes</option>
-                  {graphStats.themeList.map(v => (
-                    <option key={v} value={v}>{v}</option>
-                  ))}
-                </select>
-              </label>
+                  <h2 style={{
+                    fontFamily:serif,
+                    fontSize:28,
+                    margin:"0 0 5px",
+                    color:C.ink,
+                    lineHeight:1.1,
+                  }}>
+                    {activeGraphView === "fusion" ? "Consolider les nœuds" : activeView?.title}
+                  </h2>
 
-              <label style={{ fontSize: 13, color: "#6b625a", fontWeight: 700 }}>
-                Acteur
-                <select
-                  value={filterActor}
-                  onChange={e => setFilterActor(e.target.value)}
-                  style={{ ...inputStyle, marginTop: 7 }}
-                >
-                  <option value="">Tous les acteurs</option>
-                  {graphStats.actorList.map(v => (
-                    <option key={v} value={v}>{v}</option>
-                  ))}
-                </select>
-              </label>
-
-              <label style={{ fontSize: 13, color: "#6b625a", fontWeight: 700 }}>
-                Concept
-                <select
-                  value={filterConcept}
-                  onChange={e => setFilterConcept(e.target.value)}
-                  style={{ ...inputStyle, marginTop: 7 }}
-                >
-                  <option value="">Tous les concepts</option>
-                  {graphStats.conceptList.map(v => (
-                    <option key={v} value={v}>{v}</option>
-                  ))}
-                </select>
-              </label>
-            </div>
-
-            <div style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 10,
-              marginTop: 16,
-            }}>
-              <button
-                onClick={() => setHideIsolated(v => !v)}
-                style={hideIsolated ? activeButtonStyle : buttonStyle}
-              >
-                Masquer les valeurs isolées
-              </button>
-
-              <button
-                onClick={() => setShowTopOnly(v => !v)}
-                style={showTopOnly ? activeButtonStyle : buttonStyle}
-              >
-                Afficher seulement le top 10
-              </button>
-
-              <button
-                onClick={resetFilters}
-                style={buttonStyle}
-              >
-                Réinitialiser les filtres
-              </button>
-            </div>
-          </section>
-
-          <section style={{ ...panelStyle, marginBottom: 18 }}>
-            <p style={eyebrowStyle}>Lecture relationnelle</p>
-
-            <div style={{
-              display: "flex",
-              flexWrap: "wrap",
-              gap: 10,
-              marginBottom: activeGraphView === "fusion" ? 0 : 18,
-            }}>
-              {Object.entries(graphViews).map(([key, view]) => (
-                <button
-                  key={key}
-                  onClick={() => setActiveGraphView(key)}
-                  style={activeGraphView === key ? activeButtonStyle : buttonStyle}
-                >
-                  {view.short}
-                </button>
-              ))}
-
-              <button
-                onClick={() => setActiveGraphView("fusion")}
-                style={activeGraphView === "fusion" ? activeButtonStyle : buttonStyle}
-              >
-                Fusion des nœuds
-              </button>
-            </div>
-
-            {activeGraphView !== "fusion" && activeView && (
-              <>
-                <h2 style={{ margin: 0, fontSize: 22, color: "#243044" }}>
-                  {activeView.title}
-                </h2>
-
-                <p style={{ ...textStyle, marginTop: 8 }}>
-                  {activeView.subtitle}
-                </p>
-
-                {renderRelationCards()}
-              </>
-            )}
-          </section>
-
-          {activeGraphView === "fusion" && renderFusionView()}
-        </>
-      )}
-
-      {graphItems.length > 0 && (
-        <section style={{ ...panelStyle, marginTop: 18 }}>
-          <p style={eyebrowStyle}>Socle documentaire</p>
-
-          <h2 style={{ margin: 0, fontSize: 22, color: "#243044" }}>
-            Articles mobilisés
-          </h2>
-
-          <p style={textStyle}>
-            Les relations affichées dans le module sont déduites des articles sélectionnés.
-          </p>
-
-          <div style={{ marginTop: 12 }}>
-            {graphItems.map(item => (
-              <article key={item.id} style={{
-                padding: "13px 0",
-                borderTop: "1px solid rgba(75, 55, 35, 0.10)",
-              }}>
-                <strong style={{ color: "#243044" }}>
-                  {item.title || item.titre || "Article sans titre"}
-                </strong>
-
-                <div style={{
-                  color: "#7a6f66",
-                  fontSize: 13,
-                  marginTop: 5,
-                  lineHeight: 1.45,
-                }}>
-                  {item.institution || "Institution non renseignée"}
-                  {item.source ? ` · Source : ${item.source}` : ""}
-                  {item.date ? ` · ${item.date}` : ""}
+                  {activeGraphView !== "fusion" && activeView && (
+                    <p style={{fontSize:13,lineHeight:1.6,color:C.muted,margin:0}}>
+                      {activeView.subtitle}
+                    </p>
+                  )}
                 </div>
-              </article>
-            ))}
-          </div>
-        </section>
+              </div>
+
+              <div style={{
+                display:"flex",
+                flexWrap:"wrap",
+                gap:6,
+                marginBottom:14,
+              }}>
+                {Object.entries(graphViews).map(([key, view]) => (
+                  <button
+                    key={key}
+                    onClick={() => setActiveGraphView(key)}
+                    style={softButton(activeGraphView === key)}
+                  >
+                    {view.short}
+                  </button>
+                ))}
+
+                <button
+                  onClick={() => setActiveGraphView("fusion")}
+                  style={softButton(activeGraphView === "fusion")}
+                >
+                  Fusion des nœuds
+                </button>
+              </div>
+
+              {activeGraphView === "fusion" ? renderFusionCenter() : renderGraphSvg()}
+
+              {activeGraphView !== "fusion" && activeView && activeView.rows.length > 0 && (
+                <div style={{
+                  marginTop:12,
+                  background:C.panelSoft,
+                  border:`1px solid ${C.border}`,
+                  padding:12,
+                }}>
+                  <div style={{...sc(),fontSize:8,marginBottom:8}}>
+                    Principales associations visibles
+                  </div>
+
+                  <div style={{display:"grid",gridTemplateColumns:"repeat(auto-fit, minmax(220px, 1fr))",gap:8}}>
+                    {activeView.rows.slice(0, 6).map(row => (
+                      <div key={row.name} style={{
+                        background:C.white,
+                        border:`1px solid ${C.border}`,
+                        padding:10,
+                      }}>
+                        <div style={{display:"flex",justifyContent:"space-between",gap:8}}>
+                          <strong style={{fontFamily:serif,fontSize:14,color:C.ink,lineHeight:1.25}}>
+                            {row.name}
+                          </strong>
+                          <span style={{color:C.accent,fontFamily:serif,fontWeight:700}}>
+                            {row.count}
+                          </span>
+                        </div>
+
+                        <div style={{marginTop:8}}>
+                          {row.values.slice(0, 5).map(value => (
+                            <span key={value} style={tagStyle}>{value}</span>
+                          ))}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {renderRightPanel()}
+          </section>
+
+          {graphItems.length > 0 && (
+            <section style={{
+              ...panelStyle,
+              padding: 18,
+            }}>
+              <div style={{display:"flex",justifyContent:"space-between",alignItems:"baseline",gap:12,marginBottom:12}}>
+                <div>
+                  <div style={eyebrowStyle}>Socle documentaire</div>
+                  <h2 style={{fontFamily:serif,fontSize:24,margin:0,color:C.ink}}>
+                    Articles mobilisés
+                  </h2>
+                </div>
+
+                <button
+                  onClick={() => setGraphSelectedIds(new Set())}
+                  style={softButton(false)}
+                >
+                  Vider la sélection
+                </button>
+              </div>
+
+              <div style={{
+                borderTop:`1px solid ${C.border}`,
+              }}>
+                {graphItems.map(item => (
+                  <article key={item.id} style={{
+                    display:"grid",
+                    gridTemplateColumns:"minmax(0, 1.5fr) 180px 120px minmax(180px, .8fr)",
+                    gap:12,
+                    alignItems:"center",
+                    padding:"11px 0",
+                    borderBottom:`1px solid ${C.border}`,
+                    fontSize:12,
+                  }}>
+                    <div style={{minWidth:0}}>
+                      <div style={{fontFamily:serif,fontSize:14,fontWeight:700,color:C.ink,lineHeight:1.25}}>
+                        {item.title || item.titre || "Article sans titre"}
+                      </div>
+                      {item.url && (
+                        <a href={item.url} target="_blank" rel="noreferrer" style={{
+                          color:C.accent,
+                          fontSize:10,
+                          textDecoration:"none",
+                        }}>
+                          ouvrir la source ↗
+                        </a>
+                      )}
+                    </div>
+
+                    <div style={{color:C.muted}}>
+                      {item.institution || item.source || "Non renseigné"}
+                    </div>
+
+                    <div style={{color:C.muted}}>
+                      {item.date || ""}
+                    </div>
+
+                    <div>
+                      {norm(item.themes).slice(0, 2).map(t => (
+                        <span key={t} style={tagStyle}>{t}</span>
+                      ))}
+                    </div>
+                  </article>
+                ))}
+              </div>
+            </section>
+          )}
+        </>
       )}
     </main>
   );
@@ -2618,10 +2739,24 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
         </div>
       )}
 
-      <div style={{maxWidth:1400,margin:"0 auto",padding:26}}>
-        <div style={{display:"grid",gridTemplateColumns:"270px 1fr",border:`1px solid ${C.border}`,minHeight:820}}>
+     <div style={{
+  maxWidth: tab === "graphe" ? 1680 : 1400,
+  margin: "0 auto",
+  padding: tab === "graphe" ? 18 : 26,
+}}>
+  <div style={{
+    display: "grid",
+    gridTemplateColumns: tab === "graphe" ? "1fr" : "270px 1fr",
+    border: `1px solid ${C.border}`,
+    minHeight: 820,
+  }}>
 
-          <aside style={{borderRight:`2px solid ${C.ink}`,background:C.panelSoft,display:"flex",flexDirection:"column"}}>
+<aside style={{
+  borderRight: `2px solid ${C.ink}`,
+  background: C.panelSoft,
+  display: tab === "graphe" ? "none" : "flex",
+  flexDirection: "column",
+}}>
             <div style={{padding:"20px 22px 16px",borderBottom:`4px double ${C.ink}`}}>
               <div style={{...sc(),fontSize:9,marginBottom:6}}>digest éditorial</div>
               <div style={{fontFamily:serif,fontSize:40,fontWeight:900,lineHeight:.9,color:C.ink,letterSpacing:-1}}>Veille</div>
