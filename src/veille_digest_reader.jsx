@@ -952,12 +952,8 @@ function GrapheView(){
     const themes = new Set();
     const innovations = new Set();
 
-    graphItems.forEach(item => {
-      if (item.institution && String(item.institution).trim()) {
-        institutions.add(String(item.institution).trim());
-      }
-
-      const acteursBruts =
+    const getActorsFromItem = (item) => {
+      const direct =
         item.actors ||
         item.acteurs ||
         item.acteursCites ||
@@ -965,10 +961,41 @@ function GrapheView(){
         item.acteurs_cités ||
         item.acteurs_cités_normalisés ||
         item.acteurs_cites_normalises ||
+        item.acteursMentionnes ||
+        item.acteurs_mentionnes ||
+        item.acteurs_mentionnés ||
         item["Acteurs cités"] ||
         item["Acteurs mentionnés"] ||
         item["acteurs cités"] ||
-        item["acteurs mentionnés"];
+        item["acteurs mentionnés"] ||
+        item["acteurs_cités_normalisés"] ||
+        item["acteurs_cites_normalises"];
+
+      if (direct) return direct;
+
+      const actorKey = Object.keys(item).find(key => {
+        const cleanKey = key
+          .toLowerCase()
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "");
+
+        return (
+          cleanKey.includes("acteur") ||
+          cleanKey.includes("acteurs") ||
+          cleanKey.includes("actor") ||
+          cleanKey.includes("actors")
+        );
+      });
+
+      return actorKey ? item[actorKey] : "";
+    };
+
+    graphItems.forEach(item => {
+      if (item.institution && String(item.institution).trim()) {
+        institutions.add(String(item.institution).trim());
+      }
+
+      const acteursBruts = getActorsFromItem(item);
 
       norm(acteursBruts).forEach(v => {
         const clean = v && String(v).trim();
@@ -1013,9 +1040,11 @@ function GrapheView(){
     <div style={{flex:1,padding:"24px 28px",overflowY:"auto",display:"flex",flexDirection:"column",gap:18}}>
       <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"20px 22px"}}>
         <div style={{...sc(),marginBottom:8}}>module graphe</div>
+
         <div style={{fontFamily:serif,fontSize:26,fontWeight:900,color:C.ink,lineHeight:1.05,marginBottom:8}}>
           Graphes relationnels
         </div>
+
         <div style={{fontSize:13,color:C.muted,fontFamily:sans,lineHeight:1.7,maxWidth:760}}>
           Explorez les relations entre articles, institutions, acteurs, thèmes et concepts à partir des articles sélectionnés dans le digest.
         </div>
@@ -1065,10 +1094,15 @@ function GrapheView(){
           <div style={{fontFamily:serif,fontSize:18,fontWeight:700,color:C.ink,marginBottom:6}}>
             Aucun article sélectionné pour le graphe.
           </div>
+
           <div style={{fontSize:13,color:C.muted,fontFamily:sans,lineHeight:1.7}}>
             Retournez dans l’onglet Productions et cochez “Graphe” sur plusieurs articles. Le module fonctionne idéalement avec une sélection de 5 à 25 articles.
           </div>
-          <button onClick={()=>setTab("productions")} style={{marginTop:14,fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"9px 18px",background:C.ink,color:C.white,border:"none",cursor:"pointer"}}>
+
+          <button
+            onClick={()=>setTab("productions")}
+            style={{marginTop:14,fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"9px 18px",background:C.ink,color:C.white,border:"none",cursor:"pointer"}}
+          >
             Retour aux productions
           </button>
         </div>
@@ -1079,10 +1113,15 @@ function GrapheView(){
           <div style={{fontFamily:serif,fontSize:18,fontWeight:700,color:C.ink,marginBottom:6}}>
             Sélection insuffisante.
           </div>
+
           <div style={{fontSize:13,color:C.muted,fontFamily:sans,lineHeight:1.7}}>
             Vous avez sélectionné {count} article{count>1?"s":""}. Sélectionnez au moins 5 articles pour produire un graphe relationnel exploitable.
           </div>
-          <button onClick={()=>setTab("productions")} style={{marginTop:14,fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"9px 18px",background:C.ink,color:C.white,border:"none",cursor:"pointer"}}>
+
+          <button
+            onClick={()=>setTab("productions")}
+            style={{marginTop:14,fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"9px 18px",background:C.ink,color:C.white,border:"none",cursor:"pointer"}}
+          >
             Ajouter des articles
           </button>
         </div>
@@ -1093,10 +1132,15 @@ function GrapheView(){
           <div style={{fontFamily:serif,fontSize:18,fontWeight:700,color:C.ink,marginBottom:6}}>
             Sélection trop large.
           </div>
+
           <div style={{fontSize:13,color:C.muted,fontFamily:sans,lineHeight:1.7}}>
             Vous avez sélectionné {count} articles. Réduisez la sélection à 25 articles maximum pour conserver un graphe lisible.
           </div>
-          <button onClick={()=>setTab("productions")} style={{marginTop:14,fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"9px 18px",background:C.ink,color:C.white,border:"none",cursor:"pointer"}}>
+
+          <button
+            onClick={()=>setTab("productions")}
+            style={{marginTop:14,fontFamily:serif,fontStyle:"italic",fontWeight:700,fontSize:13,padding:"9px 18px",background:C.ink,color:C.white,border:"none",cursor:"pointer"}}
+          >
             Modifier la sélection
           </button>
         </div>
@@ -1108,6 +1152,7 @@ function GrapheView(){
             <div style={{fontFamily:serif,fontSize:18,fontWeight:700,color:C.ink,marginBottom:6}}>
               Sélection correcte.
             </div>
+
             <div style={{fontSize:13,color:"#085041",fontFamily:sans,lineHeight:1.7}}>
               {count} articles sont prêts pour construire le graphe relationnel.
             </div>
@@ -1115,18 +1160,24 @@ function GrapheView(){
 
           <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"18px 20px"}}>
             <div style={{...sc(),marginBottom:12}}>articles sélectionnés pour le graphe</div>
+
             <div style={{display:"flex",flexDirection:"column",gap:6}}>
               {graphItems.map(item=>(
                 <div key={item.id} style={{display:"flex",gap:10,alignItems:"flex-start",padding:"9px 10px",background:C.panelSoft,border:`1px solid ${C.border}`}}>
-                  <div style={{width:18,height:18,borderRadius:2,background:C.green,color:C.white,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,flexShrink:0}}>✓</div>
+                  <div style={{width:18,height:18,borderRadius:2,background:C.green,color:C.white,display:"flex",alignItems:"center",justifyContent:"center",fontSize:10,flexShrink:0}}>
+                    ✓
+                  </div>
+
                   <div style={{flex:1}}>
                     <div style={{fontFamily:serif,fontSize:14,fontWeight:700,color:C.ink,lineHeight:1.3}}>
                       {item.title}
                     </div>
+
                     <div style={{fontSize:10,color:C.muted,fontFamily:sans,marginTop:2}}>
                       {item.source||""}{item.institution?` · ${item.institution}`:""}{item.date?` · ${item.date}`:""}
                     </div>
                   </div>
+
                   <button
                     onClick={()=>setGraphSelectedIds(p=>{const n=new Set(p);n.delete(item.id);return n;})}
                     style={{background:"none",border:"none",cursor:"pointer",color:C.muted,fontSize:16,padding:0,opacity:.45}}
@@ -1140,6 +1191,7 @@ function GrapheView(){
 
           <div style={{background:C.white,border:`1px solid ${C.border}`,padding:"18px 20px"}}>
             <div style={{...sc(),marginBottom:8}}>prochaine étape</div>
+
             <div style={{fontSize:13,color:C.muted,fontFamily:sans,lineHeight:1.7}}>
               La sélection produit maintenant les premiers compteurs du module graphe. La prochaine étape sera de calculer les relations transversales : Institution → Thème, Institution → Concept, Acteur → Thème et Acteur → Concept.
             </div>
