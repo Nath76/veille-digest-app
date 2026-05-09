@@ -952,31 +952,32 @@ function GrapheView(){
     const themes = new Set();
     const innovations = new Set();
 
-   const direct =
-  item.actors ||
-  item.acteurs ||
-  item.acteursCles ||
-  item.acteursClés ||
-  item.acteurs_cles ||
-  item.acteurs_clés ||
-  item.acteursCites ||
-  item.acteurs_cites ||
-  item.acteurs_cités ||
-  item.acteurs_cités_normalisés ||
-  item.acteurs_cites_normalises ||
-  item.acteursMentionnes ||
-  item.acteurs_mentionnes ||
-  item.acteurs_mentionnés ||
-  item["Acteurs clés"] ||
-  item["acteurs clés"] ||
-  item["Acteurs cles"] ||
-  item["acteurs cles"] ||
-  item["Acteurs cités"] ||
-  item["Acteurs mentionnés"] ||
-  item["acteurs cités"] ||
-  item["acteurs mentionnés"] ||
-  item["acteurs_cités_normalisés"] ||
-  item["acteurs_cites_normalises"];
+    const getActorsFromItem = (item) => {
+      const direct =
+        item.actors ||
+        item.acteurs ||
+        item.acteursCles ||
+        item.acteursClés ||
+        item.acteurs_cles ||
+        item.acteurs_clés ||
+        item.acteursCites ||
+        item.acteurs_cites ||
+        item.acteurs_cités ||
+        item.acteurs_cités_normalisés ||
+        item.acteurs_cites_normalises ||
+        item.acteursMentionnes ||
+        item.acteurs_mentionnes ||
+        item.acteurs_mentionnés ||
+        item["Acteurs clés"] ||
+        item["acteurs clés"] ||
+        item["Acteurs cles"] ||
+        item["acteurs cles"] ||
+        item["Acteurs cités"] ||
+        item["Acteurs mentionnés"] ||
+        item["acteurs cités"] ||
+        item["acteurs mentionnés"] ||
+        item["acteurs_cités_normalisés"] ||
+        item["acteurs_cites_normalises"];
 
       if (direct) return direct;
 
