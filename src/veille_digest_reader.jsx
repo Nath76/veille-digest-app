@@ -951,7 +951,80 @@ function restoreToMain(itemId) {
       </div>
     );
   }
+// ── DOSSIERS · FONCTIONS UTILITAIRES ─────────────────────
+function createFolder() {
+  const name = folderDraftName.trim();
+  if (!name) return;
 
+  const id = "folder-" + Date.now();
+
+  setFolders(prev => [
+    ...prev,
+    {
+      id,
+      name,
+      createdAt: new Date().toISOString()
+    }
+  ]);
+
+  setFolderItems(prev => ({
+    ...prev,
+    [id]: []
+  }));
+
+  setActiveFolderId(id);
+  setFolderDraftName("");
+}
+
+function addItemToFolder(itemId, folderId) {
+  if (!itemId || !folderId) return;
+
+  setFolderItems(prev => {
+    const current = prev[folderId] || [];
+
+    if (current.includes(itemId)) {
+      return prev;
+    }
+
+    return {
+      ...prev,
+      [folderId]: [...current, itemId]
+    };
+  });
+}
+
+function removeItemFromFolder(itemId, folderId) {
+  if (!itemId || !folderId) return;
+
+  setFolderItems(prev => {
+    const current = prev[folderId] || [];
+
+    return {
+      ...prev,
+      [folderId]: current.filter(id => id !== itemId)
+    };
+  });
+}
+
+function hideItemFromMain(itemId) {
+  if (!itemId) return;
+
+  setHiddenFromMain(prev => {
+    const next = new Set(prev);
+    next.add(itemId);
+    return next;
+  });
+}
+
+function restoreItemToMain(itemId) {
+  if (!itemId) return;
+
+  setHiddenFromMain(prev => {
+    const next = new Set(prev);
+    next.delete(itemId);
+    return next;
+  });
+}
   function ExpertsView(){
     return(
       <div style={{flex:1,display:"grid",gridTemplateColumns:"240px 1fr",minHeight:0}}>
