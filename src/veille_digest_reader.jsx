@@ -3452,7 +3452,7 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
     </button>
   ))}
 
- !["agenda", "signaux faibles", "experts", "produire", "point veille", "graphe", "dossiers"].includes(tab) && (
+ {!["agenda", "signaux faibles", "experts", "produire", "point veille", "graphe", "dossiers"].includes(tab) && (
     <input
       value={query}
       onChange={e => setQuery(e.target.value)}
