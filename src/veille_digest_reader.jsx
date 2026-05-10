@@ -244,6 +244,15 @@ export default function VeilleDigestReader() {
 
   const [pvSelectedForPV, setPvSelectedForPV] = useState(new Set());
 const [graphSelectedIds, setGraphSelectedIds] = useState(new Set());
+  // ── DOSSIERS / CAPITALISATION ─────────────────────────────
+// folders = liste des dossiers créés
+// folderItems = articles conservés dans chaque dossier
+// hiddenFromMain = articles masqués du flux principal mais conservés ailleurs
+// folderDraftName = champ de création rapide d’un dossier
+const [folders, setFolders] = useState([]);
+const [folderItems, setFolderItems] = useState({});
+const [hiddenFromMain, setHiddenFromMain] = useState(new Set());
+const [folderDraftName, setFolderDraftName] = useState("");
 const [pvWordColor,     setPvWordColor]     = useState("#18180f");
   const [pvDirectAssign,  setPvDirectAssign]  = useState({});
   const [pvAssignedTop,   setPvAssignedTop]   = useState({s1:[],s2:[],s3:[],s4:[]});
