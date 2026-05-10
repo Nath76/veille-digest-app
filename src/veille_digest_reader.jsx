@@ -481,15 +481,17 @@ const cleanItem = item => ({
   },[items,dismissed]);
 
   const visibleItems = useMemo(()=>{
-    const q=query.trim().toLowerCase();
-    return items.filter(i=>!dismissed.has(i.id))
+  const q=query.trim().toLowerCase();
+  return items
+    .filter(i=>!dismissed.has(i.id))
+    .filter(i=>!hiddenFromMain.has(i.id))
       .filter(i=>tab==="événements"?isEv(i):!isEv(i))
       .filter(i=>{
         const hay=[i.title,i.summary,i.institution,...(i.themes||[]),...(i.keywords||[])].filter(Boolean).join(" ").toLowerCase();
         return(!q||hay.includes(q))&&(selTheme==="toutes"||(i.themes||[]).includes(selTheme));
       })
       .sort((a,b)=>sortBy==="date"?String(b.date).localeCompare(String(a.date)):sortBy==="title"?String(a.title).localeCompare(String(b.title)):Number(b.relevanceScore||0)-Number(a.relevanceScore||0));
-  },[items,dismissed,tab,query,selTheme,sortBy]);
+},[items,dismissed,hiddenFromMain,tab,query,selTheme,sortBy]);
 
   const selectedItem = selectedId?items.find(i=>i.id===selectedId):null;
   const pubCount   = useMemo(()=>items.filter(i=>!dismissed.has(i.id)&&!isEv(i)).length,[items,dismissed]);
@@ -589,6 +591,67 @@ const cleanItem = item => ({
   const dismiss = (id,e)=>{e?.stopPropagation();setDismissed(p=>new Set([...p,id]));if(selectedId===id)setSelectedId(null);};
   const togFav  = (id,e)=>{e?.stopPropagation();setFavoriteIds(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});};
   const togNote = (id,e)=>{e?.stopPropagation();setNoteIds(p=>{const n=new Set(p);n.has(id)?n.delete(id):n.add(id);return n;});};
+  function createFolder() {
+  const name = folderDraftName.trim();
+  if (!name) return;
+
+  const id = `folder_${Date.now()}`;
+
+  setFolders(prev => [
+    ...prev,
+    { id, name, createdAt: today() }
+  ]);
+
+  setFolderItems(prev => ({
+    ...prev,
+    [id]: []
+  }));
+
+  setFolderDraftName("");
+  showToast(`Dossier créé : ${name}`);
+}
+
+function addItemToFolder(itemId, folderId) {
+  setFolderItems(prev => {
+    const current = prev[folderId] || [];
+
+    if (current.includes(itemId)) return prev;
+
+    return {
+      ...prev,
+      [folderId]: [...current, itemId]
+    };
+  });
+
+  showToast("Article ajouté au dossier");
+}
+
+function hideFromMain(itemId) {
+  setHiddenFromMain(prev => new Set([...prev, itemId]));
+
+  if (selectedId === itemId) setSelectedId(null);
+
+  showToast("Article masqué du flux principal");
+}
+
+function removeItemFromFolder(itemId, folderId) {
+  setFolderItems(prev => ({
+    ...prev,
+    [folderId]: (prev[folderId] || []).filter(id => id !== itemId)
+  }));
+
+  showToast("Article retiré du dossier");
+}
+
+function restoreToMain(itemId) {
+  setHiddenFromMain(prev => {
+    const n = new Set(prev);
+    n.delete(itemId);
+    return n;
+  });
+
+  showToast("Article réaffiché dans le flux principal");
+}
 
   const todayLong = new Date().toLocaleDateString("fr-FR",{weekday:"long",day:"numeric",month:"long",year:"numeric"});
   const btn     = (active,extra={}) => ({display:"flex",justifyContent:"space-between",alignItems:"center",width:"100%",padding:"6px 9px",border:"none",borderRadius:2,background:active?C.ink:"transparent",color:active?C.white:C.text,cursor:"pointer",fontSize:12,fontFamily:sans,marginBottom:2,textAlign:"left",...extra});
