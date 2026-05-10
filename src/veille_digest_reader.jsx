@@ -3410,7 +3410,6 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
   ["point veille", ""],
   ["graphe", graphSelectedIds.size],
   ["dossiers", folders.length],
-]
   ].map(([key, count]) => (
     <button
       key={key}
