@@ -1130,8 +1130,7 @@ function restoreItemToMain(itemId) {
       </div>
     );
   }
-
-  function GrapheView(){
+function GrapheView(){
   const graphItems = items.filter(i => graphSelectedIds.has(i.id) && !dismissed.has(i.id) && !isEv(i));
   const count = graphItems.length;
 
@@ -1142,6 +1141,7 @@ function restoreItemToMain(itemId) {
   const [filterConcept, setFilterConcept] = useState("");
   const [showTopOnly, setShowTopOnly] = useState(false);
   const [hideIsolated, setHideIsolated] = useState(false);
+  const [activeNode, setActiveNode] = useState(null);
 
   const [mergeNodeType, setMergeNodeType] = useState("actors");
   const [mergeSearch, setMergeSearch] = useState("");
@@ -1153,6 +1153,21 @@ function restoreItemToMain(itemId) {
     theme: "#D6633A",
     concept: "#9D8F69",
     innovation: "#2F6F83"
+  };
+
+  const nodeTypeLabels = {
+    institution: "Institution",
+    actor: "Acteur",
+    theme: "Thème",
+    concept: "Concept",
+    innovation: "Innovation"
+  };
+
+  const makeNodeId = (type, name) => `${type}:${String(name || "").trim()}`;
+
+  const selectGraphView = (key) => {
+    setActiveGraphView(key);
+    setActiveNode(null);
   };
 
   const graphStats = useMemo(() => {
@@ -1187,8 +1202,6 @@ function restoreItemToMain(itemId) {
     };
 
     const addToMapSet = (map, key, value) => {
-      if (!key || !value) return;
-
       const cleanKey = clean(key);
       const cleanValue = clean(value);
 
@@ -1209,11 +1222,7 @@ function restoreItemToMain(itemId) {
           const key = `${a}|||${b}`;
 
           if (!map.has(key)) {
-            map.set(key, {
-              a,
-              b,
-              count: 0,
-            });
+            map.set(key, { a, b, count: 0 });
           }
 
           map.get(key).count += 1;
@@ -1226,9 +1235,22 @@ function restoreItemToMain(itemId) {
         .map(([name, values]) => ({
           name,
           values: Array.from(values).sort((a, b) => a.localeCompare(b, "fr")),
+          weights: {},
           count: values.size,
         }))
         .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "fr"));
+    };
+
+    const coocMapToPairs = (map, type) => {
+      return Array.from(map.values())
+        .map(pair => ({
+          source: pair.a,
+          target: pair.b,
+          sourceType: type,
+          targetType: type,
+          count: pair.count,
+        }))
+        .sort((a, b) => b.count - a.count || a.source.localeCompare(b.source, "fr"));
     };
 
     const coocMapToRows = (map) => {
@@ -1244,9 +1266,22 @@ function restoreItemToMain(itemId) {
           });
         }
 
+        if (!grouped.has(pair.b)) {
+          grouped.set(pair.b, {
+            name: pair.b,
+            values: [],
+            weights: {},
+            count: 0,
+          });
+        }
+
         grouped.get(pair.a).values.push(pair.b);
         grouped.get(pair.a).weights[pair.b] = pair.count;
         grouped.get(pair.a).count += pair.count;
+
+        grouped.get(pair.b).values.push(pair.a);
+        grouped.get(pair.b).weights[pair.a] = pair.count;
+        grouped.get(pair.b).count += pair.count;
       });
 
       return Array.from(grouped.values())
@@ -1388,6 +1423,10 @@ function restoreItemToMain(itemId) {
       actorCooc: coocMapToRows(actorCooc),
       conceptCooc: coocMapToRows(conceptCooc),
 
+      themeCoocPairs: coocMapToPairs(themeCooc, "theme"),
+      actorCoocPairs: coocMapToPairs(actorCooc, "actor"),
+      conceptCoocPairs: coocMapToPairs(conceptCooc, "concept"),
+
       centralityInstitutions: centralityToArray("institution"),
       centralityActors: centralityToArray("actor"),
       centralityThemes: centralityToArray("theme"),
@@ -1408,6 +1447,7 @@ function restoreItemToMain(itemId) {
     setFilterConcept("");
     setShowTopOnly(false);
     setHideIsolated(false);
+    setActiveNode(null);
   };
 
   const filterRows = (rows, type) => {
@@ -1487,6 +1527,26 @@ function restoreItemToMain(itemId) {
     return filtered;
   };
 
+  const filterPairs = (pairs, type) => {
+    let filtered = [...pairs];
+
+    if (type === "themeCooc" && filterTheme) {
+      filtered = filtered.filter(p => p.source === filterTheme || p.target === filterTheme);
+    }
+
+    if (type === "actorCooc" && filterActor) {
+      filtered = filtered.filter(p => p.source === filterActor || p.target === filterActor);
+    }
+
+    if (type === "conceptCooc" && filterConcept) {
+      filtered = filtered.filter(p => p.source === filterConcept || p.target === filterConcept);
+    }
+
+    if (showTopOnly) filtered = filtered.slice(0, 16);
+
+    return filtered;
+  };
+
   const graphViews = {
     institutionThemes: {
       title: "Institutions → Thèmes",
@@ -1496,8 +1556,11 @@ function restoreItemToMain(itemId) {
       sourceType: "institution",
       targetType: "theme",
       subtitle: "Visualiser la surface thématique des institutions présentes dans la sélection.",
+      conceptTitle: "Surface thématique institutionnelle",
+      conceptText: "La surface thématique institutionnelle désigne l’ensemble des thèmes associés à une institution dans le corpus sélectionné. Elle permet de voir sur quels champs thématiques une institution apparaît, et si elle est spécialisée ou au contraire présente sur plusieurs registres.",
       rows: filterRows(graphStats.institutionThemes, "institutionThemes"),
       emptyText: "Aucune relation Institution → Thème détectée.",
+      mode: "bipartite"
     },
     institutionConcepts: {
       title: "Institutions → Concepts",
@@ -1507,8 +1570,11 @@ function restoreItemToMain(itemId) {
       sourceType: "institution",
       targetType: "concept",
       subtitle: "Visualiser la surface conceptuelle des institutions présentes dans la sélection.",
+      conceptTitle: "Surface conceptuelle institutionnelle",
+      conceptText: "La surface conceptuelle institutionnelle désigne l’ensemble des concepts associés à une institution. Elle sert à repérer les notions, objets ou catégories d’analyse autour desquels une institution est mobilisée.",
       rows: filterRows(graphStats.institutionConcepts, "institutionConcepts"),
       emptyText: "Aucune relation Institution → Concept détectée.",
+      mode: "bipartite"
     },
     actorThemes: {
       title: "Acteurs → Thèmes",
@@ -1518,8 +1584,11 @@ function restoreItemToMain(itemId) {
       sourceType: "actor",
       targetType: "theme",
       subtitle: "Observer les thèmes associés aux acteurs cités par les articles.",
+      conceptTitle: "Surface thématique des acteurs",
+      conceptText: "La surface thématique des acteurs indique les thèmes auxquels un acteur est associé dans la sélection. Elle permet d’identifier les acteurs spécialisés, les acteurs transversaux et les acteurs-ponts entre plusieurs sujets.",
       rows: filterRows(graphStats.actorThemes, "actorThemes"),
       emptyText: "Aucune relation Acteur → Thème détectée.",
+      mode: "bipartite"
     },
     actorConcepts: {
       title: "Acteurs → Concepts",
@@ -1529,8 +1598,11 @@ function restoreItemToMain(itemId) {
       sourceType: "actor",
       targetType: "concept",
       subtitle: "Observer les concepts associés aux acteurs cités par les articles.",
+      conceptTitle: "Surface conceptuelle des acteurs",
+      conceptText: "La surface conceptuelle des acteurs montre les notions qui accompagnent les acteurs cités. Elle aide à comprendre dans quel cadre analytique ou stratégique un acteur apparaît.",
       rows: filterRows(graphStats.actorConcepts, "actorConcepts"),
       emptyText: "Aucune relation Acteur → Concept détectée.",
+      mode: "bipartite"
     },
     themeCooc: {
       title: "Thèmes ↔ Thèmes",
@@ -1540,8 +1612,12 @@ function restoreItemToMain(itemId) {
       sourceType: "theme",
       targetType: "theme",
       subtitle: "Repérer les thèmes qui apparaissent ensemble dans les mêmes articles.",
+      conceptTitle: "Cooccurrence thématique",
+      conceptText: "La cooccurrence thématique mesure les thèmes qui apparaissent ensemble dans les mêmes articles. Elle permet de lire la topographie du corpus : proximités, voisinages, zones denses et thèmes-ponts.",
       rows: filterRows(graphStats.themeCooc, "themeCooc"),
+      pairs: filterPairs(graphStats.themeCoocPairs, "themeCooc"),
       emptyText: "Aucune cooccurrence de thèmes détectée.",
+      mode: "cooc"
     },
     actorCooc: {
       title: "Acteurs ↔ Acteurs",
@@ -1551,8 +1627,12 @@ function restoreItemToMain(itemId) {
       sourceType: "actor",
       targetType: "actor",
       subtitle: "Repérer les acteurs évoqués ensemble dans les mêmes articles.",
+      conceptTitle: "Cooccurrence d’acteurs",
+      conceptText: "La cooccurrence d’acteurs repère les acteurs cités ensemble dans les mêmes articles. Elle ne signifie pas nécessairement une relation directe entre eux, mais une coprésence documentaire dans le corpus.",
       rows: filterRows(graphStats.actorCooc, "actorCooc"),
+      pairs: filterPairs(graphStats.actorCoocPairs, "actorCooc"),
       emptyText: "Aucune cooccurrence d’acteurs détectée.",
+      mode: "cooc"
     },
     conceptCooc: {
       title: "Concepts ↔ Concepts",
@@ -1562,8 +1642,12 @@ function restoreItemToMain(itemId) {
       sourceType: "concept",
       targetType: "concept",
       subtitle: "Repérer les concepts mobilisés ensemble dans les mêmes articles.",
+      conceptTitle: "Cooccurrence conceptuelle",
+      conceptText: "La cooccurrence conceptuelle montre les notions qui apparaissent ensemble. Elle permet de repérer des familles d’idées, des cadrages communs et des proximités analytiques dans le corpus.",
       rows: filterRows(graphStats.conceptCooc, "conceptCooc"),
+      pairs: filterPairs(graphStats.conceptCoocPairs, "conceptCooc"),
       emptyText: "Aucune cooccurrence de concepts détectée.",
+      mode: "cooc"
     },
     fullGraph: {
       title: "Graphe complet",
@@ -1573,8 +1657,11 @@ function restoreItemToMain(itemId) {
       sourceType: "institution",
       targetType: "theme",
       subtitle: "Afficher ensemble les institutions, acteurs, thèmes et concepts issus du corpus sélectionné.",
+      conceptTitle: "Photo relationnelle du corpus",
+      conceptText: "Le graphe complet donne une photographie globale du corpus : institutions, acteurs, thèmes et concepts. Il sert à voir l’architecture générale de la sélection, avant d’entrer dans des vues plus spécialisées.",
       rows: [],
       emptyText: "Aucune relation complète détectée.",
+      mode: "full"
     },
     centrality: {
       title: "Centralités",
@@ -1584,8 +1671,11 @@ function restoreItemToMain(itemId) {
       sourceType: "institution",
       targetType: "concept",
       subtitle: "Identifier les institutions, acteurs, thèmes et concepts les plus connectés dans le corpus.",
+      conceptTitle: "Centralité relationnelle",
+      conceptText: "La centralité indique ici le nombre de connexions portées par un nœud. Elle permet d’identifier les objets qui structurent le corpus : thèmes dominants, acteurs pivots, institutions très présentes ou concepts transversaux.",
       rows: [],
       emptyText: "Aucune centralité calculable.",
+      mode: "centrality"
     },
   };
 
@@ -1686,21 +1776,118 @@ function restoreItemToMain(itemId) {
     marginBottom: 5,
   };
 
+  const shortLabel = (txt, max = 30) => {
+    const s = String(txt || "");
+    return s.length > max ? s.slice(0, max - 1) + "…" : s;
+  };
+
+  const radiusFromDegree = (degree, base = 12, step = 4, max = 36) => {
+    return Math.min(max, base + Math.sqrt(Math.max(1, degree)) * step);
+  };
+
+  const isActiveOrNeighbor = (nodeId, links) => {
+    if (!activeNode) return true;
+    if (nodeId === activeNode.id) return true;
+
+    return links.some(link => {
+      const s = makeNodeId(link.sourceType, link.source);
+      const t = makeNodeId(link.targetType, link.target);
+
+      return (
+        (s === activeNode.id && t === nodeId) ||
+        (t === activeNode.id && s === nodeId)
+      );
+    });
+  };
+
+  const getActiveNodeRelations = () => {
+    if (!activeNode || !activeView) return [];
+
+    if (activeGraphView === "fullGraph") {
+      const links = getFullGraphLinks();
+
+      return links
+        .filter(link => {
+          const s = makeNodeId(link.sourceType, link.source);
+          const t = makeNodeId(link.targetType, link.target);
+          return s === activeNode.id || t === activeNode.id;
+        })
+        .map(link => {
+          const s = makeNodeId(link.sourceType, link.source);
+          const otherName = s === activeNode.id ? link.target : link.source;
+          const otherType = s === activeNode.id ? link.targetType : link.sourceType;
+
+          return {
+            name: otherName,
+            type: otherType,
+            count: link.count || 1,
+          };
+        });
+    }
+
+    if (activeView.mode === "cooc") {
+      return (activeView.pairs || [])
+        .filter(link => {
+          const s = makeNodeId(link.sourceType, link.source);
+          const t = makeNodeId(link.targetType, link.target);
+          return s === activeNode.id || t === activeNode.id;
+        })
+        .map(link => {
+          const s = makeNodeId(link.sourceType, link.source);
+          const otherName = s === activeNode.id ? link.target : link.source;
+          const otherType = s === activeNode.id ? link.targetType : link.sourceType;
+
+          return {
+            name: otherName,
+            type: otherType,
+            count: link.count || 1,
+          };
+        });
+    }
+
+    return (activeView.rows || [])
+      .flatMap(row => {
+        return row.values.map(value => ({
+          source: row.name,
+          target: value,
+          sourceType: activeView.sourceType,
+          targetType: activeView.targetType,
+          count: row.weights?.[value] || 1,
+        }));
+      })
+      .filter(link => {
+        const s = makeNodeId(link.sourceType, link.source);
+        const t = makeNodeId(link.targetType, link.target);
+        return s === activeNode.id || t === activeNode.id;
+      })
+      .map(link => {
+        const s = makeNodeId(link.sourceType, link.source);
+        const otherName = s === activeNode.id ? link.target : link.source;
+        const otherType = s === activeNode.id ? link.targetType : link.sourceType;
+
+        return {
+          name: otherName,
+          type: otherType,
+          count: link.count || 1,
+        };
+      });
+  };
+
   const graphRowsForDrawing = activeView ? activeView.rows.slice(0, showTopOnly ? 8 : 10) : [];
 
   const renderGraphSvg = () => {
-    if (activeGraphView === "fullGraph") {
-      return renderFullGraphSvg();
-    }
+    if (activeGraphView === "fullGraph") return renderFullGraphSvg();
+    if (activeGraphView === "centrality") return renderCentralityCenter();
+    if (activeView?.mode === "cooc") return renderCoocNetworkSvg();
 
-    if (activeGraphView === "centrality") {
-      return renderCentralityCenter();
-    }
+    return renderBipartiteSvg();
+  };
 
+  const renderBipartiteSvg = () => {
     if (!activeView || graphRowsForDrawing.length === 0) {
       return (
         <div style={{
-          minHeight: 420,
+          minHeight: 470,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -1724,45 +1911,47 @@ function restoreItemToMain(itemId) {
 
     const rightNodes = Array.from(targetSet).slice(0, 12);
 
-    const W = 780;
-    const H = 500;
-    const leftX = 170;
-    const rightX = 610;
-
-    const leftY = leftNodes.map((_, i) =>
-      80 + i * (Math.min(360, H - 150) / Math.max(1, leftNodes.length - 1 || 1))
-    );
-
-    const rightY = rightNodes.map((_, i) =>
-      55 + i * (Math.min(410, H - 100) / Math.max(1, rightNodes.length - 1 || 1))
-    );
-
-    const rightIndex = {};
-    rightNodes.forEach((n, i) => {
-      rightIndex[n] = i;
-    });
-
-    const targetDegree = {};
+    const links = [];
     leftNodes.forEach(row => {
       row.values.slice(0, 6).forEach(target => {
-        targetDegree[target] = (targetDegree[target] || 0) + 1;
+        if (rightNodes.includes(target)) {
+          links.push({
+            source: row.name,
+            target,
+            sourceType: activeView.sourceType,
+            targetType: activeView.targetType,
+            count: row.weights?.[target] || 1,
+          });
+        }
       });
     });
 
-    const shortLabel = (txt, max = 25) => {
-      const s = String(txt || "");
-      return s.length > max ? s.slice(0, max - 1) + "…" : s;
-    };
+    const W = 860;
+    const H = 540;
+    const leftX = 190;
+    const rightX = 670;
 
-    const radiusFromDegree = (degree, base = 13, step = 4, max = 34) => {
-      return Math.min(max, base + Math.sqrt(Math.max(1, degree)) * step);
-    };
+    const leftY = leftNodes.map((_, i) =>
+      85 + i * (Math.min(380, H - 160) / Math.max(1, leftNodes.length - 1 || 1))
+    );
+
+    const rightY = rightNodes.map((_, i) =>
+      60 + i * (Math.min(430, H - 100) / Math.max(1, rightNodes.length - 1 || 1))
+    );
+
+    const rightIndex = {};
+    rightNodes.forEach((n, i) => { rightIndex[n] = i; });
+
+    const targetDegree = {};
+    links.forEach(link => {
+      targetDegree[link.target] = (targetDegree[link.target] || 0) + 1;
+    });
 
     const sourceColor = nodeColors[activeView.sourceType] || C.accent;
     const targetColor = nodeColors[activeView.targetType] || C.muted;
 
     return (
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="500" role="img" style={{
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="540" role="img" style={{
         display: "block",
         background: "#fbfaf6",
         border: `1px solid ${C.border}`,
@@ -1775,58 +1964,50 @@ function restoreItemToMain(itemId) {
 
         <rect x="0" y="0" width={W} height={H} fill="#fbfaf6" />
 
-        {leftNodes.map((row, i) => {
+        {links.map(link => {
+          const i = leftNodes.findIndex(row => row.name === link.source);
+          const j = rightIndex[link.target];
+          if (i < 0 || j === undefined) return null;
+
+          const sourceId = makeNodeId(link.sourceType, link.source);
+          const targetId = makeNodeId(link.targetType, link.target);
+          const focused = !activeNode || activeNode.id === sourceId || activeNode.id === targetId;
           const y1 = leftY[i];
+          const y2 = rightY[j];
+          const strength = Math.min(5, Math.max(1.3, link.count * 1.5));
 
-          return row.values.slice(0, 6).map(target => {
-            const j = rightIndex[target];
-            if (j === undefined) return null;
-
-            const y2 = rightY[j];
-            const weight = row.weights?.[target] || 1;
-            const strength = Math.min(5, Math.max(1.2, weight * 1.4));
-
-            return (
-              <path
-                key={`${row.name}-${target}`}
-                d={`M ${leftX + 36} ${y1} C ${leftX + 190} ${y1}, ${rightX - 190} ${y2}, ${rightX - 36} ${y2}`}
-                fill="none"
-                stroke="#9b7b5c"
-                strokeWidth={strength}
-                opacity="0.42"
-              />
-            );
-          });
+          return (
+            <path
+              key={`${link.source}-${link.target}`}
+              d={`M ${leftX + 38} ${y1} C ${leftX + 200} ${y1}, ${rightX - 200} ${y2}, ${rightX - 38} ${y2}`}
+              fill="none"
+              stroke="#9b7b5c"
+              strokeWidth={focused ? strength + 1.2 : strength}
+              opacity={focused ? 0.68 : 0.12}
+            />
+          );
         })}
 
         {leftNodes.map((row, i) => {
           const y = leftY[i];
-          const r = radiusFromDegree(row.count, 15, 5, 38);
+          const r = radiusFromDegree(row.count, 15, 5, 40);
+          const nodeId = makeNodeId(activeView.sourceType, row.name);
+          const visible = isActiveOrNeighbor(nodeId, links);
+          const selected = activeNode?.id === nodeId;
 
           return (
-            <g key={row.name} filter="url(#softShadowGraph)">
-              <circle cx={leftX} cy={y} r={r} fill={sourceColor} />
-              <text
-                x={leftX}
-                y={y + 4}
-                textAnchor="middle"
-                fontFamily={sans}
-                fontSize="10"
-                fontWeight="700"
-                fill="#fffdf8"
-              >
+            <g
+              key={row.name}
+              filter="url(#softShadowGraph)"
+              onClick={() => setActiveNode({ id: nodeId, name: row.name, type: activeView.sourceType })}
+              style={{ cursor: "pointer", opacity: visible ? 1 : 0.18 }}
+            >
+              <circle cx={leftX} cy={y} r={selected ? r + 7 : r} fill={sourceColor} stroke={selected ? C.ink : "none"} strokeWidth="3" />
+              <text x={leftX} y={y + 5} textAnchor="middle" fontFamily={sans} fontSize="12" fontWeight="800" fill="#fffdf8">
                 {row.count}
               </text>
-              <text
-                x={leftX - r - 10}
-                y={y + 4}
-                textAnchor="end"
-                fontFamily={sans}
-                fontSize="11"
-                fontWeight="600"
-                fill={C.ink}
-              >
-                {shortLabel(row.name, 27)}
+              <text x={leftX - r - 14} y={y + 5} textAnchor="end" fontFamily={sans} fontSize="14" fontWeight="800" fill={C.ink}>
+                {shortLabel(row.name, 28)}
               </text>
             </g>
           );
@@ -1835,55 +2016,190 @@ function restoreItemToMain(itemId) {
         {rightNodes.map((name, i) => {
           const y = rightY[i];
           const degree = targetDegree[name] || 1;
-          const r = radiusFromDegree(degree, 12, 4, 30);
+          const r = radiusFromDegree(degree, 13, 4.5, 34);
+          const nodeId = makeNodeId(activeView.targetType, name);
+          const visible = isActiveOrNeighbor(nodeId, links);
+          const selected = activeNode?.id === nodeId;
 
           return (
-            <g key={name} filter="url(#softShadowGraph)">
-              <circle cx={rightX} cy={y} r={r} fill={targetColor} />
+            <g
+              key={name}
+              filter="url(#softShadowGraph)"
+              onClick={() => setActiveNode({ id: nodeId, name, type: activeView.targetType })}
+              style={{ cursor: "pointer", opacity: visible ? 1 : 0.18 }}
+            >
+              <circle cx={rightX} cy={y} r={selected ? r + 7 : r} fill={targetColor} stroke={selected ? C.ink : "none"} strokeWidth="3" />
+              <text x={rightX + r + 12} y={y + 5} fontFamily={sans} fontSize="14" fontWeight="800" fill={C.ink}>
+                {shortLabel(name, 32)}
+              </text>
+            </g>
+          );
+        })}
+      </svg>
+    );
+  };
+
+  const renderCoocNetworkSvg = () => {
+    const pairs = activeView?.pairs || [];
+
+    if (!activeView || pairs.length === 0) {
+      return (
+        <div style={{
+          minHeight: 500,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#fbfaf6",
+          border: `1px dashed ${C.border}`,
+          color: C.muted,
+          fontFamily: serif,
+          fontStyle: "italic",
+        }}>
+          {activeView?.emptyText || "Aucune cooccurrence détectée."}
+        </div>
+      );
+    }
+
+    const W = 860;
+    const H = 560;
+    const cx = W / 2;
+    const cy = H / 2 + 5;
+    const type = activeView.sourceType;
+    const color = nodeColors[type] || C.accent;
+
+    const degree = {};
+    pairs.forEach(pair => {
+      const a = makeNodeId(type, pair.source);
+      const b = makeNodeId(type, pair.target);
+      degree[a] = (degree[a] || 0) + pair.count;
+      degree[b] = (degree[b] || 0) + pair.count;
+    });
+
+    const nodes = Array.from(new Set(pairs.flatMap(p => [p.source, p.target])))
+      .map(name => ({
+        id: makeNodeId(type, name),
+        name,
+        type,
+        degree: degree[makeNodeId(type, name)] || 1,
+      }))
+      .sort((a, b) => b.degree - a.degree || a.name.localeCompare(b.name, "fr"))
+      .slice(0, showTopOnly ? 14 : 22);
+
+    const nodeMap = {};
+    nodes.forEach(n => { nodeMap[n.id] = n; });
+
+    const visiblePairs = pairs.filter(pair => {
+      return nodeMap[makeNodeId(type, pair.source)] && nodeMap[makeNodeId(type, pair.target)];
+    });
+
+    nodes.forEach((node, i) => {
+      if (i === 0) {
+        node.x = cx;
+        node.y = cy;
+        return;
+      }
+
+      const angle = (Math.PI * 2 * (i - 1)) / Math.max(1, nodes.length - 1);
+      const rankRadius = i < 7 ? 135 : i < 14 ? 205 : 255;
+      const jitter = (i % 3) * 12;
+
+      node.x = cx + Math.cos(angle) * (rankRadius + jitter);
+      node.y = cy + Math.sin(angle) * (rankRadius + jitter) * 0.78;
+    });
+
+    const visibleLinks = visiblePairs.map(pair => ({
+      source: pair.source,
+      target: pair.target,
+      sourceType: type,
+      targetType: type,
+      count: pair.count,
+    }));
+
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="560" role="img" style={{
+        display: "block",
+        background: "#fbfaf6",
+        border: `1px solid ${C.border}`,
+      }}>
+        <defs>
+          <filter id="softShadowCooc" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#2b2a24" floodOpacity="0.12" />
+          </filter>
+        </defs>
+
+        <rect x="0" y="0" width={W} height={H} fill="#fbfaf6" />
+
+        {visibleLinks.map((link, index) => {
+          const source = nodeMap[makeNodeId(type, link.source)];
+          const target = nodeMap[makeNodeId(type, link.target)];
+          if (!source || !target) return null;
+
+          const sourceId = source.id;
+          const targetId = target.id;
+          const focused = !activeNode || activeNode.id === sourceId || activeNode.id === targetId;
+          const strength = Math.min(7, Math.max(1.4, link.count * 1.7));
+
+          return (
+            <line
+              key={`${link.source}-${link.target}-${index}`}
+              x1={source.x}
+              y1={source.y}
+              x2={target.x}
+              y2={target.y}
+              stroke="#7b6a55"
+              strokeWidth={focused ? strength + 1.2 : strength}
+              opacity={focused ? 0.55 : 0.10}
+            />
+          );
+        })}
+
+        {nodes.map(node => {
+          const r = radiusFromDegree(node.degree, 12, 4.3, 42);
+          const visible = isActiveOrNeighbor(node.id, visibleLinks);
+          const selected = activeNode?.id === node.id;
+          const labelAbove = node.y > cy;
+
+          return (
+            <g
+              key={node.id}
+              filter="url(#softShadowCooc)"
+              onClick={() => setActiveNode({ id: node.id, name: node.name, type: node.type })}
+              style={{ cursor: "pointer", opacity: visible ? 1 : 0.16 }}
+            >
+              <circle cx={node.x} cy={node.y} r={selected ? r + 8 : r} fill={color} stroke={selected ? C.ink : "none"} strokeWidth="3" />
+              <text x={node.x} y={node.y + 5} textAnchor="middle" fontFamily={sans} fontSize="11" fontWeight="800" fill="#fffdf8">
+                {node.degree}
+              </text>
               <text
-                x={rightX + r + 8}
-                y={y + 4}
+                x={node.x}
+                y={labelAbove ? node.y - r - 10 : node.y + r + 18}
+                textAnchor="middle"
                 fontFamily={sans}
-                fontSize="11"
-                fontWeight="600"
+                fontSize="14"
+                fontWeight="800"
                 fill={C.ink}
               >
-                {shortLabel(name, 31)}
+                {shortLabel(node.name, 28)}
               </text>
             </g>
           );
         })}
 
-        <g transform="translate(24 455)">
-          <circle cx="0" cy="0" r="7" fill={sourceColor} />
-          <text x="14" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>
+        <g transform="translate(24 525)">
+          <circle cx="0" cy="0" r="7" fill={color} />
+          <text x="14" y="4" fontFamily={sans} fontSize="11" fontWeight="700" fill={C.muted}>
             {activeView.sourceLabel}
           </text>
-
-          <circle cx="150" cy="0" r="7" fill={targetColor} />
-          <text x="164" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>
-            {activeView.targetLabel}
-          </text>
-
-          <line x1="315" y1="0" x2="365" y2="0" stroke="#9b7b5c" strokeWidth="4" opacity="0.5" />
-          <text x="375" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>
-            lien plus fréquent
+          <line x1="190" y1="0" x2="250" y2="0" stroke="#7b6a55" strokeWidth="5" opacity="0.55" />
+          <text x="262" y="4" fontFamily={sans} fontSize="11" fontWeight="700" fill={C.muted}>
+            lien fort = cooccurrence fréquente
           </text>
         </g>
       </svg>
     );
   };
 
-  const renderFullGraphSvg = () => {
-    const shortLabel = (txt, max = 24) => {
-      const s = String(txt || "");
-      return s.length > max ? s.slice(0, max - 1) + "…" : s;
-    };
-
-    const radiusFromDegree = (degree, base = 10, step = 4, max = 32) => {
-      return Math.min(max, base + Math.sqrt(Math.max(1, degree)) * step);
-    };
-
+  const getFullGraphLinks = () => {
     const links = [];
 
     const addLinksFromRows = (rows, sourceType, targetType) => {
@@ -1894,6 +2210,7 @@ function restoreItemToMain(itemId) {
             target: value,
             sourceType,
             targetType,
+            count: row.weights?.[value] || 1,
           });
         });
       });
@@ -1904,10 +2221,16 @@ function restoreItemToMain(itemId) {
     addLinksFromRows(filterRows(graphStats.actorThemes, "actorThemes"), "actor", "theme");
     addLinksFromRows(filterRows(graphStats.actorConcepts, "actorConcepts"), "actor", "concept");
 
+    return links;
+  };
+
+  const renderFullGraphSvg = () => {
+    const links = getFullGraphLinks();
+
     const degree = {};
     links.forEach(link => {
-      const sKey = `${link.sourceType}:${link.source}`;
-      const tKey = `${link.targetType}:${link.target}`;
+      const sKey = makeNodeId(link.sourceType, link.source);
+      const tKey = makeNodeId(link.targetType, link.target);
       degree[sKey] = (degree[sKey] || 0) + 1;
       degree[tKey] = (degree[tKey] || 0) + 1;
     });
@@ -1915,10 +2238,10 @@ function restoreItemToMain(itemId) {
     const makeNodes = (type, values, maxCount) => {
       return values
         .map(name => ({
-          id: `${type}:${name}`,
+          id: makeNodeId(type, name),
           name,
           type,
-          degree: degree[`${type}:${name}`] || 0,
+          degree: degree[makeNodeId(type, name)] || 0,
         }))
         .filter(node => node.degree > 0 || !hideIsolated)
         .sort((a, b) => b.degree - a.degree || a.name.localeCompare(b.name, "fr"))
@@ -1938,18 +2261,16 @@ function restoreItemToMain(itemId) {
     ];
 
     const nodeMap = {};
-    allNodes.forEach(node => {
-      nodeMap[node.id] = node;
-    });
+    allNodes.forEach(node => { nodeMap[node.id] = node; });
 
     const visibleLinks = links.filter(link => {
-      return nodeMap[`${link.sourceType}:${link.source}`] && nodeMap[`${link.targetType}:${link.target}`];
+      return nodeMap[makeNodeId(link.sourceType, link.source)] && nodeMap[makeNodeId(link.targetType, link.target)];
     });
 
     if (allNodes.length === 0 || visibleLinks.length === 0) {
       return (
         <div style={{
-          minHeight: 420,
+          minHeight: 470,
           display: "flex",
           alignItems: "center",
           justifyContent: "center",
@@ -1965,7 +2286,7 @@ function restoreItemToMain(itemId) {
     }
 
     const W = 900;
-    const H = 540;
+    const H = 560;
 
     const placeColumn = (nodes, x, yStart, yEnd) => {
       const span = yEnd - yStart;
@@ -1975,13 +2296,13 @@ function restoreItemToMain(itemId) {
       });
     };
 
-    placeColumn(institutionNodes, 210, 85, 230);
-    placeColumn(actorNodes, 210, 330, 470);
-    placeColumn(themeNodes, 665, 80, 250);
-    placeColumn(conceptNodes, 665, 330, 480);
+    placeColumn(institutionNodes, 215, 85, 235);
+    placeColumn(actorNodes, 215, 340, 485);
+    placeColumn(themeNodes, 675, 80, 255);
+    placeColumn(conceptNodes, 675, 340, 490);
 
     return (
-      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="540" role="img" style={{
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="560" role="img" style={{
         display: "block",
         background: "#fbfaf6",
         border: `1px solid ${C.border}`,
@@ -1994,125 +2315,74 @@ function restoreItemToMain(itemId) {
 
         <rect x="0" y="0" width={W} height={H} fill="#fbfaf6" />
 
-        <text x="72" y="42" fontFamily={sans} fontSize="11" fontWeight="700" fill={nodeColors.institution}>
-          Institutions
-        </text>
-        <text x="72" y="302" fontFamily={sans} fontSize="11" fontWeight="700" fill={nodeColors.actor}>
-          Acteurs
-        </text>
-        <text x="710" y="42" fontFamily={sans} fontSize="11" fontWeight="700" fill={nodeColors.theme}>
-          Thèmes
-        </text>
-        <text x="710" y="302" fontFamily={sans} fontSize="11" fontWeight="700" fill={nodeColors.concept}>
-          Concepts
-        </text>
+        <text x="72" y="42" fontFamily={sans} fontSize="13" fontWeight="800" fill={nodeColors.institution}>Institutions</text>
+        <text x="72" y="305" fontFamily={sans} fontSize="13" fontWeight="800" fill={nodeColors.actor}>Acteurs</text>
+        <text x="710" y="42" fontFamily={sans} fontSize="13" fontWeight="800" fill={nodeColors.theme}>Thèmes</text>
+        <text x="710" y="305" fontFamily={sans} fontSize="13" fontWeight="800" fill={nodeColors.concept}>Concepts</text>
 
         {visibleLinks.map((link, index) => {
-          const source = nodeMap[`${link.sourceType}:${link.source}`];
-          const target = nodeMap[`${link.targetType}:${link.target}`];
+          const source = nodeMap[makeNodeId(link.sourceType, link.source)];
+          const target = nodeMap[makeNodeId(link.targetType, link.target)];
 
           if (!source || !target) return null;
 
-          const strength = Math.min(3.8, 1 + (source.degree + target.degree) / 18);
-          const stroke =
-            link.targetType === "theme"
-              ? nodeColors.theme
-              : nodeColors.concept;
+          const sourceId = source.id;
+          const targetId = target.id;
+          const focused = !activeNode || activeNode.id === sourceId || activeNode.id === targetId;
+          const stroke = link.targetType === "theme" ? nodeColors.theme : nodeColors.concept;
+          const strength = Math.min(4, 1.4 + (source.degree + target.degree) / 18);
 
           return (
             <path
               key={`${link.sourceType}-${link.source}-${link.targetType}-${link.target}-${index}`}
-              d={`M ${source.x + 28} ${source.y} C ${source.x + 180} ${source.y}, ${target.x - 180} ${target.y}, ${target.x - 28} ${target.y}`}
+              d={`M ${source.x + 30} ${source.y} C ${source.x + 185} ${source.y}, ${target.x - 185} ${target.y}, ${target.x - 30} ${target.y}`}
               fill="none"
               stroke={stroke}
-              strokeWidth={strength}
-              opacity="0.28"
+              strokeWidth={focused ? strength + 1.2 : strength}
+              opacity={focused ? 0.42 : 0.08}
             />
           );
         })}
 
         {allNodes.map(node => {
-          const r = radiusFromDegree(node.degree);
+          const r = radiusFromDegree(node.degree, 11, 4, 34);
           const color = nodeColors[node.type] || C.accent;
-          const labelX = node.x < W / 2 ? node.x - r - 10 : node.x + r + 10;
+          const visible = isActiveOrNeighbor(node.id, visibleLinks);
+          const selected = activeNode?.id === node.id;
+          const labelX = node.x < W / 2 ? node.x - r - 12 : node.x + r + 12;
           const anchor = node.x < W / 2 ? "end" : "start";
 
           return (
-            <g key={node.id} filter="url(#softShadowGraphFull)">
-              <circle cx={node.x} cy={node.y} r={r} fill={color} />
+            <g
+              key={node.id}
+              filter="url(#softShadowGraphFull)"
+              onClick={() => setActiveNode({ id: node.id, name: node.name, type: node.type })}
+              style={{ cursor: "pointer", opacity: visible ? 1 : 0.16 }}
+            >
+              <circle cx={node.x} cy={node.y} r={selected ? r + 7 : r} fill={color} stroke={selected ? C.ink : "none"} strokeWidth="3" />
 
               {node.degree > 0 && (
-                <text
-                  x={node.x}
-                  y={node.y + 4}
-                  textAnchor="middle"
-                  fontFamily={sans}
-                  fontSize="9"
-                  fontWeight="700"
-                  fill="#fffdf8"
-                >
+                <text x={node.x} y={node.y + 4} textAnchor="middle" fontFamily={sans} fontSize="10" fontWeight="800" fill="#fffdf8">
                   {node.degree}
                 </text>
               )}
 
-              <text
-                x={labelX}
-                y={node.y + 4}
-                textAnchor={anchor}
-                fontFamily={sans}
-                fontSize="11"
-                fontWeight="600"
-                fill={C.ink}
-              >
-                {shortLabel(node.name, 27)}
+              <text x={labelX} y={node.y + 5} textAnchor={anchor} fontFamily={sans} fontSize="13" fontWeight="800" fill={C.ink}>
+                {shortLabel(node.name, 28)}
               </text>
             </g>
           );
         })}
-
-        <g transform="translate(44 505)">
-          <circle cx="0" cy="0" r="7" fill={nodeColors.institution} />
-          <text x="14" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>Institutions</text>
-
-          <circle cx="115" cy="0" r="7" fill={nodeColors.actor} />
-          <text x="129" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>Acteurs</text>
-
-          <circle cx="215" cy="0" r="7" fill={nodeColors.theme} />
-          <text x="229" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>Thèmes</text>
-
-          <circle cx="315" cy="0" r="7" fill={nodeColors.concept} />
-          <text x="329" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>Concepts</text>
-
-          <text x="455" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>
-            La taille varie selon le nombre de connexions.
-          </text>
-        </g>
       </svg>
     );
   };
 
   const renderCentralityCenter = () => {
     const groups = [
-      {
-        title: "Institutions centrales",
-        color: nodeColors.institution,
-        rows: graphStats.centralityInstitutions,
-      },
-      {
-        title: "Acteurs centraux",
-        color: nodeColors.actor,
-        rows: graphStats.centralityActors,
-      },
-      {
-        title: "Thèmes centraux",
-        color: nodeColors.theme,
-        rows: graphStats.centralityThemes,
-      },
-      {
-        title: "Concepts centraux",
-        color: nodeColors.concept,
-        rows: graphStats.centralityConcepts,
-      },
+      { title: "Institutions centrales", color: nodeColors.institution, rows: graphStats.centralityInstitutions },
+      { title: "Acteurs centraux", color: nodeColors.actor, rows: graphStats.centralityActors },
+      { title: "Thèmes centraux", color: nodeColors.theme, rows: graphStats.centralityThemes },
+      { title: "Concepts centraux", color: nodeColors.concept, rows: graphStats.centralityConcepts },
     ];
 
     return (
@@ -2133,21 +2403,12 @@ function restoreItemToMain(itemId) {
               border: `1px solid ${C.border}`,
               padding: 14,
             }}>
-              <div style={{
-                ...sc(),
-                color: group.color,
-                marginBottom: 10,
-              }}>
+              <div style={{ ...sc(), color: group.color, marginBottom: 10 }}>
                 {group.title}
               </div>
 
               {group.rows.length === 0 ? (
-                <div style={{
-                  fontFamily: serif,
-                  fontStyle: "italic",
-                  color: C.muted,
-                  fontSize: 13,
-                }}>
+                <div style={{ fontFamily: serif, fontStyle: "italic", color: C.muted, fontSize: 13 }}>
                   Aucune donnée.
                 </div>
               ) : (
@@ -2157,7 +2418,11 @@ function restoreItemToMain(itemId) {
                     const width = Math.max(8, Math.round((row.score / maxScore) * 100));
 
                     return (
-                      <div key={row.name}>
+                      <div
+                        key={row.name}
+                        onClick={() => setActiveNode({ id: makeNodeId(row.type, row.name), name: row.name, type: row.type })}
+                        style={{ cursor: "pointer" }}
+                      >
                         <div style={{
                           display: "flex",
                           justifyContent: "space-between",
@@ -2166,16 +2431,16 @@ function restoreItemToMain(itemId) {
                           color: C.ink,
                           marginBottom: 4,
                         }}>
-                          <span style={{fontWeight: 700}}>
+                          <span style={{fontWeight: 800}}>
                             {index + 1}. {row.name}
                           </span>
-                          <span style={{color: group.color, fontWeight: 700}}>
+                          <span style={{color: group.color, fontWeight: 800}}>
                             {row.score}
                           </span>
                         </div>
 
                         <div style={{
-                          height: 6,
+                          height: 7,
                           background: C.panelSoft,
                           border: `1px solid ${C.border}`,
                         }}>
@@ -2204,11 +2469,12 @@ function restoreItemToMain(itemId) {
           color: C.muted,
         }}>
           Cette centralité est une mesure simple de degré : elle indique combien de connexions un nœud porte dans le corpus sélectionné.
-          Elle sert à repérer les objets les plus structurants, sans prétendre à une mesure avancée de type PageRank ou betweenness.
         </div>
       </div>
     );
   };
+
+  const activeRelations = getActiveNodeRelations();
 
   const renderLeftControls = () => (
     <aside style={{
@@ -2230,7 +2496,7 @@ function restoreItemToMain(itemId) {
       {(activeGraphView === "institutionThemes" || activeGraphView === "institutionConcepts" || activeGraphView === "fullGraph") && (
         <label style={{display:"block",marginBottom:12}}>
           <div style={{...sc(),fontSize:8,marginBottom:5}}>Institution</div>
-          <select value={filterInstitution} onChange={e => setFilterInstitution(e.target.value)} style={fieldStyle}>
+          <select value={filterInstitution} onChange={e => { setFilterInstitution(e.target.value); setActiveNode(null); }} style={fieldStyle}>
             <option value="">Toutes les institutions</option>
             {graphStats.institutionList.map(v => <option key={v} value={v}>{v}</option>)}
           </select>
@@ -2240,7 +2506,7 @@ function restoreItemToMain(itemId) {
       {(activeGraphView === "actorThemes" || activeGraphView === "actorConcepts" || activeGraphView === "actorCooc" || activeGraphView === "fullGraph") && (
         <label style={{display:"block",marginBottom:12}}>
           <div style={{...sc(),fontSize:8,marginBottom:5}}>Acteur</div>
-          <select value={filterActor} onChange={e => setFilterActor(e.target.value)} style={fieldStyle}>
+          <select value={filterActor} onChange={e => { setFilterActor(e.target.value); setActiveNode(null); }} style={fieldStyle}>
             <option value="">Tous les acteurs</option>
             {graphStats.actorList.map(v => <option key={v} value={v}>{v}</option>)}
           </select>
@@ -2250,7 +2516,7 @@ function restoreItemToMain(itemId) {
       {(activeGraphView === "institutionThemes" || activeGraphView === "actorThemes" || activeGraphView === "themeCooc" || activeGraphView === "fullGraph") && (
         <label style={{display:"block",marginBottom:12}}>
           <div style={{...sc(),fontSize:8,marginBottom:5}}>Thème</div>
-          <select value={filterTheme} onChange={e => setFilterTheme(e.target.value)} style={fieldStyle}>
+          <select value={filterTheme} onChange={e => { setFilterTheme(e.target.value); setActiveNode(null); }} style={fieldStyle}>
             <option value="">Tous les thèmes</option>
             {graphStats.themeList.map(v => <option key={v} value={v}>{v}</option>)}
           </select>
@@ -2260,7 +2526,7 @@ function restoreItemToMain(itemId) {
       {(activeGraphView === "institutionConcepts" || activeGraphView === "actorConcepts" || activeGraphView === "conceptCooc" || activeGraphView === "fullGraph") && (
         <label style={{display:"block",marginBottom:12}}>
           <div style={{...sc(),fontSize:8,marginBottom:5}}>Concept</div>
-          <select value={filterConcept} onChange={e => setFilterConcept(e.target.value)} style={fieldStyle}>
+          <select value={filterConcept} onChange={e => { setFilterConcept(e.target.value); setActiveNode(null); }} style={fieldStyle}>
             <option value="">Tous les concepts</option>
             {graphStats.conceptList.map(v => <option key={v} value={v}>{v}</option>)}
           </select>
@@ -2275,6 +2541,12 @@ function restoreItemToMain(itemId) {
         <button onClick={() => setShowTopOnly(v => !v)} style={softButton(showTopOnly)}>
           Top 10
         </button>
+
+        {activeNode && (
+          <button onClick={() => setActiveNode(null)} style={softButton(true)}>
+            Réinitialiser le focus
+          </button>
+        )}
 
         <button onClick={resetFilters} style={softButton(false)}>
           Réinitialiser
@@ -2299,7 +2571,7 @@ function restoreItemToMain(itemId) {
           marginBottom: 14,
         }}>
           <div style={{...sc(),fontSize:8,marginBottom:6}}>Vue active</div>
-          <div style={{fontFamily:serif,fontSize:17,fontWeight:700,color:C.ink,marginBottom:5}}>
+          <div style={{fontFamily:serif,fontSize:18,fontWeight:800,color:C.ink,marginBottom:5}}>
             {activeView.title}
           </div>
           <div style={{fontSize:12,lineHeight:1.55,color:C.muted}}>
@@ -2308,24 +2580,93 @@ function restoreItemToMain(itemId) {
         </div>
       )}
 
+      {activeView?.conceptTitle && (
+        <div style={{
+          background: "#fffaf1",
+          border: `1px solid ${C.border}`,
+          borderLeft: `3px solid ${C.accent}`,
+          padding: 12,
+          marginBottom: 14,
+        }}>
+          <div style={{...sc(),fontSize:8,marginBottom:6,color:C.accent}}>
+            Concept de lecture
+          </div>
+          <div style={{fontFamily:serif,fontSize:16,fontWeight:800,color:C.ink,marginBottom:6}}>
+            {activeView.conceptTitle}
+          </div>
+          <div style={{fontSize:12,lineHeight:1.6,color:C.muted}}>
+            {activeView.conceptText}
+          </div>
+        </div>
+      )}
+
+      {activeNode && (
+        <div style={{
+          background: C.white,
+          border: `1px solid ${C.border}`,
+          padding: 12,
+          marginBottom: 14,
+        }}>
+          <div style={{...sc(),fontSize:8,marginBottom:6,color:nodeColors[activeNode.type] || C.accent}}>
+            Nœud actif
+          </div>
+
+          <div style={{
+            fontFamily:serif,
+            fontSize:18,
+            fontWeight:800,
+            color:C.ink,
+            lineHeight:1.2,
+            marginBottom:5,
+          }}>
+            {activeNode.name}
+          </div>
+
+          <div style={{fontSize:11,color:C.muted,marginBottom:10}}>
+            Type : {nodeTypeLabels[activeNode.type] || activeNode.type} · {activeRelations.length} relation{activeRelations.length > 1 ? "s" : ""} visible{activeRelations.length > 1 ? "s" : ""}
+          </div>
+
+          {activeRelations.length > 0 ? (
+            <div style={{display:"grid",gap:6}}>
+              {activeRelations
+                .sort((a,b) => b.count - a.count || a.name.localeCompare(b.name, "fr"))
+                .slice(0, 12)
+                .map(rel => (
+                  <div key={`${rel.type}-${rel.name}`} style={{
+                    display:"flex",
+                    justifyContent:"space-between",
+                    gap:8,
+                    borderTop:`1px solid ${C.border}`,
+                    paddingTop:6,
+                    fontSize:12,
+                  }}>
+                    <span style={{color:C.text,fontWeight:700}}>
+                      {rel.name}
+                    </span>
+                    <span style={{color:nodeColors[rel.type] || C.accent,fontWeight:800}}>
+                      {rel.count}
+                    </span>
+                  </div>
+                ))}
+            </div>
+          ) : (
+            <div style={{fontFamily:serif,fontStyle:"italic",color:C.muted,fontSize:13}}>
+              Aucune relation visible avec les filtres actuels.
+            </div>
+          )}
+        </div>
+      )}
+
       <div style={{marginBottom:14}}>
         <div style={{...sc(),fontSize:8,marginBottom:8}}>Comment lire ce graphe ?</div>
 
         <div style={{fontSize:12,lineHeight:1.65,color:C.text,display:"grid",gap:8}}>
-          <div>
-            <span style={{color:nodeColors.institution,fontWeight:700}}>●</span> Les institutions sont en prune.
-          </div>
-          <div>
-            <span style={{color:nodeColors.actor,fontWeight:700}}>●</span> Les acteurs sont en vert sauge.
-          </div>
-          <div>
-            <span style={{color:nodeColors.theme,fontWeight:700}}>●</span> Les thèmes sont en orange brique.
-          </div>
-          <div>
-            <span style={{color:nodeColors.concept,fontWeight:700}}>●</span> Les concepts sont en sable olive.
-          </div>
-          <div>● Plus un nœud est gros, plus il porte d’associations.</div>
-          <div>● Les vues de cooccurrence montrent ce qui apparaît ensemble dans les mêmes articles.</div>
+          <div><span style={{color:nodeColors.institution,fontWeight:800}}>●</span> Institutions en prune.</div>
+          <div><span style={{color:nodeColors.actor,fontWeight:800}}>●</span> Acteurs en vert sauge.</div>
+          <div><span style={{color:nodeColors.theme,fontWeight:800}}>●</span> Thèmes en orange brique.</div>
+          <div><span style={{color:nodeColors.concept,fontWeight:800}}>●</span> Concepts en sable olive.</div>
+          <div>● Clique sur un nœud pour isoler son voisinage relationnel.</div>
+          <div>● Plus un nœud est gros, plus il porte de connexions.</div>
         </div>
       </div>
 
@@ -2341,7 +2682,7 @@ function restoreItemToMain(itemId) {
           par exemple “Gendarmerie nationale”, “Gendarmerie Nationale” ou “Gendarmerie”.
         </div>
 
-        <button onClick={() => setActiveGraphView("fusion")} style={{
+        <button onClick={() => selectGraphView("fusion")} style={{
           ...softButton(activeGraphView === "fusion"),
           marginTop: 10,
           width: "100%",
@@ -2570,7 +2911,7 @@ function restoreItemToMain(itemId) {
         <>
           <section style={{
             display:"grid",
-            gridTemplateColumns:"250px minmax(0, 1fr) 280px",
+            gridTemplateColumns:"250px minmax(0, 1fr) 300px",
             gap:14,
             alignItems:"stretch",
             marginBottom:14,
@@ -2588,7 +2929,7 @@ function restoreItemToMain(itemId) {
 
                   <h2 style={{
                     fontFamily:serif,
-                    fontSize:28,
+                    fontSize:30,
                     margin:"0 0 5px",
                     color:C.ink,
                     lineHeight:1.1,
@@ -2613,7 +2954,7 @@ function restoreItemToMain(itemId) {
                 {Object.entries(graphViews).map(([key, view]) => (
                   <button
                     key={key}
-                    onClick={() => setActiveGraphView(key)}
+                    onClick={() => selectGraphView(key)}
                     style={softButton(activeGraphView === key)}
                   >
                     {view.short}
@@ -2621,7 +2962,7 @@ function restoreItemToMain(itemId) {
                 ))}
 
                 <button
-                  onClick={() => setActiveGraphView("fusion")}
+                  onClick={() => selectGraphView("fusion")}
                   style={softButton(activeGraphView === "fusion")}
                 >
                   Fusion des nœuds
@@ -2652,7 +2993,7 @@ function restoreItemToMain(itemId) {
                           <strong style={{fontFamily:serif,fontSize:14,color:C.ink,lineHeight:1.25}}>
                             {row.name}
                           </strong>
-                          <span style={{color:C.accent,fontFamily:serif,fontWeight:700}}>
+                          <span style={{color:C.accent,fontFamily:serif,fontWeight:800}}>
                             {row.count}
                           </span>
                         </div>
@@ -2707,7 +3048,7 @@ function restoreItemToMain(itemId) {
                     fontSize:12,
                   }}>
                     <div style={{minWidth:0}}>
-                      <div style={{fontFamily:serif,fontSize:14,fontWeight:700,color:C.ink,lineHeight:1.25}}>
+                      <div style={{fontFamily:serif,fontSize:14,fontWeight:800,color:C.ink,lineHeight:1.25}}>
                         {item.title || item.titre || "Article sans titre"}
                       </div>
                       {item.url && (
@@ -2744,7 +3085,6 @@ function restoreItemToMain(itemId) {
     </main>
   );
 }
-  
   function ProduireView(){
     const allThemesList = Array.from(new Set([
       "tous",
