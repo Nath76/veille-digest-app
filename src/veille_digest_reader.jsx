@@ -2781,17 +2781,17 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
   background: C.page,
   textAlign: "center"
 }}>
-  <img
-    src={`${import.meta.env.BASE_URL}veilleur-studio-logo.png`}
-    alt="Veilleur Studio"
-    style={{
-      width: "100%",
-      maxWidth: 230,
-      display: "block",
-      margin: "0 auto 14px",
-      objectFit: "contain"
-    }}
-  />
+<img
+  src={`${import.meta.env.BASE_URL}veilleur-studio-logo.png`}
+  alt="Veilleur Studio"
+  style={{
+    width: "100%",
+    maxWidth: 310,
+    display: "block",
+    margin: "0 auto 10px",
+    objectFit: "contain"
+  }}
+/>
 
   <div style={{
     height: 1,
