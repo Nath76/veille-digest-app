@@ -2765,7 +2765,460 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
       </div>
     );
   }
+  // ── VUE DOSSIERS / CAPITALISATION ─────────────────────────
+  function DossiersView(){
+    const [activeFolderId, setActiveFolderId] = useState(folders[0]?.id || "");
 
+    useEffect(()=>{
+      if(!activeFolderId && folders.length > 0){
+        setActiveFolderId(folders[0].id);
+      }
+
+      if(activeFolderId && !folders.some(f => f.id === activeFolderId)){
+        setActiveFolderId(folders[0]?.id || "");
+      }
+    },[folders,activeFolderId]);
+
+    const activeFolder = folders.find(f => f.id === activeFolderId);
+    const activeFolderIds = activeFolderId ? (folderItems[activeFolderId] || []) : [];
+
+    const activeFolderItems = activeFolderIds
+      .map(id => items.find(i => i.id === id))
+      .filter(Boolean);
+
+    const availableItems = items
+      .filter(i => !isEv(i))
+      .filter(i => i.title)
+      .filter(i => activeFolderId ? !(folderItems[activeFolderId] || []).includes(i.id) : true)
+      .slice(0,120);
+
+    function createFolder(){
+      const name = folderDraftName.trim();
+      if(!name) return;
+
+      const id = `folder_${Date.now()}`;
+      const folder = {
+        id,
+        name,
+        createdAt: today(),
+      };
+
+      setFolders(prev => [...prev, folder]);
+      setFolderItems(prev => ({...prev, [id]: []}));
+      setFolderDraftName("");
+      setActiveFolderId(id);
+      showToast(`Dossier créé : ${name}`);
+    }
+
+    function deleteFolder(id){
+      const folder = folders.find(f => f.id === id);
+
+      setFolders(prev => prev.filter(f => f.id !== id));
+
+      setFolderItems(prev => {
+        const next = {...prev};
+        delete next[id];
+        return next;
+      });
+
+      showToast(`Dossier supprimé${folder?.name ? ` : ${folder.name}` : ""}`);
+    }
+
+    function addToFolder(folderId,itemId){
+      if(!folderId || !itemId) return;
+
+      setFolderItems(prev => {
+        const current = prev[folderId] || [];
+        if(current.includes(itemId)) return prev;
+        return {
+          ...prev,
+          [folderId]: [...current,itemId],
+        };
+      });
+
+      showToast("Article ajouté au dossier");
+    }
+
+    function removeFromFolder(folderId,itemId){
+      setFolderItems(prev => ({
+        ...prev,
+        [folderId]: (prev[folderId] || []).filter(id => id !== itemId),
+      }));
+
+      showToast("Article retiré du dossier");
+    }
+
+    function hideItemFromMain(itemId){
+      setHiddenFromMain(prev => new Set([...prev,itemId]));
+      showToast("Article masqué du flux principal");
+    }
+
+    function restoreItemToMain(itemId){
+      setHiddenFromMain(prev => {
+        const next = new Set(prev);
+        next.delete(itemId);
+        return next;
+      });
+
+      showToast("Article réaffiché dans le flux principal");
+    }
+
+    const folderButton = folder => {
+      const count = (folderItems[folder.id] || []).length;
+      const active = activeFolderId === folder.id;
+
+      return (
+        <button
+          key={folder.id}
+          onClick={()=>setActiveFolderId(folder.id)}
+          style={{
+            display:"flex",
+            justifyContent:"space-between",
+            alignItems:"center",
+            width:"100%",
+            padding:"8px 9px",
+            border:"none",
+            borderRadius:2,
+            background:active?C.ink:"transparent",
+            color:active?C.white:C.text,
+            cursor:"pointer",
+            fontSize:12,
+            fontFamily:sans,
+            marginBottom:3,
+            textAlign:"left",
+          }}
+        >
+          <span>{folder.name}</span>
+          <span style={{fontSize:10,opacity:.6}}>{count}</span>
+        </button>
+      );
+    };
+
+    const articleMini = (item,inFolder=false) => (
+      <div
+        key={item.id}
+        style={{
+          background:C.white,
+          border:`1px solid ${C.border}`,
+          padding:"12px 14px",
+          marginBottom:8,
+          display:"grid",
+          gridTemplateColumns:"minmax(0,1fr) auto",
+          gap:12,
+          alignItems:"start",
+        }}
+      >
+        <div style={{minWidth:0}}>
+          <div style={{
+            fontFamily:serif,
+            fontSize:15,
+            fontWeight:700,
+            color:C.ink,
+            lineHeight:1.25,
+            marginBottom:5,
+          }}>
+            {item.title}
+          </div>
+
+          <div style={{
+            fontSize:11,
+            color:C.muted,
+            lineHeight:1.55,
+            fontFamily:sans,
+          }}>
+            {String(item.summary || "").slice(0,160)}
+            {String(item.summary || "").length > 160 ? "…" : ""}
+          </div>
+
+          <div style={{
+            display:"flex",
+            flexWrap:"wrap",
+            gap:5,
+            marginTop:8,
+          }}>
+            {norm(item.themes).slice(0,3).map(t => (
+              <span
+                key={t}
+                style={{
+                  background:C.chip,
+                  color:C.chipText,
+                  borderRadius:2,
+                  padding:"2px 7px",
+                  fontSize:10,
+                  fontFamily:sans,
+                }}
+              >
+                {t}
+              </span>
+            ))}
+          </div>
+        </div>
+
+        <div style={{
+          display:"flex",
+          flexDirection:"column",
+          gap:5,
+          minWidth:120,
+        }}>
+          {inFolder ? (
+            <>
+              <button
+                onClick={()=>removeFromFolder(activeFolderId,item.id)}
+                style={{
+                  fontSize:9,
+                  letterSpacing:".08em",
+                  textTransform:"uppercase",
+                  padding:"5px 8px",
+                  border:`1px solid ${C.border}`,
+                  background:C.white,
+                  color:C.muted,
+                  cursor:"pointer",
+                  fontFamily:sans,
+                }}
+              >
+                retirer
+              </button>
+
+              {hiddenFromMain.has(item.id) ? (
+                <button
+                  onClick={()=>restoreItemToMain(item.id)}
+                  style={{
+                    fontSize:9,
+                    letterSpacing:".08em",
+                    textTransform:"uppercase",
+                    padding:"5px 8px",
+                    border:`1px solid ${C.green}`,
+                    background:"#f0faf4",
+                    color:C.green,
+                    cursor:"pointer",
+                    fontFamily:sans,
+                  }}
+                >
+                  réafficher
+                </button>
+              ) : (
+                <button
+                  onClick={()=>hideItemFromMain(item.id)}
+                  style={{
+                    fontSize:9,
+                    letterSpacing:".08em",
+                    textTransform:"uppercase",
+                    padding:"5px 8px",
+                    border:`1px solid ${C.accent}`,
+                    background:"#fdf5f0",
+                    color:C.accent,
+                    cursor:"pointer",
+                    fontFamily:sans,
+                  }}
+                >
+                  masquer flux
+                </button>
+              )}
+            </>
+          ) : (
+            <button
+              onClick={()=>addToFolder(activeFolderId,item.id)}
+              disabled={!activeFolderId}
+              style={{
+                fontSize:9,
+                letterSpacing:".08em",
+                textTransform:"uppercase",
+                padding:"5px 8px",
+                border:`1px solid ${activeFolderId ? C.accent : C.border}`,
+                background:activeFolderId ? C.accent : C.panelSoft,
+                color:activeFolderId ? C.white : C.muted,
+                cursor:activeFolderId ? "pointer" : "default",
+                fontFamily:sans,
+              }}
+            >
+              + dossier
+            </button>
+          )}
+        </div>
+      </div>
+    );
+
+    return(
+      <div style={{
+        flex:1,
+        display:"grid",
+        gridTemplateColumns:"260px 1fr",
+        minHeight:0,
+      }}>
+        <aside style={{
+          borderRight:`1px solid ${C.border}`,
+          background:C.white,
+          padding:18,
+          overflowY:"auto",
+        }}>
+          <div style={{...sc(),marginBottom:10}}>
+            dossiers
+          </div>
+
+          <div style={{
+            background:C.panelSoft,
+            border:`1px solid ${C.border}`,
+            padding:12,
+            marginBottom:14,
+          }}>
+            <input
+              value={folderDraftName}
+              onChange={e=>setFolderDraftName(e.target.value)}
+              onKeyDown={e=>e.key==="Enter"&&createFolder()}
+              placeholder="Nom du dossier…"
+              style={inp({marginBottom:8})}
+            />
+
+            <button
+              onClick={createFolder}
+              style={saveBtn()}
+              onMouseEnter={e=>(e.currentTarget.style.background=C.accent)}
+              onMouseLeave={e=>(e.currentTarget.style.background=C.ink)}
+            >
+              + créer un dossier
+            </button>
+          </div>
+
+          {folders.length===0 ? (
+            <div style={{
+              fontFamily:serif,
+              fontStyle:"italic",
+              color:C.muted,
+              fontSize:13,
+              lineHeight:1.5,
+              textAlign:"center",
+              padding:"20px 8px",
+            }}>
+              Aucun dossier pour le moment.
+            </div>
+          ) : (
+            folders.map(folderButton)
+          )}
+
+          {activeFolder && (
+            <button
+              onClick={()=>deleteFolder(activeFolder.id)}
+              style={{
+                width:"100%",
+                marginTop:14,
+                fontSize:9,
+                letterSpacing:".08em",
+                textTransform:"uppercase",
+                padding:"7px 8px",
+                border:`1px solid ${C.border}`,
+                background:"transparent",
+                color:C.muted,
+                cursor:"pointer",
+                fontFamily:sans,
+              }}
+            >
+              supprimer le dossier
+            </button>
+          )}
+        </aside>
+
+        <section style={{
+          padding:"20px 22px",
+          overflowY:"auto",
+        }}>
+          <div style={{
+            background:C.white,
+            border:`1px solid ${C.border}`,
+            padding:"18px 20px",
+            marginBottom:16,
+          }}>
+            <div style={{...sc(),marginBottom:8}}>
+              capitalisation
+            </div>
+
+            <div style={{
+              fontFamily:serif,
+              fontSize:26,
+              fontWeight:700,
+              color:C.ink,
+              marginBottom:6,
+            }}>
+              {activeFolder ? activeFolder.name : "Créer un premier dossier"}
+            </div>
+
+            <div style={{
+              fontSize:13,
+              color:C.muted,
+              lineHeight:1.6,
+              fontFamily:sans,
+            }}>
+              Un article placé dans un dossier reste conservé dans ce dossier. 
+              Le bouton “masquer flux” le retire seulement de la page Productions.
+            </div>
+          </div>
+
+          {activeFolder ? (
+            <div style={{
+              display:"grid",
+              gridTemplateColumns:"1fr 1fr",
+              gap:16,
+            }}>
+              <div>
+                <div style={{...sc(),marginBottom:10}}>
+                  articles conservés · {activeFolderItems.length}
+                </div>
+
+                {activeFolderItems.length===0 ? (
+                  <div style={{
+                    background:C.panelSoft,
+                    border:`1px dashed ${C.border}`,
+                    padding:24,
+                    textAlign:"center",
+                    fontFamily:serif,
+                    fontStyle:"italic",
+                    color:C.muted,
+                  }}>
+                    Aucun article dans ce dossier.
+                  </div>
+                ) : (
+                  activeFolderItems.map(item => articleMini(item,true))
+                )}
+              </div>
+
+              <div>
+                <div style={{...sc(),marginBottom:10}}>
+                  ajouter depuis le digest
+                </div>
+
+                {availableItems.length===0 ? (
+                  <div style={{
+                    background:C.panelSoft,
+                    border:`1px dashed ${C.border}`,
+                    padding:24,
+                    textAlign:"center",
+                    fontFamily:serif,
+                    fontStyle:"italic",
+                    color:C.muted,
+                  }}>
+                    Aucun autre article disponible.
+                  </div>
+                ) : (
+                  availableItems.map(item => articleMini(item,false))
+                )}
+              </div>
+            </div>
+          ) : (
+            <div style={{
+              background:C.panelSoft,
+              border:`1px dashed ${C.border}`,
+              padding:30,
+              textAlign:"center",
+              fontFamily:serif,
+              fontStyle:"italic",
+              color:C.muted,
+            }}>
+              Crée un dossier à gauche pour commencer.
+            </div>
+          )}
+        </section>
+      </div>
+    );
+  }
   return(
     <div style={{minHeight:"100vh",background:C.page,fontFamily:sans,color:C.text}}>
       {toast&&(
@@ -3000,7 +3453,7 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
     </button>
   ))}
 
-  {!["agenda", "signaux faibles", "experts", "produire", "point veille", "graphe"].includes(tab) && (
+ !["agenda", "signaux faibles", "experts", "produire", "point veille", "graphe", "dossiers"].includes(tab) && (
     <input
       value={query}
       onChange={e => setQuery(e.target.value)}
