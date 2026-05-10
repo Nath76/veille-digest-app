@@ -1130,7 +1130,8 @@ function restoreItemToMain(itemId) {
       </div>
     );
   }
-function GrapheView(){
+
+  function GrapheView(){
   const graphItems = items.filter(i => graphSelectedIds.has(i.id) && !dismissed.has(i.id) && !isEv(i));
   const count = graphItems.length;
 
@@ -1145,6 +1146,14 @@ function GrapheView(){
   const [mergeNodeType, setMergeNodeType] = useState("actors");
   const [mergeSearch, setMergeSearch] = useState("");
   const [mergeTarget, setMergeTarget] = useState("");
+
+  const nodeColors = {
+    institution: "#6E2448", // prune profond
+    actor: "#4F6F5A",       // vert sauge
+    theme: "#D6633A",       // orange brique
+    concept: "#9D8F69",     // sable olive
+    innovation: "#2F6F83"   // bleu pétrole
+  };
 
   const graphStats = useMemo(() => {
     const institutions = new Set();
@@ -1340,10 +1349,10 @@ function GrapheView(){
       short: "Institutions → Thèmes",
       sourceLabel: "Institutions",
       targetLabel: "Thèmes",
+      sourceType: "institution",
+      targetType: "theme",
       subtitle: "Visualiser la surface thématique des institutions présentes dans la sélection.",
       rows: filterRows(graphStats.institutionThemes, "institutionThemes"),
-      sourceColor: "#5b3758",
-      targetColor: "#b8653b",
       emptyText: "Aucune relation Institution → Thème détectée.",
     },
     institutionConcepts: {
@@ -1351,10 +1360,10 @@ function GrapheView(){
       short: "Institutions → Concepts",
       sourceLabel: "Institutions",
       targetLabel: "Concepts",
+      sourceType: "institution",
+      targetType: "concept",
       subtitle: "Visualiser la surface conceptuelle des institutions présentes dans la sélection.",
       rows: filterRows(graphStats.institutionConcepts, "institutionConcepts"),
-      sourceColor: "#5b3758",
-      targetColor: "#8a6a38",
       emptyText: "Aucune relation Institution → Concept détectée.",
     },
     actorThemes: {
@@ -1362,10 +1371,10 @@ function GrapheView(){
       short: "Acteurs → Thèmes",
       sourceLabel: "Acteurs",
       targetLabel: "Thèmes",
+      sourceType: "actor",
+      targetType: "theme",
       subtitle: "Observer les thèmes associés aux acteurs cités par les articles.",
       rows: filterRows(graphStats.actorThemes, "actorThemes"),
-      sourceColor: "#60724d",
-      targetColor: "#b8653b",
       emptyText: "Aucune relation Acteur → Thème détectée.",
     },
     actorConcepts: {
@@ -1373,11 +1382,22 @@ function GrapheView(){
       short: "Acteurs → Concepts",
       sourceLabel: "Acteurs",
       targetLabel: "Concepts",
+      sourceType: "actor",
+      targetType: "concept",
       subtitle: "Observer les concepts associés aux acteurs cités par les articles.",
       rows: filterRows(graphStats.actorConcepts, "actorConcepts"),
-      sourceColor: "#60724d",
-      targetColor: "#8a6a38",
       emptyText: "Aucune relation Acteur → Concept détectée.",
+    },
+    fullGraph: {
+      title: "Graphe complet",
+      short: "Graphe complet",
+      sourceLabel: "Institutions / Acteurs",
+      targetLabel: "Thèmes / Concepts",
+      sourceType: "institution",
+      targetType: "theme",
+      subtitle: "Afficher ensemble les institutions, acteurs, thèmes et concepts issus du corpus sélectionné.",
+      rows: [],
+      emptyText: "Aucune relation complète détectée.",
     },
   };
 
@@ -1481,6 +1501,10 @@ function GrapheView(){
   const graphRowsForDrawing = activeView ? activeView.rows.slice(0, showTopOnly ? 8 : 10) : [];
 
   const renderGraphSvg = () => {
+    if (activeGraphView === "fullGraph") {
+      return renderFullGraphSvg();
+    }
+
     if (!activeView || graphRowsForDrawing.length === 0) {
       return (
         <div style={{
@@ -1499,26 +1523,51 @@ function GrapheView(){
       );
     }
 
-    const leftNodes = graphRowsForDrawing.slice(0, 6);
+    const leftNodes = graphRowsForDrawing.slice(0, 7);
     const targetSet = new Set();
-    leftNodes.forEach(row => row.values.slice(0, 5).forEach(v => targetSet.add(v)));
-    const rightNodes = Array.from(targetSet).slice(0, 10);
+
+    leftNodes.forEach(row => {
+      row.values.slice(0, 6).forEach(v => targetSet.add(v));
+    });
+
+    const rightNodes = Array.from(targetSet).slice(0, 12);
 
     const W = 780;
     const H = 500;
     const leftX = 170;
     const rightX = 610;
 
-    const leftY = leftNodes.map((_, i) => 80 + i * (Math.min(360, H - 150) / Math.max(1, leftNodes.length - 1 || 1)));
-    const rightY = rightNodes.map((_, i) => 55 + i * (Math.min(410, H - 100) / Math.max(1, rightNodes.length - 1 || 1)));
+    const leftY = leftNodes.map((_, i) =>
+      80 + i * (Math.min(360, H - 150) / Math.max(1, leftNodes.length - 1 || 1))
+    );
+
+    const rightY = rightNodes.map((_, i) =>
+      55 + i * (Math.min(410, H - 100) / Math.max(1, rightNodes.length - 1 || 1))
+    );
 
     const rightIndex = {};
-    rightNodes.forEach((n, i) => { rightIndex[n] = i; });
+    rightNodes.forEach((n, i) => {
+      rightIndex[n] = i;
+    });
+
+    const targetDegree = {};
+    leftNodes.forEach(row => {
+      row.values.slice(0, 6).forEach(target => {
+        targetDegree[target] = (targetDegree[target] || 0) + 1;
+      });
+    });
 
     const shortLabel = (txt, max = 25) => {
       const s = String(txt || "");
       return s.length > max ? s.slice(0, max - 1) + "…" : s;
     };
+
+    const radiusFromDegree = (degree, base = 13, step = 4, max = 34) => {
+      return Math.min(max, base + Math.sqrt(Math.max(1, degree)) * step);
+    };
+
+    const sourceColor = nodeColors[activeView.sourceType] || C.accent;
+    const targetColor = nodeColors[activeView.targetType] || C.muted;
 
     return (
       <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="500" role="img" style={{
@@ -1537,21 +1586,21 @@ function GrapheView(){
         {leftNodes.map((row, i) => {
           const y1 = leftY[i];
 
-          return row.values.slice(0, 5).map(target => {
+          return row.values.slice(0, 6).map(target => {
             const j = rightIndex[target];
             if (j === undefined) return null;
 
             const y2 = rightY[j];
-            const strength = Math.min(4, Math.max(1.2, row.count / 2));
+            const strength = Math.min(5, Math.max(1.2, row.count / 2));
 
             return (
               <path
                 key={`${row.name}-${target}`}
                 d={`M ${leftX + 36} ${y1} C ${leftX + 190} ${y1}, ${rightX - 190} ${y2}, ${rightX - 36} ${y2}`}
                 fill="none"
-                stroke="#b89b7a"
+                stroke="#9b7b5c"
                 strokeWidth={strength}
-                opacity="0.38"
+                opacity="0.42"
               />
             );
           });
@@ -1559,11 +1608,11 @@ function GrapheView(){
 
         {leftNodes.map((row, i) => {
           const y = leftY[i];
-          const r = 23 + Math.min(12, row.count * 2);
+          const r = radiusFromDegree(row.count, 15, 5, 38);
 
           return (
             <g key={row.name} filter="url(#softShadowGraph)">
-              <circle cx={leftX} cy={y} r={r} fill={activeView.sourceColor} />
+              <circle cx={leftX} cy={y} r={r} fill={sourceColor} />
               <text
                 x={leftX}
                 y={y + 4}
@@ -1581,9 +1630,10 @@ function GrapheView(){
                 textAnchor="end"
                 fontFamily={sans}
                 fontSize="11"
+                fontWeight="600"
                 fill={C.ink}
               >
-                {shortLabel(row.name, 26)}
+                {shortLabel(row.name, 27)}
               </text>
             </g>
           );
@@ -1591,32 +1641,258 @@ function GrapheView(){
 
         {rightNodes.map((name, i) => {
           const y = rightY[i];
+          const degree = targetDegree[name] || 1;
+          const r = radiusFromDegree(degree, 12, 4, 30);
 
           return (
             <g key={name} filter="url(#softShadowGraph)">
-              <circle cx={rightX} cy={y} r="20" fill={activeView.targetColor} />
+              <circle cx={rightX} cy={y} r={r} fill={targetColor} />
               <text
-                x={rightX + 28}
+                x={rightX + r + 8}
                 y={y + 4}
                 fontFamily={sans}
                 fontSize="11"
+                fontWeight="600"
                 fill={C.ink}
               >
-                {shortLabel(name, 30)}
+                {shortLabel(name, 31)}
               </text>
             </g>
           );
         })}
 
         <g transform="translate(24 455)">
-          <circle cx="0" cy="0" r="7" fill={activeView.sourceColor} />
-          <text x="14" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>{activeView.sourceLabel}</text>
+          <circle cx="0" cy="0" r="7" fill={sourceColor} />
+          <text x="14" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>
+            {activeView.sourceLabel}
+          </text>
 
-          <circle cx="125" cy="0" r="7" fill={activeView.targetColor} />
-          <text x="139" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>{activeView.targetLabel}</text>
+          <circle cx="150" cy="0" r="7" fill={targetColor} />
+          <text x="164" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>
+            {activeView.targetLabel}
+          </text>
 
-          <line x1="270" y1="0" x2="320" y2="0" stroke="#b89b7a" strokeWidth="4" opacity="0.5" />
-          <text x="330" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>lien plus fréquent</text>
+          <line x1="315" y1="0" x2="365" y2="0" stroke="#9b7b5c" strokeWidth="4" opacity="0.5" />
+          <text x="375" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>
+            lien plus fréquent
+          </text>
+        </g>
+      </svg>
+    );
+  };
+
+  const renderFullGraphSvg = () => {
+    const shortLabel = (txt, max = 24) => {
+      const s = String(txt || "");
+      return s.length > max ? s.slice(0, max - 1) + "…" : s;
+    };
+
+    const radiusFromDegree = (degree, base = 10, step = 4, max = 32) => {
+      return Math.min(max, base + Math.sqrt(Math.max(1, degree)) * step);
+    };
+
+    const links = [];
+
+    const addLinksFromRows = (rows, sourceType, targetType) => {
+      rows.forEach(row => {
+        row.values.forEach(value => {
+          links.push({
+            source: row.name,
+            target: value,
+            sourceType,
+            targetType,
+          });
+        });
+      });
+    };
+
+    addLinksFromRows(filterRows(graphStats.institutionThemes, "institutionThemes"), "institution", "theme");
+    addLinksFromRows(filterRows(graphStats.institutionConcepts, "institutionConcepts"), "institution", "concept");
+    addLinksFromRows(filterRows(graphStats.actorThemes, "actorThemes"), "actor", "theme");
+    addLinksFromRows(filterRows(graphStats.actorConcepts, "actorConcepts"), "actor", "concept");
+
+    const degree = {};
+    links.forEach(link => {
+      const sKey = `${link.sourceType}:${link.source}`;
+      const tKey = `${link.targetType}:${link.target}`;
+      degree[sKey] = (degree[sKey] || 0) + 1;
+      degree[tKey] = (degree[tKey] || 0) + 1;
+    });
+
+    const makeNodes = (type, values, maxCount) => {
+      return values
+        .map(name => ({
+          id: `${type}:${name}`,
+          name,
+          type,
+          degree: degree[`${type}:${name}`] || 0,
+        }))
+        .filter(node => node.degree > 0 || !hideIsolated)
+        .sort((a, b) => b.degree - a.degree || a.name.localeCompare(b.name, "fr"))
+        .slice(0, maxCount);
+    };
+
+    const institutionNodes = makeNodes("institution", graphStats.institutionList, showTopOnly ? 5 : 7);
+    const actorNodes = makeNodes("actor", graphStats.actorList, showTopOnly ? 5 : 8);
+    const themeNodes = makeNodes("theme", graphStats.themeList, showTopOnly ? 6 : 9);
+    const conceptNodes = makeNodes("concept", graphStats.conceptList, showTopOnly ? 6 : 10);
+
+    const allNodes = [
+      ...institutionNodes,
+      ...actorNodes,
+      ...themeNodes,
+      ...conceptNodes,
+    ];
+
+    const nodeMap = {};
+    allNodes.forEach(node => {
+      nodeMap[node.id] = node;
+    });
+
+    const visibleLinks = links.filter(link => {
+      return nodeMap[`${link.sourceType}:${link.source}`] && nodeMap[`${link.targetType}:${link.target}`];
+    });
+
+    if (allNodes.length === 0 || visibleLinks.length === 0) {
+      return (
+        <div style={{
+          minHeight: 420,
+          display: "flex",
+          alignItems: "center",
+          justifyContent: "center",
+          background: "#fbfaf6",
+          border: `1px dashed ${C.border}`,
+          color: C.muted,
+          fontFamily: serif,
+          fontStyle: "italic",
+        }}>
+          Aucune relation complète détectée dans cette sélection.
+        </div>
+      );
+    }
+
+    const W = 900;
+    const H = 540;
+
+    const placeColumn = (nodes, x, yStart, yEnd) => {
+      const span = yEnd - yStart;
+      nodes.forEach((node, i) => {
+        node.x = x;
+        node.y = yStart + i * (span / Math.max(1, nodes.length - 1 || 1));
+      });
+    };
+
+    placeColumn(institutionNodes, 210, 85, 230);
+    placeColumn(actorNodes, 210, 330, 470);
+    placeColumn(themeNodes, 665, 80, 250);
+    placeColumn(conceptNodes, 665, 330, 480);
+
+    return (
+      <svg viewBox={`0 0 ${W} ${H}`} width="100%" height="540" role="img" style={{
+        display: "block",
+        background: "#fbfaf6",
+        border: `1px solid ${C.border}`,
+      }}>
+        <defs>
+          <filter id="softShadowGraphFull" x="-20%" y="-20%" width="140%" height="140%">
+            <feDropShadow dx="0" dy="3" stdDeviation="4" floodColor="#2b2a24" floodOpacity="0.12" />
+          </filter>
+        </defs>
+
+        <rect x="0" y="0" width={W} height={H} fill="#fbfaf6" />
+
+        <text x="72" y="42" fontFamily={sans} fontSize="11" fontWeight="700" fill={nodeColors.institution}>
+          Institutions
+        </text>
+        <text x="72" y="302" fontFamily={sans} fontSize="11" fontWeight="700" fill={nodeColors.actor}>
+          Acteurs
+        </text>
+        <text x="710" y="42" fontFamily={sans} fontSize="11" fontWeight="700" fill={nodeColors.theme}>
+          Thèmes
+        </text>
+        <text x="710" y="302" fontFamily={sans} fontSize="11" fontWeight="700" fill={nodeColors.concept}>
+          Concepts
+        </text>
+
+        {visibleLinks.map((link, index) => {
+          const source = nodeMap[`${link.sourceType}:${link.source}`];
+          const target = nodeMap[`${link.targetType}:${link.target}`];
+
+          if (!source || !target) return null;
+
+          const strength = Math.min(3.8, 1 + (source.degree + target.degree) / 18);
+          const stroke =
+            link.targetType === "theme"
+              ? nodeColors.theme
+              : nodeColors.concept;
+
+          return (
+            <path
+              key={`${link.sourceType}-${link.source}-${link.targetType}-${link.target}-${index}`}
+              d={`M ${source.x + 28} ${source.y} C ${source.x + 180} ${source.y}, ${target.x - 180} ${target.y}, ${target.x - 28} ${target.y}`}
+              fill="none"
+              stroke={stroke}
+              strokeWidth={strength}
+              opacity="0.28"
+            />
+          );
+        })}
+
+        {allNodes.map(node => {
+          const r = radiusFromDegree(node.degree);
+          const color = nodeColors[node.type] || C.accent;
+          const labelX = node.x < W / 2 ? node.x - r - 10 : node.x + r + 10;
+          const anchor = node.x < W / 2 ? "end" : "start";
+
+          return (
+            <g key={node.id} filter="url(#softShadowGraphFull)">
+              <circle cx={node.x} cy={node.y} r={r} fill={color} />
+
+              {node.degree > 0 && (
+                <text
+                  x={node.x}
+                  y={node.y + 4}
+                  textAnchor="middle"
+                  fontFamily={sans}
+                  fontSize="9"
+                  fontWeight="700"
+                  fill="#fffdf8"
+                >
+                  {node.degree}
+                </text>
+              )}
+
+              <text
+                x={labelX}
+                y={node.y + 4}
+                textAnchor={anchor}
+                fontFamily={sans}
+                fontSize="11"
+                fontWeight="600"
+                fill={C.ink}
+              >
+                {shortLabel(node.name, 27)}
+              </text>
+            </g>
+          );
+        })}
+
+        <g transform="translate(44 505)">
+          <circle cx="0" cy="0" r="7" fill={nodeColors.institution} />
+          <text x="14" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>Institutions</text>
+
+          <circle cx="115" cy="0" r="7" fill={nodeColors.actor} />
+          <text x="129" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>Acteurs</text>
+
+          <circle cx="215" cy="0" r="7" fill={nodeColors.theme} />
+          <text x="229" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>Thèmes</text>
+
+          <circle cx="315" cy="0" r="7" fill={nodeColors.concept} />
+          <text x="329" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>Concepts</text>
+
+          <text x="455" y="4" fontFamily={sans} fontSize="10" fill={C.muted}>
+            La taille varie selon le nombre de connexions.
+          </text>
         </g>
       </svg>
     );
@@ -1639,7 +1915,7 @@ function GrapheView(){
         Ces options réduisent la vue affichée. Elles ne modifient pas les données du digest.
       </p>
 
-      {(activeGraphView === "institutionThemes" || activeGraphView === "institutionConcepts") && (
+      {(activeGraphView === "institutionThemes" || activeGraphView === "institutionConcepts" || activeGraphView === "fullGraph") && (
         <label style={{display:"block",marginBottom:12}}>
           <div style={{...sc(),fontSize:8,marginBottom:5}}>Institution</div>
           <select value={filterInstitution} onChange={e => setFilterInstitution(e.target.value)} style={fieldStyle}>
@@ -1649,7 +1925,7 @@ function GrapheView(){
         </label>
       )}
 
-      {(activeGraphView === "actorThemes" || activeGraphView === "actorConcepts") && (
+      {(activeGraphView === "actorThemes" || activeGraphView === "actorConcepts" || activeGraphView === "fullGraph") && (
         <label style={{display:"block",marginBottom:12}}>
           <div style={{...sc(),fontSize:8,marginBottom:5}}>Acteur</div>
           <select value={filterActor} onChange={e => setFilterActor(e.target.value)} style={fieldStyle}>
@@ -1659,7 +1935,7 @@ function GrapheView(){
         </label>
       )}
 
-      {(activeGraphView === "institutionThemes" || activeGraphView === "actorThemes") && (
+      {(activeGraphView === "institutionThemes" || activeGraphView === "actorThemes" || activeGraphView === "fullGraph") && (
         <label style={{display:"block",marginBottom:12}}>
           <div style={{...sc(),fontSize:8,marginBottom:5}}>Thème</div>
           <select value={filterTheme} onChange={e => setFilterTheme(e.target.value)} style={fieldStyle}>
@@ -1669,7 +1945,7 @@ function GrapheView(){
         </label>
       )}
 
-      {(activeGraphView === "institutionConcepts" || activeGraphView === "actorConcepts") && (
+      {(activeGraphView === "institutionConcepts" || activeGraphView === "actorConcepts" || activeGraphView === "fullGraph") && (
         <label style={{display:"block",marginBottom:12}}>
           <div style={{...sc(),fontSize:8,marginBottom:5}}>Concept</div>
           <select value={filterConcept} onChange={e => setFilterConcept(e.target.value)} style={fieldStyle}>
@@ -1724,8 +2000,18 @@ function GrapheView(){
         <div style={{...sc(),fontSize:8,marginBottom:8}}>Comment lire ce graphe ?</div>
 
         <div style={{fontSize:12,lineHeight:1.65,color:C.text,display:"grid",gap:8}}>
-          <div>● Les nœuds de gauche sont les entités de départ.</div>
-          <div>● Les nœuds de droite sont les thèmes ou concepts associés.</div>
+          <div>
+            <span style={{color:nodeColors.institution,fontWeight:700}}>●</span> Les institutions sont en prune.
+          </div>
+          <div>
+            <span style={{color:nodeColors.actor,fontWeight:700}}>●</span> Les acteurs sont en vert sauge.
+          </div>
+          <div>
+            <span style={{color:nodeColors.theme,fontWeight:700}}>●</span> Les thèmes sont en orange brique.
+          </div>
+          <div>
+            <span style={{color:nodeColors.concept,fontWeight:700}}>●</span> Les concepts sont en sable olive.
+          </div>
           <div>● Plus un nœud est gros, plus il porte d’associations.</div>
           <div>● Les liens représentent les associations issues des articles sélectionnés.</div>
         </div>
@@ -2032,7 +2318,7 @@ function GrapheView(){
 
               {activeGraphView === "fusion" ? renderFusionCenter() : renderGraphSvg()}
 
-              {activeGraphView !== "fusion" && activeView && activeView.rows.length > 0 && (
+              {activeGraphView !== "fusion" && activeGraphView !== "fullGraph" && activeView && activeView.rows.length > 0 && (
                 <div style={{
                   marginTop:12,
                   background:C.panelSoft,
