@@ -2948,14 +2948,16 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
 
          <div style={{display:"flex",alignItems:"center",borderBottom:`1px solid ${C.border}`,padding:"0 22px"}}>
   {[
-    ["productions", pubCount],
-    ["événements", evtCount],
-    ["agenda", events.length],
-    ["signaux faibles", signals.filter(s => s.status !== "confirmé").length],
-    ["experts", experts.length],
-    ["produire", ""],
-    ["point veille", ""],
-    ["graphe", graphSelectedIds.size],
+  ["productions", pubCount],
+  ["événements", evtCount],
+  ["agenda", events.length],
+  ["signaux faibles", signals.filter(s => s.status !== "confirmé").length],
+  ["experts", experts.length],
+  ["produire", ""],
+  ["point veille", ""],
+  ["graphe", graphSelectedIds.size],
+  ["dossiers", folders.length],
+]
   ].map(([key, count]) => (
     <button
       key={key}
