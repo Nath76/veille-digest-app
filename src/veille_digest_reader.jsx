@@ -1,11 +1,37 @@
 import React, { useEffect, useMemo, useState, useCallback, useRef } from "react";
-
 const C = {
-  page:"#f2efe8",panel:"#e7e0d0",panelSoft:"#ede7d8",
-  border:"#cbbfa8",text:"#1e293b",muted:"#7a6f5c",
-  accent:"#8a4b22",dark:"#2b2a24",ink:"#18180f",white:"#fffdf8",
-  chip:"#e8e0d0",chipText:"#4f4638",
-  green:"#1f7a45",noteBg:"#dbeafe",noteText:"#1d4ed8",
+  // Fond général
+  page: "#f5f0e6",
+
+  // Panneaux
+  panel: "#e7ddcc",
+  panelSoft: "#efe7d8",
+
+  // Bordures
+  border: "#d0bea2",
+
+  // Textes
+  text: "#2d2a23",
+  muted: "#8a7962",
+
+  // Accent principal
+  accent: "#a46a32",
+
+  // Contraste fort, mais moins noir brutal
+  dark: "#242218",
+  ink: "#16160f",
+
+  // Blanc chaud
+  white: "#fffaf0",
+
+  // Chips / tags
+  chip: "#eadfcd",
+  chipText: "#4c4031",
+
+  // États
+  green: "#1f7a45",
+  noteBg: "#e7eef8",
+  noteText: "#274c77",
 };
 const serif = "'Playfair Display', Georgia, serif";
 const sans  = "'DM Sans', Inter, ui-sans-serif, sans-serif";
