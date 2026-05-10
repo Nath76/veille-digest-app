@@ -2766,11 +2766,40 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
   display: tab === "graphe" ? "none" : "flex",
   flexDirection: "column",
 }}>
-  <div style={{padding:"20px 22px 16px",borderBottom:`4px double ${C.ink}`}}>
-    <div style={{...sc(),fontSize:9,marginBottom:6}}>digest éditorial</div>
-    <div style={{fontFamily:serif,fontSize:40,fontWeight:900,lineHeight:.9,color:C.ink,letterSpacing:-1}}>Veille</div>
-    <div style={{fontFamily:serif,fontStyle:"italic",fontSize:13,color:C.muted,marginTop:7,lineHeight:1.4,borderTop:`1px solid ${C.border}`,paddingTop:7}}>digest éditorial<br/>propulsé par JSON</div>
+<div style={{
+  padding: "22px 20px 18px",
+  borderBottom: `4px double ${C.ink}`,
+  background: C.page,
+  textAlign: "center"
+}}>
+  <img
+    src={`${import.meta.env.BASE_URL}veilleur-studio-logo.png`}
+    alt="Veilleur Studio"
+    style={{
+      width: "100%",
+      maxWidth: 230,
+      display: "block",
+      margin: "0 auto 14px",
+      objectFit: "contain"
+    }}
+  />
+
+  <div style={{
+    height: 1,
+    background: C.border,
+    margin: "12px 0 10px"
+  }} />
+
+  <div style={{
+    fontFamily: sans,
+    fontSize: 9,
+    letterSpacing: ".15em",
+    textTransform: "uppercase",
+    color: C.muted
+  }}>
+    Stratégie · veille · innovation
   </div>
+</div>
             <div style={{background:C.ink,padding:"10px 22px"}}>
               <div style={{...sc(),fontSize:9,color:"#9a8f7a"}}>édition du jour</div>
               <div style={{fontFamily:serif,fontSize:14,color:C.white,marginTop:2}}>{todayLong}</div>
