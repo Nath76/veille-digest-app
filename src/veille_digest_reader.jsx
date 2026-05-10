@@ -266,6 +266,7 @@ const [pvWordColor,     setPvWordColor]     = useState("#18180f");
   const [pvDirectAssign,  setPvDirectAssign]  = useState({});
   const [pvAssignedTop,   setPvAssignedTop]   = useState({s1:[],s2:[],s3:[],s4:[]});
   const [pvExternalsTop,  setPvExternalsTop]  = useState({s1:[],s2:[],s3:[],s4:[]});
+  const folderInputRef = useRef(null);
 
   const prevIds  = useRef(new Set());
   const toastTmr = useRef(null);
@@ -1014,7 +1015,7 @@ function restoreToMain(itemId) {
   }
 // ── DOSSIERS · FONCTIONS UTILITAIRES ─────────────────────
 function createFolder() {
-  const name = folderDraftName.trim();
+  const name = folderInputRef.current?.value?.trim();
   if (!name) return;
 
   const id = "folder-" + Date.now();
@@ -1034,37 +1035,10 @@ function createFolder() {
   }));
 
   setActiveFolderId(id);
-  setFolderDraftName("");
-}
 
-function addItemToFolder(itemId, folderId) {
-  if (!itemId || !folderId) return;
-
-  setFolderItems(prev => {
-    const current = prev[folderId] || [];
-
-    if (current.includes(itemId)) {
-      return prev;
-    }
-
-    return {
-      ...prev,
-      [folderId]: [...current, itemId]
-    };
-  });
-}
-
-function removeItemFromFolder(itemId, folderId) {
-  if (!itemId || !folderId) return;
-
-  setFolderItems(prev => {
-    const current = prev[folderId] || [];
-
-    return {
-      ...prev,
-      [folderId]: current.filter(id => id !== itemId)
-    };
-  });
+  if (folderInputRef.current) {
+    folderInputRef.current.value = "";
+  }
 }
 
 function hideItemFromMain(itemId) {
@@ -2902,6 +2876,7 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
   // ── VUE DOSSIERS / CAPITALISATION ─────────────────────────
   function DossiersView(){
     const [activeFolderId, setActiveFolderId] = useState(folders[0]?.id || "");
+    const folderInputRef = useRef(null);
 
     useEffect(()=>{
       if(!activeFolderId && folders.length > 0){
@@ -3196,8 +3171,7 @@ body{font-family:Georgia,serif;color:#1a1a1a;background:white;font-size:11pt;lin
             marginBottom:14,
           }}>
             <input
-              value={folderDraftName}
-              onChange={e=>setFolderDraftName(e.target.value)}
+              ref={folderInputRef}
               onKeyDown={e=>e.key==="Enter"&&createFolder()}
               placeholder="Nom du dossier…"
               style={inp({marginBottom:8})}
