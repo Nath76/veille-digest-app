@@ -1148,11 +1148,11 @@ function restoreItemToMain(itemId) {
   const [mergeTarget, setMergeTarget] = useState("");
 
   const nodeColors = {
-    institution: "#6E2448", // prune profond
-    actor: "#4F6F5A",       // vert sauge
-    theme: "#D6633A",       // orange brique
-    concept: "#9D8F69",     // sable olive
-    innovation: "#2F6F83"   // bleu pétrole
+    institution: "#6E2448",
+    actor: "#4F6F5A",
+    theme: "#D6633A",
+    concept: "#9D8F69",
+    innovation: "#2F6F83"
   };
 
   const graphStats = useMemo(() => {
@@ -1167,16 +1167,58 @@ function restoreItemToMain(itemId) {
     const actorThemes = new Map();
     const actorConcepts = new Map();
 
+    const themeCooc = new Map();
+    const actorCooc = new Map();
+    const conceptCooc = new Map();
+
+    const centrality = {
+      institution: new Map(),
+      actor: new Map(),
+      theme: new Map(),
+      concept: new Map(),
+    };
+
+    const clean = (v) => String(v || "").trim();
+
+    const addCentrality = (type, name, amount = 1) => {
+      const n = clean(name);
+      if (!n || !centrality[type]) return;
+      centrality[type].set(n, (centrality[type].get(n) || 0) + amount);
+    };
+
     const addToMapSet = (map, key, value) => {
       if (!key || !value) return;
 
-      const cleanKey = String(key).trim();
-      const cleanValue = String(value).trim();
+      const cleanKey = clean(key);
+      const cleanValue = clean(value);
 
       if (!cleanKey || !cleanValue) return;
 
       if (!map.has(cleanKey)) map.set(cleanKey, new Set());
       map.get(cleanKey).add(cleanValue);
+    };
+
+    const addCooc = (map, values) => {
+      const arr = Array.from(new Set(values.map(clean).filter(Boolean)))
+        .sort((a, b) => a.localeCompare(b, "fr"));
+
+      for (let i = 0; i < arr.length; i += 1) {
+        for (let j = i + 1; j < arr.length; j += 1) {
+          const a = arr[i];
+          const b = arr[j];
+          const key = `${a}|||${b}`;
+
+          if (!map.has(key)) {
+            map.set(key, {
+              a,
+              b,
+              count: 0,
+            });
+          }
+
+          map.get(key).count += 1;
+        }
+      }
     };
 
     const mapSetToArray = (map) => {
@@ -1187,6 +1229,46 @@ function restoreItemToMain(itemId) {
           count: values.size,
         }))
         .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "fr"));
+    };
+
+    const coocMapToRows = (map) => {
+      const grouped = new Map();
+
+      Array.from(map.values()).forEach(pair => {
+        if (!grouped.has(pair.a)) {
+          grouped.set(pair.a, {
+            name: pair.a,
+            values: [],
+            weights: {},
+            count: 0,
+          });
+        }
+
+        grouped.get(pair.a).values.push(pair.b);
+        grouped.get(pair.a).weights[pair.b] = pair.count;
+        grouped.get(pair.a).count += pair.count;
+      });
+
+      return Array.from(grouped.values())
+        .map(row => ({
+          ...row,
+          values: row.values.sort((a, b) => {
+            const wa = row.weights[a] || 0;
+            const wb = row.weights[b] || 0;
+            return wb - wa || a.localeCompare(b, "fr");
+          }),
+        }))
+        .sort((a, b) => b.count - a.count || a.name.localeCompare(b.name, "fr"));
+    };
+
+    const centralityToArray = (type) => {
+      return Array.from(centrality[type].entries())
+        .map(([name, score]) => ({
+          name,
+          type,
+          score,
+        }))
+        .sort((a, b) => b.score - a.score || a.name.localeCompare(b.name, "fr"));
     };
 
     const getActorsFromItem = (item) => {
@@ -1229,28 +1311,44 @@ function restoreItemToMain(itemId) {
     };
 
     graphItems.forEach(item => {
-      const institution = item.institution ? String(item.institution).trim() : "";
+      const institution = item.institution ? clean(item.institution) : "";
 
       const itemActors = norm(getActorsFromItem(item))
-        .map(v => String(v).trim())
+        .map(clean)
         .filter(Boolean);
 
       const itemConcepts = norm(item.keywords)
-        .map(v => String(v).trim())
+        .map(clean)
         .filter(Boolean);
 
       const itemThemes = norm(item.themes)
-        .map(v => String(v).trim())
+        .map(clean)
         .filter(Boolean);
 
       const itemInnovations = norm(item.innovations)
-        .map(v => String(v).trim())
+        .map(clean)
         .filter(v => v && v !== "Aucune" && v !== "Aucun");
 
-      if (institution) institutions.add(institution);
-      itemActors.forEach(actor => acteurs.add(actor));
-      itemConcepts.forEach(concept => concepts.add(concept));
-      itemThemes.forEach(theme => themes.add(theme));
+      if (institution) {
+        institutions.add(institution);
+        addCentrality("institution", institution, itemThemes.length + itemConcepts.length);
+      }
+
+      itemActors.forEach(actor => {
+        acteurs.add(actor);
+        addCentrality("actor", actor, itemThemes.length + itemConcepts.length);
+      });
+
+      itemConcepts.forEach(concept => {
+        concepts.add(concept);
+        addCentrality("concept", concept, (institution ? 1 : 0) + itemActors.length + Math.max(1, itemConcepts.length - 1));
+      });
+
+      itemThemes.forEach(theme => {
+        themes.add(theme);
+        addCentrality("theme", theme, (institution ? 1 : 0) + itemActors.length + Math.max(1, itemThemes.length - 1));
+      });
+
       itemInnovations.forEach(innovation => innovations.add(innovation));
 
       if (institution) {
@@ -1262,6 +1360,10 @@ function restoreItemToMain(itemId) {
         itemThemes.forEach(theme => addToMapSet(actorThemes, actor, theme));
         itemConcepts.forEach(concept => addToMapSet(actorConcepts, actor, concept));
       });
+
+      addCooc(themeCooc, itemThemes);
+      addCooc(actorCooc, itemActors);
+      addCooc(conceptCooc, itemConcepts);
     });
 
     return {
@@ -1281,6 +1383,15 @@ function restoreItemToMain(itemId) {
       institutionConcepts: mapSetToArray(institutionConcepts),
       actorThemes: mapSetToArray(actorThemes),
       actorConcepts: mapSetToArray(actorConcepts),
+
+      themeCooc: coocMapToRows(themeCooc),
+      actorCooc: coocMapToRows(actorCooc),
+      conceptCooc: coocMapToRows(conceptCooc),
+
+      centralityInstitutions: centralityToArray("institution"),
+      centralityActors: centralityToArray("actor"),
+      centralityThemes: centralityToArray("theme"),
+      centralityConcepts: centralityToArray("concept"),
     };
   }, [graphItems]);
 
@@ -1338,6 +1449,39 @@ function restoreItemToMain(itemId) {
         }));
     }
 
+    if (type === "themeCooc" && filterTheme) {
+      filtered = filtered
+        .map(row => ({
+          ...row,
+          values: row.name === filterTheme
+            ? row.values
+            : row.values.filter(v => v === filterTheme),
+        }))
+        .filter(row => row.name === filterTheme || row.values.length > 0);
+    }
+
+    if (type === "actorCooc" && filterActor) {
+      filtered = filtered
+        .map(row => ({
+          ...row,
+          values: row.name === filterActor
+            ? row.values
+            : row.values.filter(v => v === filterActor),
+        }))
+        .filter(row => row.name === filterActor || row.values.length > 0);
+    }
+
+    if (type === "conceptCooc" && filterConcept) {
+      filtered = filtered
+        .map(row => ({
+          ...row,
+          values: row.name === filterConcept
+            ? row.values
+            : row.values.filter(v => v === filterConcept),
+        }))
+        .filter(row => row.name === filterConcept || row.values.length > 0);
+    }
+
     if (showTopOnly) filtered = filtered.slice(0, 10);
 
     return filtered;
@@ -1388,6 +1532,39 @@ function restoreItemToMain(itemId) {
       rows: filterRows(graphStats.actorConcepts, "actorConcepts"),
       emptyText: "Aucune relation Acteur → Concept détectée.",
     },
+    themeCooc: {
+      title: "Thèmes ↔ Thèmes",
+      short: "Thèmes ↔ Thèmes",
+      sourceLabel: "Thèmes",
+      targetLabel: "Thèmes associés",
+      sourceType: "theme",
+      targetType: "theme",
+      subtitle: "Repérer les thèmes qui apparaissent ensemble dans les mêmes articles.",
+      rows: filterRows(graphStats.themeCooc, "themeCooc"),
+      emptyText: "Aucune cooccurrence de thèmes détectée.",
+    },
+    actorCooc: {
+      title: "Acteurs ↔ Acteurs",
+      short: "Acteurs ↔ Acteurs",
+      sourceLabel: "Acteurs",
+      targetLabel: "Acteurs associés",
+      sourceType: "actor",
+      targetType: "actor",
+      subtitle: "Repérer les acteurs évoqués ensemble dans les mêmes articles.",
+      rows: filterRows(graphStats.actorCooc, "actorCooc"),
+      emptyText: "Aucune cooccurrence d’acteurs détectée.",
+    },
+    conceptCooc: {
+      title: "Concepts ↔ Concepts",
+      short: "Concepts ↔ Concepts",
+      sourceLabel: "Concepts",
+      targetLabel: "Concepts associés",
+      sourceType: "concept",
+      targetType: "concept",
+      subtitle: "Repérer les concepts mobilisés ensemble dans les mêmes articles.",
+      rows: filterRows(graphStats.conceptCooc, "conceptCooc"),
+      emptyText: "Aucune cooccurrence de concepts détectée.",
+    },
     fullGraph: {
       title: "Graphe complet",
       short: "Graphe complet",
@@ -1398,6 +1575,17 @@ function restoreItemToMain(itemId) {
       subtitle: "Afficher ensemble les institutions, acteurs, thèmes et concepts issus du corpus sélectionné.",
       rows: [],
       emptyText: "Aucune relation complète détectée.",
+    },
+    centrality: {
+      title: "Centralités",
+      short: "Centralités",
+      sourceLabel: "Nœuds",
+      targetLabel: "Score",
+      sourceType: "institution",
+      targetType: "concept",
+      subtitle: "Identifier les institutions, acteurs, thèmes et concepts les plus connectés dans le corpus.",
+      rows: [],
+      emptyText: "Aucune centralité calculable.",
     },
   };
 
@@ -1505,6 +1693,10 @@ function restoreItemToMain(itemId) {
       return renderFullGraphSvg();
     }
 
+    if (activeGraphView === "centrality") {
+      return renderCentralityCenter();
+    }
+
     if (!activeView || graphRowsForDrawing.length === 0) {
       return (
         <div style={{
@@ -1591,7 +1783,8 @@ function restoreItemToMain(itemId) {
             if (j === undefined) return null;
 
             const y2 = rightY[j];
-            const strength = Math.min(5, Math.max(1.2, row.count / 2));
+            const weight = row.weights?.[target] || 1;
+            const strength = Math.min(5, Math.max(1.2, weight * 1.4));
 
             return (
               <path
@@ -1898,6 +2091,125 @@ function restoreItemToMain(itemId) {
     );
   };
 
+  const renderCentralityCenter = () => {
+    const groups = [
+      {
+        title: "Institutions centrales",
+        color: nodeColors.institution,
+        rows: graphStats.centralityInstitutions,
+      },
+      {
+        title: "Acteurs centraux",
+        color: nodeColors.actor,
+        rows: graphStats.centralityActors,
+      },
+      {
+        title: "Thèmes centraux",
+        color: nodeColors.theme,
+        rows: graphStats.centralityThemes,
+      },
+      {
+        title: "Concepts centraux",
+        color: nodeColors.concept,
+        rows: graphStats.centralityConcepts,
+      },
+    ];
+
+    return (
+      <div style={{
+        minHeight: 500,
+        background: "#fbfaf6",
+        border: `1px solid ${C.border}`,
+        padding: 18,
+      }}>
+        <div style={{
+          display: "grid",
+          gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))",
+          gap: 12,
+        }}>
+          {groups.map(group => (
+            <div key={group.title} style={{
+              background: C.white,
+              border: `1px solid ${C.border}`,
+              padding: 14,
+            }}>
+              <div style={{
+                ...sc(),
+                color: group.color,
+                marginBottom: 10,
+              }}>
+                {group.title}
+              </div>
+
+              {group.rows.length === 0 ? (
+                <div style={{
+                  fontFamily: serif,
+                  fontStyle: "italic",
+                  color: C.muted,
+                  fontSize: 13,
+                }}>
+                  Aucune donnée.
+                </div>
+              ) : (
+                <div style={{display: "grid", gap: 8}}>
+                  {group.rows.slice(0, showTopOnly ? 5 : 10).map((row, index) => {
+                    const maxScore = group.rows[0]?.score || 1;
+                    const width = Math.max(8, Math.round((row.score / maxScore) * 100));
+
+                    return (
+                      <div key={row.name}>
+                        <div style={{
+                          display: "flex",
+                          justifyContent: "space-between",
+                          gap: 8,
+                          fontSize: 12,
+                          color: C.ink,
+                          marginBottom: 4,
+                        }}>
+                          <span style={{fontWeight: 700}}>
+                            {index + 1}. {row.name}
+                          </span>
+                          <span style={{color: group.color, fontWeight: 700}}>
+                            {row.score}
+                          </span>
+                        </div>
+
+                        <div style={{
+                          height: 6,
+                          background: C.panelSoft,
+                          border: `1px solid ${C.border}`,
+                        }}>
+                          <div style={{
+                            height: "100%",
+                            width: `${width}%`,
+                            background: group.color,
+                          }} />
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+
+        <div style={{
+          marginTop: 14,
+          background: C.panelSoft,
+          border: `1px solid ${C.border}`,
+          padding: 12,
+          fontSize: 12,
+          lineHeight: 1.6,
+          color: C.muted,
+        }}>
+          Cette centralité est une mesure simple de degré : elle indique combien de connexions un nœud porte dans le corpus sélectionné.
+          Elle sert à repérer les objets les plus structurants, sans prétendre à une mesure avancée de type PageRank ou betweenness.
+        </div>
+      </div>
+    );
+  };
+
   const renderLeftControls = () => (
     <aside style={{
       ...panelStyle,
@@ -1925,7 +2237,7 @@ function restoreItemToMain(itemId) {
         </label>
       )}
 
-      {(activeGraphView === "actorThemes" || activeGraphView === "actorConcepts" || activeGraphView === "fullGraph") && (
+      {(activeGraphView === "actorThemes" || activeGraphView === "actorConcepts" || activeGraphView === "actorCooc" || activeGraphView === "fullGraph") && (
         <label style={{display:"block",marginBottom:12}}>
           <div style={{...sc(),fontSize:8,marginBottom:5}}>Acteur</div>
           <select value={filterActor} onChange={e => setFilterActor(e.target.value)} style={fieldStyle}>
@@ -1935,7 +2247,7 @@ function restoreItemToMain(itemId) {
         </label>
       )}
 
-      {(activeGraphView === "institutionThemes" || activeGraphView === "actorThemes" || activeGraphView === "fullGraph") && (
+      {(activeGraphView === "institutionThemes" || activeGraphView === "actorThemes" || activeGraphView === "themeCooc" || activeGraphView === "fullGraph") && (
         <label style={{display:"block",marginBottom:12}}>
           <div style={{...sc(),fontSize:8,marginBottom:5}}>Thème</div>
           <select value={filterTheme} onChange={e => setFilterTheme(e.target.value)} style={fieldStyle}>
@@ -1945,7 +2257,7 @@ function restoreItemToMain(itemId) {
         </label>
       )}
 
-      {(activeGraphView === "institutionConcepts" || activeGraphView === "actorConcepts" || activeGraphView === "fullGraph") && (
+      {(activeGraphView === "institutionConcepts" || activeGraphView === "actorConcepts" || activeGraphView === "conceptCooc" || activeGraphView === "fullGraph") && (
         <label style={{display:"block",marginBottom:12}}>
           <div style={{...sc(),fontSize:8,marginBottom:5}}>Concept</div>
           <select value={filterConcept} onChange={e => setFilterConcept(e.target.value)} style={fieldStyle}>
@@ -2013,7 +2325,7 @@ function restoreItemToMain(itemId) {
             <span style={{color:nodeColors.concept,fontWeight:700}}>●</span> Les concepts sont en sable olive.
           </div>
           <div>● Plus un nœud est gros, plus il porte d’associations.</div>
-          <div>● Les liens représentent les associations issues des articles sélectionnés.</div>
+          <div>● Les vues de cooccurrence montrent ce qui apparaît ensemble dans les mêmes articles.</div>
         </div>
       </div>
 
@@ -2318,7 +2630,7 @@ function restoreItemToMain(itemId) {
 
               {activeGraphView === "fusion" ? renderFusionCenter() : renderGraphSvg()}
 
-              {activeGraphView !== "fusion" && activeGraphView !== "fullGraph" && activeView && activeView.rows.length > 0 && (
+              {activeGraphView !== "fusion" && activeGraphView !== "fullGraph" && activeGraphView !== "centrality" && activeView && activeView.rows.length > 0 && (
                 <div style={{
                   marginTop:12,
                   background:C.panelSoft,
@@ -2432,6 +2744,7 @@ function restoreItemToMain(itemId) {
     </main>
   );
 }
+  
   function ProduireView(){
     const allThemesList = Array.from(new Set([
       "tous",
