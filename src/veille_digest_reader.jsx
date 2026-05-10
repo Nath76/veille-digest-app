@@ -736,6 +736,67 @@ function restoreToMain(itemId) {
             <button onClick={e=>togFav(item.id,e)} style={{background:"none",border:"none",cursor:"pointer",fontSize:14,color:C.accent,opacity:isFav?1:.35,padding:0}}>{isFav?"★":"☆"}</button>
           </div>
         </div>
+{/* Action dossier */}
+<div
+  onClick={e => e.stopPropagation()}
+  style={{
+    marginTop: "auto",
+    paddingTop: 10,
+    borderTop: `1px solid ${C.border}`,
+    display: "flex",
+    justifyContent: "flex-end"
+  }}
+>
+  {folders.length === 0 ? (
+    <button
+      onClick={e => {
+        e.stopPropagation();
+        setTab("dossiers");
+      }}
+      style={{
+        border: `1px solid ${C.border}`,
+        borderRadius: 999,
+        padding: "6px 9px",
+        background: C.white,
+        color: C.muted,
+        cursor: "pointer",
+        fontSize: 10,
+        fontFamily: sans
+      }}
+    >
+      Créer un dossier
+    </button>
+  ) : (
+    <select
+      value=""
+      onClick={e => e.stopPropagation()}
+      onChange={e => {
+        e.stopPropagation();
+        const folderId = e.target.value;
+        if (!folderId) return;
+        addItemToFolder(item.id, folderId);
+      }}
+      style={{
+        border: `1px solid ${C.border}`,
+        borderRadius: 999,
+        padding: "6px 9px",
+        background: C.white,
+        color: C.accent,
+        cursor: "pointer",
+        fontSize: 10,
+        fontFamily: sans,
+        outline: "none"
+      }}
+    >
+      <option value="">+ dossier</option>
+      {folders.map(folder => (
+        <option key={folder.id} value={folder.id}>
+          {folder.name}
+        </option>
+      ))}
+    </select>
+  )}
+</div>
       </div>
     );
   }
